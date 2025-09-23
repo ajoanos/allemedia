@@ -87,7 +87,7 @@ return new WP_REST_Response(['error' => 'empty'], 400);
 $id = substr(wp_hash($sp . microtime(true)), 0, 8);
 $opt_key = 'sunplanner_share_' . $id;
 add_option($opt_key, $sp, '', 'no');
-$url = add_query_arg('sunplan', $id, home_url('/'));
+$url = home_url('/sp/' . rawurlencode($id) . '/');
 return ['id' => $id, 'url' => $url];
 }
 ]);
