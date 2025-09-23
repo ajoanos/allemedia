@@ -36,7 +36,7 @@ wp_script_add_data('sunplanner-gmaps', 'defer', true);
 }
 
 
-// If /sp/<id> present — fetch stored packed state
+// If /sp/<id> or ?sunplan=<id> present — fetch stored packed state
 $shared_sp = '';
 $spid = get_query_var('sunplan');
 if ($spid) {
@@ -87,7 +87,7 @@ return new WP_REST_Response(['error' => 'empty'], 400);
 $id = substr(wp_hash($sp . microtime(true)), 0, 8);
 $opt_key = 'sunplanner_share_' . $id;
 add_option($opt_key, $sp, '', 'no');
-$url = home_url('/sp/' . $id);
+$url = add_query_arg('sunplan', $id, home_url('/'));
 return ['id' => $id, 'url' => $url];
 }
 ]);
