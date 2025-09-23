@@ -12,7 +12,7 @@ add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; }
 
 /** === Assets === */
 add_action('wp_enqueue_scripts', function () {
-$ver = '1.6.0';
+$ver = '1.7.0';
 wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [], $ver);
 wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
 
@@ -36,7 +36,7 @@ wp_script_add_data('sunplanner-gmaps', 'defer', true);
 }
 
 
-// If /sp/<id> present — fetch stored packed state
+// If /sp/<id> or ?sunplan=<id> present — fetch stored packed state
 $shared_sp = '';
 $spid = get_query_var('sunplan');
 if ($spid) {
@@ -64,9 +64,9 @@ wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 add_shortcode('sunplanner', function () {
 wp_enqueue_style('sunplanner-css');
 wp_enqueue_script('sunplanner-app');
-wp_enqueue_script('sunplanner-gmaps');
-ob_start(); ?>
-<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.6.0"></div>
+    wp_enqueue_script('sunplanner-gmaps');
+    ob_start(); ?>
+<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.0"></div>
 <?php return ob_get_clean();
 });
 
@@ -87,7 +87,7 @@ return new WP_REST_Response(['error' => 'empty'], 400);
 $id = substr(wp_hash($sp . microtime(true)), 0, 8);
 $opt_key = 'sunplanner_share_' . $id;
 add_option($opt_key, $sp, '', 'no');
-$url = home_url('/sp/' . $id);
+$url = add_query_arg('sunplan', $id, home_url('/'));
 return ['id' => $id, 'url' => $url];
 }
 ]);
