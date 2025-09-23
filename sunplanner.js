@@ -7,6 +7,23 @@
   var TZ           = CFG.TZ || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw');
   var REST_URL     = CFG.REST_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
+  var BASE_URL = (function(){
+    function stripQueryAndHash(url){ return url.replace(/[?#].*$/, ''); }
+    var locOrigin = location.origin || (location.protocol + '//' + location.host);
+    var locPath = location.pathname || '/';
+    var defaultBase = stripQueryAndHash(locOrigin + locPath);
+    if(SITE_ORIGIN){
+      try {
+        var siteUrl = new URL(SITE_ORIGIN, locOrigin);
+        var path = siteUrl.pathname || '/';
+        var isDedicated = (siteUrl.origin !== locOrigin) || (path !== '/' && path !== '');
+        if(isDedicated){
+          return stripQueryAndHash(siteUrl.origin + path);
+        }
+      } catch(e){}
+    }
+    return defaultBase;
+  })();
 
   var root = document.getElementById('sunplanner-app');
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
@@ -1031,7 +1048,7 @@
 
   // link
   function updateLink(){
-    var url = location.origin + location.pathname + '?sp=' + b64url.enc(packState());
+    var url = BASE_URL + '?sp=' + b64url.enc(packState());
     history.replaceState(null,'',url);
     var linkEl=$('#sp-link'); if(linkEl) linkEl.textContent = url;
     if(shortLinkValue){
