@@ -12,17 +12,22 @@
     var locOrigin = location.origin || (location.protocol + '//' + location.host);
     var locPath = location.pathname || '/';
     var defaultBase = stripQueryAndHash(locOrigin + locPath);
-    if(SITE_ORIGIN){
-      try {
-        var siteUrl = new URL(SITE_ORIGIN, locOrigin);
-        var path = siteUrl.pathname || '/';
-        var isDedicated = (siteUrl.origin !== locOrigin) || (path !== '/' && path !== '');
-        if(isDedicated){
-          return stripQueryAndHash(siteUrl.origin + path);
-        }
-      } catch(e){}
+    if(!SITE_ORIGIN){
+      return defaultBase;
     }
-    return defaultBase;
+
+    var siteBase = null;
+    try {
+      var siteUrl = new URL(SITE_ORIGIN, locOrigin);
+      var path = siteUrl.pathname || '/';
+      var isDedicatedHost = siteUrl.origin !== locOrigin;
+      var isDedicatedPath = (path !== '/' && path !== '');
+      if(isDedicatedHost || isDedicatedPath){
+        siteBase = stripQueryAndHash(siteUrl.origin + path);
+      }
+    } catch(e){}
+
+    return siteBase || defaultBase;
   })();
 
   var root = document.getElementById('sunplanner-app');
