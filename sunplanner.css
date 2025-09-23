@@ -66,7 +66,9 @@
   .toolbar{flex-direction:column;align-items:flex-start}
   .toolbar .btn{width:100%}
   .share-row .btn{min-width:140px}
+codex/add-new-features-and-prepare-code-7ga067
 }
 @media(max-width:780px){
   .glow-info,.glow-info.align-right{flex:1 1 100%;text-align:left;align-items:flex-start}
+=======
 }
