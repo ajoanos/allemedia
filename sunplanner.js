@@ -1,5 +1,5 @@
 
-/* SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
+/* Allemedia SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
 
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
@@ -34,7 +34,7 @@
   })();
 
   var root = document.getElementById('sunplanner-app');
-  if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
+  if(!root){ console.warn('Allemedia SunPlanner: brak #sunplanner-app'); return; }
 
   root.innerHTML =
   '<div class="sunplanner">'+
@@ -62,7 +62,7 @@
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
-      '<div class="card">'+
+      '<div class="card main-plan">'+
         '<h3>Plan dnia – przebieg zdjęć</h3>'+
         '<div id="sp-session-summary" class="session-summary">'+
           '<strong>Wybierz lokalizację i datę</strong>'+
@@ -134,37 +134,63 @@
           '</div>'+
 
         '</div>'+
-
-        '<h3 style="margin-top:1rem">Udostępnij / Eksport</h3>'+
-        '<div class="row share-row" style="align-items:flex-start">'+
-          '<div class="col" style="flex:1">'+
-            '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
-              '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
-              '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
-              '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
-              '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
-              '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
-            '</div>'+
-            '<div class="muted" id="sp-link" style="margin-top:.25rem;word-break:break-all"></div>'+
-            '<div class="muted" id="sp-short-status"></div>'+
-          '</div>'+
-        '</div>'+
-
-        '<div class="card" style="margin-top:1rem;padding:.75rem">'+
-          '<h3>Galeria inspiracji – zdjęcia</h3>'+
-          '<div id="sp-gallery"></div>'+
-        '</div>'+
+      '</div>'+
+      '<div class="card card-gallery">'+
+        '<h3>Galeria inspiracji – zdjęcia</h3>'+
+        '<div id="sp-gallery"></div>'+
       '</div>'+
       '<div class="card">'+
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
         '<div class="weather-legend">'+
-
           '<span><i class="line"></i>Temperatura (°C)</span>'+
           '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
           '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
           '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
-
+        '</div>'+
+      '</div>'+
+      '<div class="card card-sunshine">'+
+        '<h3>Nasłonecznienie – kiedy pojawi się słońce</h3>'+
+        '<canvas id="sp-sunshine" class="smallcanvas" aria-label="Nasłonecznienie"></canvas>'+
+        '<p class="muted" id="sp-sunshine-note">Dodaj lokalizację i datę, aby zobaczyć wykres przejaśnień.</p>'+
+      '</div>'+
+      '<div class="card card-crowd">'+
+        '<h3>Popularne godziny (uniknij tłumów)</h3>'+
+        '<canvas id="sp-crowd" class="smallcanvas" aria-label="Popularne godziny"></canvas>'+
+        '<p class="muted" id="sp-crowd-note">Wybierz cel podróży, aby zobaczyć natężenie ruchu.</p>'+
+      '</div>'+
+      '<div class="card card-proposals">'+
+        '<h3>Terminy sesji ślubnej</h3>'+
+        '<p class="muted">Zaproponuj terminy, a po udostępnieniu linku fotograf może zaznaczyć pasujące daty lub dodać własne propozycje.</p>'+
+        '<div class="proposal-form proposal-form--couple">'+
+          '<input type="date" id="sp-proposal-date" class="input">'+
+          '<input type="time" id="sp-proposal-time" class="input">'+
+          '<input type="text" id="sp-proposal-note" class="input" placeholder="Komentarz (opcjonalnie)">'+
+          '<button class="btn secondary" type="button" id="sp-proposal-add">Dodaj termin</button>'+
+        '</div>'+
+        '<label class="meta-check photographer-toggle"><input type="checkbox" id="sp-photographer-mode"><span>Jestem fotografem – chcę odpowiedzieć na propozycje</span></label>'+
+        '<div class="proposal-form proposal-form--photographer" id="sp-photographer-form" style="display:none">'+
+          '<input type="date" id="sp-photographer-date" class="input">'+
+          '<input type="time" id="sp-photographer-time" class="input">'+
+          '<input type="text" id="sp-photographer-note" class="input" placeholder="Komentarz dla pary">'+
+          '<button class="btn secondary" type="button" id="sp-photographer-add">Zaproponuj termin</button>'+
+        '</div>'+
+        '<div id="sp-proposals-list" class="proposal-list muted">Brak proponowanych terminów.</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card share-card">'+
+      '<h3>Udostępnij / Eksport</h3>'+
+      '<div class="row share-row" style="align-items:flex-start">'+
+        '<div class="col" style="flex:1">'+
+          '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
+            '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
+            '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
+            '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
+            '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
+            '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
+          '</div>'+
+          '<div class="muted" id="sp-link" style="margin-top:.25rem;word-break:break-all"></div>'+
+          '<div class="muted" id="sp-short-status"></div>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -194,9 +220,9 @@
 
   function summaryElement(){ return document.getElementById('sp-session-summary'); }
   function setSessionSummary(html){ var el=summaryElement(); if(el){ el.innerHTML=html; } }
-  function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
-  function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
-  function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
+  function sessionSummaryDefault(){ idealDayMode=false; setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
+  function sessionSummaryLoading(){ idealDayMode=false; setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
+  function sessionSummaryNoData(){ idealDayMode=false; setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
 
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
@@ -212,6 +238,10 @@
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
 
   var currentBands = null;
+  var sessionSlots = [];
+  var photographerMode = false;
+  var idealDayMode = false;
+  var lastForecastData = null;
 
   var RADAR_FALLBACKS = [
     'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
@@ -225,6 +255,53 @@
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
   var routeColors = ['#e94244','#1e3a8a','#6b7280'];
   var pendingRadar = false;
+
+  var CROWD_PROFILES = {
+    'morskie oko': {
+      label: 'Morskie Oko',
+      values: [2,2,2,4,6,12,25,45,68,85,92,96,95,92,88,80,70,55,38,22,12,6,3,2],
+      tip: 'Największy ruch między 10:00 a 15:00 – rozważ wcześniejsze wyjście lub późne popołudnie.'
+    },
+    'gubałówka': {
+      label: 'Gubałówka',
+      values: [1,1,1,2,4,8,18,40,65,80,88,92,90,85,82,74,60,45,28,15,8,4,2,1],
+      tip: 'Kolejka linowa i deptak są najbardziej zatłoczone od późnego ranka do wczesnego wieczoru.'
+    },
+    'kasprowy wierch': {
+      label: 'Kasprowy Wierch',
+      values: [0,0,0,1,3,6,14,28,48,68,82,90,88,80,70,58,42,26,14,6,3,1,0,0],
+      tip: 'Szczyt jest najbardziej popularny od 9:00 do 14:00 wraz z ruchem kolejki.'
+    },
+    'dolina chochołowska': {
+      label: 'Dolina Chochołowska',
+      values: [1,1,1,2,4,9,20,38,60,72,80,84,80,76,70,60,45,30,18,10,6,3,2,1],
+      tip: 'Największy tłok w godzinach 9:00–14:00, szczególnie w sezonie krokusów.'
+    },
+    'szczyrbskie jezioro': {
+      label: 'Szczyrbskie Jezioro',
+      values: [1,1,1,2,4,8,16,30,52,70,82,90,88,82,74,60,46,30,18,10,6,3,2,1],
+      tip: 'Ruch największy w południe; poranek i wczesny wieczór są spokojniejsze.'
+    }
+  };
+
+  var LOCATION_HINTS = [
+    {
+      test: function(label){ return /tatrzański park narodowy|\bTPN\b/i.test(label||''); },
+      sessionInfo: 'Sesja ślubna: 150 zł – wymagana zgoda Tatrzańskiego Parku Narodowego.',
+      sessionLink: 'https://tpn.pl/zwiedzaj/filmowanie-i-fotografowanie',
+      drone: 'restricted',
+      droneNote: 'Loty dronem wymagają pisemnej zgody dyrekcji TPN.',
+      crowdKey: 'morskie oko'
+    },
+    {
+      test: function(label){ return /\bTANAP\b|tatransk|słowacki tatrzański park/i.test(label||''); },
+      sessionInfo: 'Sesja ślubna: 50 € – zgłoszenie w TANAP, część lokalizacji dostępna bez dodatkowych opłat.',
+      sessionLink: 'https://www.tanap.org/en/permits/',
+      drone: 'restricted',
+      droneNote: 'Loty dronem możliwe wyłącznie po uzyskaniu zgody TANAP.',
+      crowdKey: 'szczyrbskie jezioro'
+    }
+  ];
 
   // data
   var today=new Date(), max=new Date(today); max.setDate(max.getDate()+16);
@@ -248,6 +325,7 @@
       return JSON.parse(json);
     }
   };
+  function newProposalId(){ return 'slot-'+Math.random().toString(36).slice(2,8)+Date.now().toString(36); }
   function packState(){
     var radarEl=$('#sp-radar');
     return {
@@ -255,7 +333,38 @@
       sr:$('#sp-slider-rise').value,
       ss:$('#sp-slider-set').value,
       rad: (radarEl && radarEl.checked)?1:0,
-      pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};})
+      pts:points.map(function(p){
+        var meta=ensurePointMeta(p);
+        return {
+          lat:+p.lat,
+          lng:+p.lng,
+          label:p.label||'Punkt',
+          meta:{
+            parkingPaid:!!meta.parkingPaid,
+            parkingMachine:!!meta.parkingMachine,
+            parkingCard:!!meta.parkingCard,
+            parkingNotes:meta.parkingNotes||'',
+            sessionFeeCustom:meta.sessionFeeCustom||'',
+            sessionFeeAuto:meta.sessionFeeAuto||'',
+            sessionFeeLink:meta.sessionFeeLink||'',
+            dronePolicy:meta.dronePolicy||'unknown',
+            droneAuto:meta.droneAuto||'',
+            droneNote:meta.droneNote||'',
+            crowdKey:meta.crowdKey||null,
+            crowdNotes:meta.crowdNotes||''
+          }
+        };
+      }),
+      slots:sessionSlots.map(function(slot){
+        return {
+          id:slot.id,
+          date:slot.date||'',
+          time:slot.time||'',
+          note:slot.note||'',
+          proposer:slot.proposer||'couple',
+          status:slot.status||'pending'
+        };
+      })
     };
   }
   function unpackState(obj){
@@ -265,8 +374,44 @@
     if(obj.ss) $('#sp-slider-set').value=obj.ss;
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
     if(Object.prototype.toString.call(obj.pts)==='[object Array]'){
-      points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
+      points = obj.pts.map(function(p){
+        var point={lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};
+        if(p.meta && typeof p.meta==='object'){
+          point.meta=Object.assign(defaultPointMeta(),{
+            parkingPaid:!!p.meta.parkingPaid,
+            parkingMachine:!!p.meta.parkingMachine,
+            parkingCard:!!p.meta.parkingCard,
+            parkingNotes:p.meta.parkingNotes||'',
+            sessionFeeCustom:p.meta.sessionFeeCustom||'',
+            sessionFeeAuto:p.meta.sessionFeeAuto||'',
+            sessionFeeLink:p.meta.sessionFeeLink||'',
+            dronePolicy:p.meta.dronePolicy||'unknown',
+            droneAuto:p.meta.droneAuto||'',
+            droneNote:p.meta.droneNote||'',
+            crowdKey:p.meta.crowdKey||null,
+            crowdNotes:p.meta.crowdNotes||''
+          });
+        }
+        ensurePointMeta(point);
+        return point;
+      });
     }
+    if(Object.prototype.toString.call(obj.slots)==='[object Array]'){
+      sessionSlots = obj.slots.map(function(slot){
+        var status = (slot.status==='accepted'||slot.status==='declined') ? slot.status : 'pending';
+        var proposer = slot.proposer==='photographer' ? 'photographer' : 'couple';
+        var id = slot.id && typeof slot.id==='string' ? slot.id : (slot.id && typeof slot.id==='number' ? String(slot.id) : null);
+        return {
+          id: id || newProposalId(),
+          date: typeof slot.date==='string'?slot.date:'',
+          time: typeof slot.time==='string'?slot.time:'',
+          note: typeof slot.note==='string'?slot.note:'',
+          proposer: proposer,
+          status: status
+        };
+      });
+    }
+    if(typeof renderProposalsList==='function'){ renderProposalsList(); }
   }
   function persistState(){ if(!storageAvailable) return; try{ window.localStorage.setItem(STORAGE_KEY, b64url.enc(packState())); }catch(e){} }
   (function(){
@@ -336,20 +481,67 @@
     };
   }
 
+  function defaultPointMeta(){
+    return {
+      parkingPaid:false,
+      parkingMachine:false,
+      parkingCard:false,
+      parkingNotes:'',
+      sessionFeeCustom:'',
+      sessionFeeAuto:'',
+      sessionFeeLink:'',
+      dronePolicy:'unknown',
+      droneAuto:'',
+      droneNote:'',
+      crowdKey:null,
+      crowdNotes:''
+    };
+  }
+
+  function ensurePointMeta(point){
+    if(!point || typeof point !== 'object') return defaultPointMeta();
+    if(!point.meta || typeof point.meta !== 'object'){ point.meta = defaultPointMeta(); }
+    var meta = point.meta;
+    var defaults = defaultPointMeta();
+    Object.keys(defaults).forEach(function(key){ if(typeof meta[key] === 'undefined'){ meta[key] = defaults[key]; } });
+    return meta;
+  }
+
+  function applyLocationDefaults(point){
+    if(!point) return;
+    var meta = ensurePointMeta(point);
+    var label = point.label || '';
+    LOCATION_HINTS.forEach(function(hint){
+      if(hint && typeof hint.test === 'function' && hint.test(label)){
+        if(hint.sessionInfo){ meta.sessionFeeAuto = hint.sessionInfo; }
+        if(hint.sessionLink){ meta.sessionFeeLink = hint.sessionLink; }
+        if(hint.drone){
+          meta.droneAuto = hint.drone;
+          if(meta.dronePolicy === 'unknown'){ meta.dronePolicy = hint.drone; }
+        }
+        if(hint.droneNote && !meta.droneNote){ meta.droneNote = hint.droneNote; }
+        if(hint.crowdKey && !meta.crowdKey){ meta.crowdKey = hint.crowdKey; }
+      }
+    });
+  }
+
   function applyBands(b){
 
     currentBands = b || null;
 
-    function line(label, range){
+    var hideMorning = !!idealDayMode;
+
+    function line(label, range, skip){
+      if(skip) return label + '— —';
       if(range && isValidDate(range[0]) && isValidDate(range[1])){
         return label + fmt(range[0])+'–'+fmt(range[1]);
       }
       return label + '— —';
     }
-    setText('sp-gold-am', line('☀️ Poranna złota godzina: ', b && b.goldAM));
-    setText('sp-blue-am', line('🌌 Poranna niebieska godzina: ', b && b.blueAM));
-    setText('sp-gold-pm', line('☀️ Wieczorna złota godzina: ', b && b.goldPM));
-    setText('sp-blue-pm', line('🌌 Wieczorna niebieska godzina: ', b && b.bluePM));
+    setText('sp-gold-am', line('☀️ Poranna złota godzina: ', b && b.goldAM, hideMorning));
+    setText('sp-blue-am', line('🌌 Poranna niebieska godzina: ', b && b.blueAM, hideMorning));
+    setText('sp-gold-pm', line('☀️ Wieczorna złota godzina: ', b && b.goldPM, false));
+    setText('sp-blue-pm', line('🌌 Wieczorna niebieska godzina: ', b && b.bluePM, false));
   }
 
   function deriveBandsFromSun(sunrise,sunset){
@@ -366,17 +558,106 @@
 
   // lista
   function renderList(){
-    var box=$('#sp-list'); box.innerHTML='';
+    var box=$('#sp-list'); if(!box) return; box.innerHTML='';
+    if(!points.length){
+      var empty=document.createElement('div'); empty.className='muted'; empty.textContent='Dodaj punkt, aby zaplanować trasę.';
+      box.appendChild(empty);
+      updateCrowdModule();
+      return;
+    }
     points.forEach(function(p,i){
+      applyLocationDefaults(p);
+      var meta=ensurePointMeta(p);
       var row=document.createElement('div'); row.className='waypoint';
-      var lab=document.createElement('div'); lab.textContent=(i+1)+'. '+(p.label||'Punkt');
-      var ctr=document.createElement('div');
-      function mk(txt,fn){ var b=document.createElement('button'); b.className='btn ghost'; b.textContent=txt; b.onclick=fn; return b; }
+      var header=document.createElement('div'); header.className='waypoint__header';
+      var lab=document.createElement('div'); lab.className='waypoint__label'; lab.textContent=(i+1)+'. '+(p.label||'Punkt');
+      var ctr=document.createElement('div'); ctr.className='waypoint__actions';
+      function mk(txt,fn){ var b=document.createElement('button'); b.className='btn ghost'; b.type='button'; b.textContent=txt; b.onclick=fn; return b; }
       ctr.appendChild(mk('↑',function(){ if(i>0){ var tmp=points[i-1]; points[i-1]=points[i]; points[i]=tmp; renderList(); recalcRoute(false); updateDerived(); } }));
       ctr.appendChild(mk('↓',function(){ if(i<points.length-1){ var tmp=points[i+1]; points[i+1]=points[i]; points[i]=tmp; renderList(); recalcRoute(false); updateDerived(); } }));
       ctr.appendChild(mk('×',function(){ points.splice(i,1); renderList(); recalcRoute(false); updateDerived(); }));
-      row.appendChild(lab); row.appendChild(ctr); box.appendChild(row);
+      header.appendChild(lab); header.appendChild(ctr); row.appendChild(header);
+
+      var metaBox=document.createElement('div'); metaBox.className='waypoint__meta';
+
+      var parkingSection=document.createElement('div'); parkingSection.className='meta-section';
+      var parkingTitle=document.createElement('strong'); parkingTitle.textContent='Parking, dojazd, opłaty';
+      parkingSection.appendChild(parkingTitle);
+      var checkWrap=document.createElement('div'); checkWrap.className='meta-checks';
+      function checkbox(key,label){
+        var wrap=document.createElement('label'); wrap.className='meta-check';
+        var input=document.createElement('input'); input.type='checkbox'; input.checked=!!meta[key];
+        input.addEventListener('change',function(e){ meta[key]=!!e.target.checked; updateLink(); });
+        var span=document.createElement('span'); span.textContent=label;
+        wrap.appendChild(input); wrap.appendChild(span);
+        return wrap;
+      }
+      checkWrap.appendChild(checkbox('parkingPaid','Płatny'));
+      checkWrap.appendChild(checkbox('parkingMachine','Automat'));
+      checkWrap.appendChild(checkbox('parkingCard','Kartą'));
+      parkingSection.appendChild(checkWrap);
+      var parkingNotes=document.createElement('textarea'); parkingNotes.className='meta-text'; parkingNotes.placeholder='Notatki o dojeździe / dodatkowych opłatach'; parkingNotes.value=meta.parkingNotes||'';
+      parkingNotes.addEventListener('input',function(e){ meta.parkingNotes=e.target.value; updateLink(); });
+      parkingSection.appendChild(parkingNotes);
+      metaBox.appendChild(parkingSection);
+
+      var sessionSection=document.createElement('div'); sessionSection.className='meta-section';
+      var sessionTitle=document.createElement('strong'); sessionTitle.textContent='Sesja ślubna – opłaty';
+      sessionSection.appendChild(sessionTitle);
+      if(meta.sessionFeeAuto){
+        var auto=document.createElement('p'); auto.className='meta-auto'; auto.textContent=meta.sessionFeeAuto;
+        if(meta.sessionFeeLink){
+          var link=document.createElement('a'); link.href=meta.sessionFeeLink; link.target='_blank'; link.rel='noopener'; link.textContent='Formularz zgłoszeniowy'; auto.appendChild(document.createTextNode(' ')); auto.appendChild(link);
+        }
+        sessionSection.appendChild(auto);
+      }
+      var sessionArea=document.createElement('textarea'); sessionArea.className='meta-text'; sessionArea.placeholder='Dodatkowe informacje o opłacie za sesję'; sessionArea.value=meta.sessionFeeCustom||'';
+      sessionArea.addEventListener('input',function(e){ meta.sessionFeeCustom=e.target.value; updateLink(); });
+      sessionSection.appendChild(sessionArea);
+      metaBox.appendChild(sessionSection);
+
+      var droneSection=document.createElement('div'); droneSection.className='meta-section';
+      var droneTitle=document.createElement('strong'); droneTitle.textContent='Dron w tej lokalizacji';
+      droneSection.appendChild(droneTitle);
+      var droneSelect=document.createElement('select'); droneSelect.className='meta-select';
+      var droneOptions=[
+        {value:'unknown',label:'Nie określono'},
+        {value:'allowed',label:'Można latać'},
+        {value:'restricted',label:'Wymaga zgody'},
+        {value:'forbidden',label:'Zakaz lotów'}
+      ];
+      if(['unknown','allowed','restricted','forbidden'].indexOf(meta.dronePolicy)===-1){ meta.dronePolicy='unknown'; }
+      droneOptions.forEach(function(opt){ var option=document.createElement('option'); option.value=opt.value; option.textContent=opt.label; droneSelect.appendChild(option); });
+      droneSelect.value=meta.dronePolicy;
+      droneSelect.addEventListener('change',function(e){ meta.dronePolicy=e.target.value; updateLink(); });
+      droneSection.appendChild(droneSelect);
+      if(meta.droneAuto && meta.droneAuto!=='unknown'){
+        var droneAuto=document.createElement('p'); droneAuto.className='meta-auto';
+        var map={allowed:'Loty dronem dozwolone przy zachowaniu lokalnych przepisów.',restricted:'Loty dronem wymagają zgody zarządcy terenu.',forbidden:'Loty dronem zabronione.'};
+        droneAuto.textContent=map[meta.droneAuto]||'Sprawdź zasady dotyczące lotów dronem.';
+        droneSection.appendChild(droneAuto);
+      }
+      var droneNotes=document.createElement('textarea'); droneNotes.className='meta-text'; droneNotes.placeholder='Notatki o ograniczeniach lotów'; droneNotes.value=meta.droneNote||'';
+      droneNotes.addEventListener('input',function(e){ meta.droneNote=e.target.value; updateLink(); });
+      droneSection.appendChild(droneNotes);
+      metaBox.appendChild(droneSection);
+
+      var crowdSection=document.createElement('div'); crowdSection.className='meta-section';
+      var crowdTitle=document.createElement('strong'); crowdTitle.textContent='Popularne godziny – notatki';
+      crowdSection.appendChild(crowdTitle);
+      if(meta.crowdKey && CROWD_PROFILES[meta.crowdKey]){
+        var tip=CROWD_PROFILES[meta.crowdKey].tip;
+        if(tip){ var tipEl=document.createElement('p'); tipEl.className='meta-auto'; tipEl.textContent=tip; crowdSection.appendChild(tipEl); }
+      }
+      var crowdArea=document.createElement('textarea'); crowdArea.className='meta-text'; crowdArea.placeholder='Własne obserwacje dotyczące tłumów'; crowdArea.value=meta.crowdNotes||'';
+      crowdArea.addEventListener('input',function(e){ meta.crowdNotes=e.target.value; updateLink(); });
+      crowdSection.appendChild(crowdArea);
+      metaBox.appendChild(crowdSection);
+
+      row.appendChild(metaBox);
+      box.appendChild(row);
     });
+    updateCrowdModule();
   }
   function routeMetrics(route){
     var legs=(route && route.legs)?route.legs:[];
@@ -664,8 +945,288 @@
         ctx.beginPath();
         ctx.moveTo(leftPad,y);
         ctx.lineTo(axisX,y);
-        ctx.stroke();
+    ctx.stroke();
+  }
+
+  function renderSunshineChart(hourly,dateStr,sunrise,sunset,loading){
+    var canvas=document.getElementById('sp-sunshine');
+    var noteEl=document.getElementById('sp-sunshine-note');
+    if(noteEl) noteEl.textContent='';
+    if(!canvas){ if(noteEl) noteEl.textContent='Brak modułu nasłonecznienia.'; return; }
+    var prep=prepareCanvas(canvas); if(!prep){ if(noteEl) noteEl.textContent='Brak modułu nasłonecznienia.'; return; }
+    var ctx=prep.ctx, width=prep.width, height=prep.height;
+    ctx.fillStyle='#fff7ed';
+    ctx.fillRect(0,0,width,height);
+    ctx.font='12px system-ui, sans-serif';
+    ctx.fillStyle='#9a3412';
+    if(loading){
+      ctx.fillText('Ładowanie danych o nasłonecznieniu…',12,height/2);
+      if(noteEl) noteEl.textContent='Trwa pobieranie prognozy nasłonecznienia…';
+      return;
+    }
+    if(!hourly || !hourly.time){
+      ctx.fillText('Brak danych o nasłonecznieniu.',12,height/2);
+      if(noteEl) noteEl.textContent='Dodaj lokalizację i datę, aby zobaczyć przejaśnienia.';
+      return;
+    }
+    var points=[];
+    var rangeStart=null, rangeEnd=null;
+    if(sunrise instanceof Date && !isNaN(sunrise)) rangeStart = sunrise;
+    if(sunset instanceof Date && !isNaN(sunset)) rangeEnd = addMinutes(sunset,35);
+    for(var i=0;i<hourly.time.length;i++){
+      var iso=hourly.time[i];
+      if(!iso || (dateStr && iso.slice(0,10)!==dateStr)) continue;
+      var dt=parseLocalISO(iso);
+      if(!(dt instanceof Date) || isNaN(dt)) continue;
+      if(rangeStart && dt<rangeStart) continue;
+      if(rangeEnd && dt>rangeEnd) continue;
+      var clouds = (hourly.cloudcover && typeof hourly.cloudcover[i] === 'number') ? hourly.cloudcover[i] : 55;
+      var prec = (hourly.precipitation && typeof hourly.precipitation[i] === 'number') ? hourly.precipitation[i] : 0;
+      var value = 1-Math.min(1,Math.max(0,clouds)/100);
+      if(prec>0){ value *= Math.max(0,1-Math.min(0.85,prec/3)); }
+      value = Math.max(0,Math.min(1,value));
+      points.push({time:dt,value:value});
+    }
+    if(!points.length){
+      ctx.fillText('Brak prognozy nasłonecznienia.',12,height/2);
+      if(noteEl) noteEl.textContent='Wybrana data nie ma danych o przejaśnieniach.';
+      return;
+    }
+    var minTime=points[0].time.getTime();
+    var maxTime=points[points.length-1].time.getTime();
+    if(minTime===maxTime){ maxTime=minTime+3600000; }
+    var baseY=height-28;
+    var chartHeight=Math.max(40,height-70);
+    ctx.strokeStyle='rgba(249,115,22,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(28,baseY);
+    ctx.lineTo(width-12,baseY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(28,baseY);
+    points.forEach(function(pt,idx){
+      var ratio=(pt.time.getTime()-minTime)/(maxTime-minTime);
+      var x=28+ratio*(width-56);
+      var y=baseY-pt.value*chartHeight;
+      if(idx===0){ ctx.lineTo(x,y); }
+      else ctx.lineTo(x,y);
+    });
+    ctx.lineTo(width-28,baseY);
+    ctx.closePath();
+    var gradient=ctx.createLinearGradient(0,baseY-chartHeight,0,baseY);
+    gradient.addColorStop(0,'rgba(251,146,60,0.65)');
+    gradient.addColorStop(1,'rgba(254,215,170,0.2)');
+    ctx.fillStyle=gradient;
+    ctx.fill();
+    ctx.beginPath();
+    points.forEach(function(pt,idx){
+      var ratio=(pt.time.getTime()-minTime)/(maxTime-minTime);
+      var x=28+ratio*(width-56);
+      var y=baseY-pt.value*chartHeight;
+      if(idx===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle='#f97316';
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    function drawMarker(time,label,emoji){
+      if(!(time instanceof Date) || isNaN(time)) return;
+      var ratio=(time.getTime()-minTime)/(maxTime-minTime);
+      var x=28+ratio*(width-56);
+      ctx.strokeStyle='rgba(249,115,22,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(x,baseY);
+      ctx.lineTo(x,18);
+      ctx.stroke();
+      ctx.fillStyle='#b45309';
+      ctx.fillText(emoji+' '+label, Math.max(12,Math.min(width-80,x-12)),16);
+    }
+    if(sunrise instanceof Date && !isNaN(sunrise)) drawMarker(sunrise,fmt(sunrise),'🌅');
+    if(sunset instanceof Date && !isNaN(sunset)) drawMarker(sunset,fmt(sunset),'🌇');
+
+    var best=points.reduce(function(acc,pt){ return pt.value>acc.value?pt:acc; },{value:-1,time:null});
+    if(noteEl){
+      var msg='Najwięcej przejaśnień około '+(best.time?fmt(best.time):'—')+'.';
+      noteEl.textContent=msg;
+    }
+  }
+
+  function findCrowdProfileKey(label){
+    if(!label) return null;
+    var low=String(label).toLowerCase();
+    var found=null;
+    Object.keys(CROWD_PROFILES).some(function(key){
+      if(low.indexOf(key)!==-1){ found=key; return true; }
+      return false;
+    });
+    return found;
+  }
+
+  function renderCrowdChart(profile,label,notes){
+    var canvas=document.getElementById('sp-crowd');
+    var noteEl=document.getElementById('sp-crowd-note');
+    if(noteEl) noteEl.textContent='';
+    if(!canvas){ if(noteEl) noteEl.textContent='Brak modułu popularnych godzin.'; return; }
+    var prep=prepareCanvas(canvas); if(!prep){ if(noteEl) noteEl.textContent='Brak modułu popularnych godzin.'; return; }
+    var ctx=prep.ctx, width=prep.width, height=prep.height;
+    ctx.fillStyle='#f8fafc';
+    ctx.fillRect(0,0,width,height);
+    ctx.font='12px system-ui, sans-serif';
+    ctx.fillStyle='#374151';
+    if(!profile || !Array.isArray(profile.values)){
+      ctx.fillText('Brak danych o popularności.',12,height/2);
+      if(noteEl){
+        if(label){ noteEl.textContent='Brak danych dla lokalizacji '+label+'. Dodaj własne obserwacje w polu notatek.'; }
+        else noteEl.textContent='Wybierz cel, aby zobaczyć popularne godziny.';
       }
+      return;
+    }
+    var values=profile.values.slice(0,24);
+    var maxVal=values.reduce(function(max,val){ return val>max?val:max; },1);
+    var baseY=height-30;
+    var usableWidth=width-56;
+    var barSpace=usableWidth/24;
+    ctx.strokeStyle='#d1d5db';
+    ctx.beginPath();
+    ctx.moveTo(28,baseY);
+    ctx.lineTo(width-12,baseY);
+    ctx.stroke();
+    var peakIndex=0, peakValue=-1;
+    values.forEach(function(val,idx){
+      var ratio=Math.max(0,val)/maxVal;
+      var barHeight=ratio*(height-70);
+      var x=28+idx*barSpace;
+      var w=Math.max(4,barSpace-6);
+      var alpha=0.25+ratio*0.45;
+      ctx.fillStyle='rgba(30,64,175,'+alpha.toFixed(2)+')';
+      ctx.fillRect(x,baseY-barHeight,w,barHeight);
+      if(idx%3===0){
+        ctx.fillStyle='#6b7280';
+        var labelTxt=(idx<10?'0':'')+idx+':00';
+        ctx.fillText(labelTxt,x,baseY+14);
+      }
+      if(val>peakValue){ peakValue=val; peakIndex=idx; }
+    });
+    var peakHour=(peakIndex<10?'0':'')+peakIndex+':00';
+    if(noteEl){
+      var tip=profile.tip||'';
+      var msg='Największy ruch około '+peakHour+'.';
+      if(tip){ msg=tip+' '+msg; }
+      if(notes){ msg+=' Twoje notatki: '+notes; }
+      noteEl.textContent=msg.trim();
+    }
+  }
+
+  function updateCrowdModule(){
+    var dest=points[points.length-1];
+    if(!dest){ renderCrowdChart(null,'', ''); return; }
+    applyLocationDefaults(dest);
+    var meta=ensurePointMeta(dest);
+    var profile=null;
+    if(meta.crowdKey && CROWD_PROFILES[meta.crowdKey]){
+      profile=CROWD_PROFILES[meta.crowdKey];
+    } else {
+      var key=findCrowdProfileKey(dest.label||'');
+      if(key){ meta.crowdKey=key; profile=CROWD_PROFILES[key]; }
+    }
+    renderCrowdChart(profile, dest.label||'', meta.crowdNotes||'');
+  }
+
+  function proposalDisplayDate(dateStr){
+    if(typeof dateStr!=='string' || !dateStr) return 'bez daty';
+    var date=new Date(dateStr+'T12:00:00');
+    if(!(date instanceof Date) || isNaN(date)) return dateStr;
+    return date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'long'});
+  }
+  function proposalDisplayTime(timeStr){
+    if(typeof timeStr!=='string' || !timeStr) return '—';
+    var parts=timeStr.split(':');
+    if(parts.length>=2){
+      var h=parts[0].slice(0,2).padStart(2,'0');
+      var m=parts[1].slice(0,2).padStart(2,'0');
+      return h+':'+m;
+    }
+    return timeStr;
+  }
+  function renderProposalsList(){
+    var box=$('#sp-proposals-list');
+    if(!box) return;
+    if(!sessionSlots.length){
+      box.classList.add('muted');
+      box.textContent='Brak proponowanych terminów.';
+      return;
+    }
+    box.classList.remove('muted');
+    box.innerHTML='';
+    var statusLabel={pending:'Oczekuje',accepted:'Potwierdzony',declined:'Nie pasuje'};
+    var sorted=sessionSlots.slice().sort(function(a,b){
+      var da=a.date||'', db=b.date||'';
+      if(da!==db) return da.localeCompare(db);
+      var ta=a.time||'', tb=b.time||'';
+      return ta.localeCompare(tb);
+    });
+    sorted.forEach(function(slot){
+      var item=document.createElement('div'); item.className='proposal-item';
+      var header=document.createElement('div'); header.className='proposal-item__header';
+      var timeEl=document.createElement('div'); timeEl.className='proposal-item__time';
+      var timeTxt=proposalDisplayTime(slot.time);
+      var dateTxt=proposalDisplayDate(slot.date);
+      timeEl.textContent=timeTxt+' – '+dateTxt;
+      var status=document.createElement('span'); status.className='proposal-item__status '+(slot.status||'pending');
+      status.textContent=statusLabel[slot.status]||statusLabel.pending;
+      header.appendChild(timeEl); header.appendChild(status);
+      item.appendChild(header);
+      var meta=document.createElement('div'); meta.className='proposal-item__meta';
+      var proposerSpan=document.createElement('span'); proposerSpan.textContent=slot.proposer==='photographer'?'Propozycja fotografa':'Propozycja pary';
+      meta.appendChild(proposerSpan);
+      item.appendChild(meta);
+      if(slot.note){ var note=document.createElement('div'); note.className='proposal-note'; note.textContent='Komentarz: '+slot.note; item.appendChild(note); }
+      var actions=document.createElement('div'); actions.className='proposal-actions';
+      function action(label,fn,variant){ var btn=document.createElement('button'); btn.type='button'; btn.className='btn '+(variant==='ghost'?'ghost':'secondary'); btn.textContent=label; btn.onclick=fn; actions.appendChild(btn); }
+      if(photographerMode && slot.proposer==='couple'){
+        action('Pasuje', function(){ setProposalStatus(slot.id,'accepted'); });
+        action('Nie pasuje', function(){ setProposalStatus(slot.id,'declined'); });
+        if(slot.status!=='pending') action('Oznacz jako oczekującą', function(){ setProposalStatus(slot.id,'pending'); });
+      }
+      if(!photographerMode && slot.proposer==='photographer'){
+        action('Akceptujemy', function(){ setProposalStatus(slot.id,'accepted'); });
+        if(slot.status!=='pending') action('Przywróć do negocjacji', function(){ setProposalStatus(slot.id,'pending'); });
+        action('Prosimy o inny termin', function(){ setProposalStatus(slot.id,'declined'); });
+      }
+      action('Usuń', function(){ removeProposal(slot.id); }, 'ghost');
+      item.appendChild(actions);
+      box.appendChild(item);
+    });
+  }
+  function addProposal(proposer,date,time,note){
+    var cleanDate=(typeof date==='string')?date.trim():'';
+    var cleanTime=(typeof time==='string')?time.trim():'';
+    if(!cleanDate || !cleanTime){ toast('Uzupełnij datę i godzinę.'); return; }
+    var slot={
+      id:newProposalId(),
+      date:cleanDate,
+      time:cleanTime,
+      note: (typeof note==='string')?note.trim():'',
+      proposer:proposer,
+      status:'pending'
+    };
+    sessionSlots.push(slot);
+    renderProposalsList();
+    updateLink();
+    toast('Dodano termin','ok');
+  }
+  function removeProposal(id){
+    var before=sessionSlots.length;
+    sessionSlots=sessionSlots.filter(function(slot){ return slot.id!==id; });
+    if(sessionSlots.length!==before){ renderProposalsList(); updateLink(); }
+  }
+  function setProposalStatus(id,status){
+    if(['pending','accepted','declined'].indexOf(status)===-1) return;
+    var changed=false;
+    sessionSlots.forEach(function(slot){ if(slot.id===id && slot.status!==status){ slot.status=status; changed=true; } });
+    if(changed){ renderProposalsList(); updateLink(); }
+  }
       ctx.setLineDash([]);
       ctx.strokeStyle='rgba(148,163,184,0.6)';
       ctx.beginPath();
@@ -788,9 +1349,10 @@
   function slotTag(range){
     var tags=[];
     if(currentBands){
-      if(rangeIntersect(range,currentBands.goldAM)) tags.push('poranna złota godzina');
+      var allowMorning = !idealDayMode;
+      if(allowMorning && rangeIntersect(range,currentBands.goldAM)) tags.push('poranna złota godzina');
       if(rangeIntersect(range,currentBands.goldPM)) tags.push('wieczorna złota godzina');
-      if(rangeIntersect(range,currentBands.blueAM)) tags.push('poranna niebieska godzina');
+      if(allowMorning && rangeIntersect(range,currentBands.blueAM)) tags.push('poranna niebieska godzina');
       if(rangeIntersect(range,currentBands.bluePM)) tags.push('wieczorna niebieska godzina');
     }
     if(!tags.length) return '';
@@ -901,6 +1463,7 @@
     }
     var bestDaysHtml=buildBestDaysHtml(data.daily);
     if(!points.length){
+      idealDayMode = false;
       var baseHtml='<strong>Brak danych godzinowych</strong><span class="session-summary__lead">Nie udało się pobrać szczegółowej prognozy dla wybranej daty.</span>';
       if(bestDaysHtml) baseHtml+=bestDaysHtml;
       setSessionSummary(baseHtml);
@@ -908,6 +1471,7 @@
     }
     var bestScore=points.reduce(function(max,p){ return p.score>max?p.score:max; },0);
     var rating=classifySessionScore(bestScore);
+    idealDayMode = !!(rating && rating.title === 'Idealny dzień na plener');
     var slots=buildSlots(points,bestScore);
     var slotsHtml='';
     if(slots.length){
@@ -918,6 +1482,7 @@
     var html='<strong>'+rating.title+'</strong><span class="session-summary__lead">'+rating.desc+'</span>'+slotsHtml;
     if(bestDaysHtml) html+=bestDaysHtml;
     setSessionSummary(html);
+    if(currentBands){ applyBands(currentBands); }
 
   }
   function setSunMeta(dest,sunrise,sunset){
@@ -981,9 +1546,11 @@
     var dest=points[points.length-1], dStr=dEl.value;
     setText('sp-rise-date', dStr||''); setText('sp-set-date', dStr||'');
     if(!dest || !dStr){
+      lastForecastData = null;
       setSunMeta(null,null,null);
       clearWeatherPanels();
       renderHourlyChart(null,null,false);
+      renderSunshineChart(null,null,null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
 
@@ -1006,11 +1573,13 @@
 
     clearWeatherPanels();
     renderHourlyChart(null,dStr,true);
+    renderSunshineChart(null,dStr,sunrise,sunset,true);
     sessionSummaryLoading();
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); return; }
+        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,sunrise,sunset,false); sessionSummaryNoData(); return; }
+        lastForecastData = data;
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -1026,9 +1595,15 @@
           setWeatherOnly('set' , data.hourly, sunset);
         }
         renderHourlyChart(data.hourly, dStr, false);
+        renderSunshineChart(data.hourly, dStr, sunrise, sunset, false);
         renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); });
+      .catch(function(){
+        lastForecastData = null;
+        renderHourlyChart(null,dStr,false);
+        renderSunshineChart(null,dStr,sunrise,sunset,false);
+        sessionSummaryNoData();
+      });
   }
 
   function assignRadarTemplate(template){
@@ -1114,11 +1689,11 @@
   function fetchRadarTemplate(){
     var promise;
     if(RADAR_URL){
-      promise = fetchRadarViaProxy().catch(function(err){ console.warn('SunPlanner radar proxy fallback', err); return fetchRadarDirect(); });
+      promise = fetchRadarViaProxy().catch(function(err){ console.warn('Allemedia SunPlanner radar proxy fallback', err); return fetchRadarDirect(); });
     } else {
       promise = fetchRadarDirect();
     }
-    return promise.catch(function(err){ console.warn('SunPlanner radar template fallback', err); useRadarFallback(); });
+    return promise.catch(function(err){ console.warn('Allemedia SunPlanner radar template fallback', err); useRadarFallback(); });
   }
   function ensureRadarLayer(){
     var needsRefresh = !radarTemplate || (Date.now() - radarFetchedAt > 10*60*1000);
@@ -1204,7 +1779,7 @@
     var destLabel=lastSunData.label || 'Cel';
     var uidBase=Date.now();
     var lines=[
-      'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SunPlanner//PL',
+      'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Allemedia SunPlanner//PL',
       'BEGIN:VEVENT',
       'UID:'+uidBase+'-rise@sunplanner',
       'DTSTAMP:'+formatICS(new Date()),
@@ -1270,7 +1845,7 @@
       '<section><h2>Wizualizacje</h2><div class="chart-grid">'+chartsHtml+'</div></section>'+
       '<section><h2>Punkty trasy</h2><ul>'+pointsHtml+'</ul></section>'+
       '<section><h2>Uwagi</h2><p>Notatki klienta:</p><div style="min-height:80px;border:1px solid #e5e7eb;border-radius:8px;"></div></section>'+
-      '<small>Wygenerowano przez SunPlanner.</small>'+
+      '<small>Wygenerowano przez Allemedia SunPlanner.</small>'+
       '</body></html>';
     w.document.write(html);
     w.document.close();
@@ -1400,6 +1975,42 @@
     setText('sp-t-time','—'); setText('sp-t-dist','—'); setText('sp-loc','—');
     loadGallery(); updateSunWeather(); updateLink();
   });
+  var proposalAddBtn=$('#sp-proposal-add');
+  if(proposalAddBtn){
+    proposalAddBtn.addEventListener('click', function(){
+      var dateField=$('#sp-proposal-date');
+      var timeField=$('#sp-proposal-time');
+      var noteField=$('#sp-proposal-note');
+      var dateVal=dateField ? dateField.value : '';
+      var timeVal=timeField ? timeField.value : '';
+      var noteVal=noteField ? noteField.value : '';
+      addProposal('couple', dateVal, timeVal, noteVal);
+      if(noteField) noteField.value='';
+    });
+  }
+  var photographerToggleEl=$('#sp-photographer-mode');
+  var photographerForm=$('#sp-photographer-form');
+  if(photographerToggleEl){
+    photographerToggleEl.addEventListener('change', function(e){
+      photographerMode=!!e.target.checked;
+      if(photographerForm){ photographerForm.style.display=photographerMode?'flex':'none'; }
+      renderProposalsList();
+    });
+  }
+  var photographerAddBtn=$('#sp-photographer-add');
+  if(photographerAddBtn){
+    photographerAddBtn.addEventListener('click', function(){
+      var dateField=$('#sp-photographer-date');
+      var timeField=$('#sp-photographer-time');
+      var noteField=$('#sp-photographer-note');
+      var dateVal=dateField ? dateField.value : '';
+      var timeVal=timeField ? timeField.value : '';
+      var noteVal=noteField ? noteField.value : '';
+      addProposal('photographer', dateVal, timeVal, noteVal);
+      if(noteField) noteField.value='';
+    });
+  }
+  renderProposalsList();
   $('#sp-copy').addEventListener('click', function(){
     updateLink();
     var linkEl=$('#sp-link');

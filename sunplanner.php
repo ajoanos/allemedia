@@ -112,7 +112,7 @@ add_action('template_redirect', function () {
 
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+        $parts['title'] = __('Udostępniony plan – Allemedia SunPlanner', 'sunplanner');
     }
     return $parts;
 });
@@ -150,7 +150,7 @@ add_action('template_redirect', function () {
 
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+        $parts['title'] = __('Udostępniony plan – Allemedia SunPlanner', 'sunplanner');
     }
     return $parts;
 });
@@ -188,7 +188,7 @@ add_action('template_redirect', function () {
 
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+        $parts['title'] = __('Udostępniony plan – Allemedia SunPlanner', 'sunplanner');
     }
     return $parts;
 });
@@ -227,7 +227,7 @@ add_action('template_redirect', function () {
 
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+        $parts['title'] = __('Udostępniony plan – Allemedia SunPlanner', 'sunplanner');
     }
     return $parts;
 });
@@ -362,7 +362,7 @@ function sunplanner_resolve_radar_template()
         'timeout' => 8,
         'headers' => [
             'Accept' => 'application/json',
-            'User-Agent' => 'SunPlanner/1.7.2',
+        'User-Agent' => 'Allemedia SunPlanner/1.7.2',
         ],
     ]);
 
