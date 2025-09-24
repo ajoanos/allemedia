@@ -1,4 +1,6 @@
+
 /* SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
+
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
   var GMAPS_KEY    = CFG.GMAPS_KEY || '';
@@ -126,6 +128,7 @@
               '</div>'+
             '</div>'+
           '</div>'+
+
         '</div>'+
 
         '<h3 style="margin-top:1rem">Udostępnij / Eksport</h3>'+
@@ -152,10 +155,12 @@
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
         '<div class="weather-legend">'+
+
           '<span><i class="line"></i>Temperatura (°C)</span>'+
           '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
           '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
           '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -194,12 +199,14 @@
   var shortLinkValue = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
+
   var RADAR_FALLBACKS = [
     'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
     'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
     'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png',
     'https://tilecache.rainviewer.com/v2/radar/last/256/{z}/{x}/{y}/2/1_1.png'
   ];
+
   var restoredFromShare = false;
   var STORAGE_KEY = 'sunplanner-state';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
@@ -810,6 +817,7 @@
         var template = null;
         function buildTemplate(base,path){
           if(!path) return null;
+
           var raw=String(path).trim();
           if(!raw) return null;
           var host='';
@@ -847,10 +855,12 @@
           if(!template && typeof frame.time !== 'undefined'){
             template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', frame.time);
           }
+
           if(template) break;
         }
         if(!template) throw new Error('no-template');
         assignRadarTemplate(template);
+
       });
   }
   function fetchRadarViaProxy(){
@@ -862,6 +872,7 @@
         throw new Error('no-template');
       });
   }
+
   function fetchRadarTemplate(){
     var promise;
     if(RADAR_URL){
