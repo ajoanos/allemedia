@@ -13,7 +13,7 @@ add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; }
 /** === Assets === */
 
 add_action('wp_enqueue_scripts', function () {
-$ver = '1.7.3';
+$ver = '1.7.4';
 wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [], $ver);
 wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
 
@@ -49,8 +49,6 @@ $shared_sp = $val;
 }
 }
 
-
-
 wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 'GMAPS_KEY' => $key,
 'CSE_ID' => 'b1d6737102d8e4107',
@@ -85,9 +83,47 @@ wp_enqueue_style('sunplanner-css');
 wp_enqueue_script('sunplanner-app');
     wp_enqueue_script('sunplanner-gmaps');
     ob_start(); ?>
-<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.3"></div>
+<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.4"></div>
 <?php return ob_get_clean();
 });
+
+add_filter('template_include', function ($template) {
+    if (get_query_var('sunplan')) {
+        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
+        if (file_exists($share_template)) {
+            return $share_template;
+        }
+    }
+    return $template;
+});
+
+add_action('template_redirect', function () {
+    if (get_query_var('sunplan')) {
+        status_header(200);
+        global $wp_query;
+        if ($wp_query) {
+            $wp_query->is_404 = false;
+            $wp_query->is_home = false;
+            $wp_query->is_singular = true;
+            $wp_query->is_page = true;
+        }
+    }
+});
+
+add_filter('document_title_parts', function ($parts) {
+    if (get_query_var('sunplan')) {
+        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+    }
+    return $parts;
+});
+
+add_filter('body_class', function ($classes) {
+    if (get_query_var('sunplan')) {
+        $classes[] = 'sunplanner-share-page';
+    }
+    return $classes;
+});
+
 
 add_filter('template_include', function ($template) {
     if (get_query_var('sunplan')) {
@@ -207,7 +243,6 @@ add_filter('body_class', function ($classes) {
 
 /** === REST: create short link === */
 add_action('rest_api_init', function () {
-
     register_rest_route('sunplanner/v1', '/share', [
         'methods' => 'POST',
         'permission_callback' => '__return_true',

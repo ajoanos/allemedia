@@ -64,6 +64,10 @@
     '<div class="cards">'+
       '<div class="card">'+
         '<h3>Plan dnia – przebieg zdjęć</h3>'+
+        '<div id="sp-session-summary" class="session-summary">'+
+          '<strong>Wybierz lokalizację i datę</strong>'+
+          '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
+        '</div>'+
         '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
         '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
         '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
@@ -165,6 +169,7 @@
       '</div>'+
     '</div>'+
   '</div>';
+  sessionSummaryDefault();
 
   // helpers
   function $(s){ return document.querySelector(s); }
@@ -187,6 +192,12 @@
     return {lat:lat2*180/Math.PI,lng:lng2*180/Math.PI};
   }
 
+  function summaryElement(){ return document.getElementById('sp-session-summary'); }
+  function setSessionSummary(html){ var el=summaryElement(); if(el){ el.innerHTML=html; } }
+  function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
+  function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
+  function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
+
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
   var dirRenderers = [];
@@ -199,6 +210,8 @@
   var shortLinkValue = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
+
+  var currentBands = null;
 
   var RADAR_FALLBACKS = [
     'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
@@ -324,6 +337,9 @@
   }
 
   function applyBands(b){
+
+    currentBands = b || null;
+
     function line(label, range){
       if(range && isValidDate(range[0]) && isValidDate(range[1])){
         return label + fmt(range[0])+'–'+fmt(range[1]);
@@ -695,6 +711,214 @@
     });
     ctx.fillText(Math.round(maxTemp)+'°C',leftPad+4,bottom-chartHeight-10);
     ctx.fillText(Math.round(minTemp)+'°C',leftPad+4,bottom-6);
+
+  }
+  function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
+  function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
+  function evaluateHourScore(temp,cloud,prec){
+    var score=50;
+    var rain=Math.max(0,(typeof prec==='number' && !isNaN(prec))?prec:0);
+    if(rain===0) score+=25;
+    else if(rain<0.2) score+=18;
+    else if(rain<0.6) score+=8;
+    else if(rain<1.2) score-=6;
+    else score-=16;
+    var c=(typeof cloud==='number' && !isNaN(cloud))?cloud:50;
+    if(c<=20) score+=18;
+    else if(c<=40) score+=25;
+    else if(c<=60) score+=18;
+    else if(c<=75) score+=6;
+    else score-=8;
+    if(typeof temp==='number' && !isNaN(temp)){
+      if(temp>=10 && temp<=24) score+=12;
+      else if(temp>=4 && temp<=28) score+=6;
+      else score-=6;
+    }
+    return clamp(score,0,100);
+  }
+  function formatHourRange(start,end){
+    if(!(start instanceof Date) || isNaN(start) || !(end instanceof Date) || isNaN(end)) return '—';
+    var opts={hour:'2-digit',minute:'2-digit'};
+    var startTxt=start.toLocaleTimeString('pl-PL',opts);
+    var endTxt=end.toLocaleTimeString('pl-PL',opts);
+    return startTxt+'–'+endTxt;
+  }
+  function describePrecipHourly(mm){
+    if(!(typeof mm==='number') || isNaN(mm) || mm<=0) return 'bez opadów';
+    if(mm<0.2) return 'symboliczne opady';
+    if(mm<0.6) return 'przelotne opady';
+    if(mm<1.5) return 'możliwy deszcz';
+    return 'intensywny deszcz';
+  }
+  function describePrecipDaily(mm,prob){
+    var rain=Math.max(0,(typeof mm==='number' && !isNaN(mm))?mm:0);
+    var p=(typeof prob==='number' && !isNaN(prob))?prob:null;
+    if(p!==null){
+      if(p<=15 && rain<0.3) return 'sucho';
+      if(p<=35 && rain<1) return 'mała szansa opadów';
+      if(p<=60) return 'możliwe przelotne opady';
+      if(p<=80) return 'częste opady';
+      return 'wysokie ryzyko deszczu';
+    }
+    if(rain<0.3) return 'sucho';
+    if(rain<1) return 'niewielkie opady';
+    if(rain<3) return 'umiarkowane opady';
+    return 'mokro';
+  }
+  function describeCloud(cloud){
+    if(!(typeof cloud==='number') || isNaN(cloud)) return 'zmienne zachmurzenie';
+    if(cloud<=15) return 'bezchmurnie';
+    if(cloud<=35) return 'lekkie chmury';
+    if(cloud<=65) return 'umiarkowane chmury';
+    if(cloud<=80) return 'spore zachmurzenie';
+    return 'pochmurno';
+  }
+  function describeTemp(temp){ if(!(typeof temp==='number') || isNaN(temp)) return ''; return 'ok. '+Math.round(temp)+'°C'; }
+  function describeDailyTemp(min,max){
+    if(!(typeof min==='number') || isNaN(min) || !(typeof max==='number') || isNaN(max)) return '';
+    return 'temperatury '+Math.round(min)+'–'+Math.round(max)+'°C';
+  }
+  function rangeIntersect(range,band){
+    if(!range || !band || !(range.start instanceof Date) || !(range.end instanceof Date)) return false;
+    if(!(band[0] instanceof Date) || !(band[1] instanceof Date)) return false;
+    var a1=range.start.getTime(), a2=range.end.getTime();
+    var b1=band[0].getTime(), b2=band[1].getTime();
+    return a1 < b2 && b1 < a2;
+  }
+  function slotTag(range){
+    var tags=[];
+    if(currentBands){
+      if(rangeIntersect(range,currentBands.goldAM)) tags.push('poranna złota godzina');
+      if(rangeIntersect(range,currentBands.goldPM)) tags.push('wieczorna złota godzina');
+      if(rangeIntersect(range,currentBands.blueAM)) tags.push('poranna niebieska godzina');
+      if(rangeIntersect(range,currentBands.bluePM)) tags.push('wieczorna niebieska godzina');
+    }
+    if(!tags.length) return '';
+    return ' '+tags.map(function(t){return '<span class="session-summary__tag">'+t+'</span>';}).join(' ');
+  }
+  function classifySessionScore(score){
+    if(score>=85) return {title:'Idealny dzień na plener', desc:'Światło i pogoda wyglądają znakomicie — możesz śmiało planować sesję.'};
+    if(score>=70) return {title:'Bardzo dobry dzień', desc:'Prognozy sprzyjają zdjęciom w plenerze, wykorzystaj najlepsze okna czasowe.'};
+    if(score>=55) return {title:'Dzień z dobrym potencjałem', desc:'Warunki powinny być korzystne, choć warto obserwować zmiany w prognozie.'};
+    if(score>=40) return {title:'Wymagające warunki', desc:'Możliwe trudniejsze światło lub opady — przygotuj wariant awaryjny.'};
+    return {title:'Trudne warunki do zdjęć', desc:'Prognozy wskazują spore ryzyko niekorzystnej pogody i światła.'};
+  }
+  function buildSlots(points,bestScore){
+    var slots=[];
+    var threshold=Math.max(55,bestScore-20);
+    var current=null;
+    points.forEach(function(p){
+      if(p.score>=threshold){
+        if(!current){ current={start:p.time,end:new Date(p.time.getTime()+3600000),temps:[],clouds:[],precs:[],scores:[]}; }
+        current.end=new Date(p.time.getTime()+3600000);
+        current.temps.push(p.temp);
+        current.clouds.push(p.cloud);
+        current.precs.push(p.prec);
+        current.scores.push(p.score);
+      } else if(current){
+        slots.push(current);
+        current=null;
+      }
+    });
+    if(current) slots.push(current);
+    if(!slots.length && points.length){
+      var bestPoints=points.slice().sort(function(a,b){ return (b.score||0)-(a.score||0); }).slice(0,2);
+      bestPoints.sort(function(a,b){ return a.time-b.time; });
+      if(bestPoints.length){
+        var s={start:bestPoints[0].time,end:new Date(bestPoints[bestPoints.length-1].time.getTime()+3600000),temps:[],clouds:[],precs:[],scores:[]};
+        bestPoints.forEach(function(p){ s.temps.push(p.temp); s.clouds.push(p.cloud); s.precs.push(p.prec); s.scores.push(p.score); });
+        slots.push(s);
+      }
+    }
+    slots.forEach(function(s){ s.score=average(s.scores)||0; });
+    slots.sort(function(a,b){ return (b.score||0)-(a.score||0); });
+    return slots.slice(0,2);
+  }
+  function slotDescription(slot){
+    if(!slot) return '';
+    var avgTemp=average(slot.temps);
+    var avgCloud=average(slot.clouds);
+    var avgPrec=average(slot.precs);
+    var parts=[describePrecipHourly(avgPrec), describeCloud(avgCloud)];
+    var t=describeTemp(avgTemp); if(t) parts.push(t);
+    var range={start:slot.start,end:slot.end};
+    return formatHourRange(slot.start,slot.end)+' – '+parts.filter(Boolean).join(', ')+slotTag(range);
+  }
+  function evaluateDayScore(prob,rain,cloud,tmin,tmax){
+    var score=100;
+    if(typeof prob==='number' && !isNaN(prob)) score-=Math.min(60,prob*0.6);
+    else score-=Math.min(40,Math.max(0,(typeof rain==='number' && !isNaN(rain))?rain:0)*8);
+    var rainVal=Math.max(0,(typeof rain==='number' && !isNaN(rain))?rain:0);
+    score-=Math.min(20,rainVal*5);
+    var cloudVal=(typeof cloud==='number' && !isNaN(cloud))?cloud:55;
+    score-=Math.min(25,Math.abs(cloudVal-45)*0.4);
+    if(typeof tmin==='number' && !isNaN(tmin) && typeof tmax==='number' && !isNaN(tmax)){
+      var mid=(tmin+tmax)/2;
+      score-=Math.min(18,Math.abs(mid-18)*0.7);
+    }
+    return clamp(score,0,100);
+  }
+  function buildBestDaysHtml(daily){
+    if(!daily || !daily.time || !daily.time.length) return '';
+    var days=[];
+    for(var i=0;i<daily.time.length && i<10;i++){
+      var iso=daily.time[i];
+      if(!iso) continue;
+      var date=new Date(iso+'T12:00:00');
+      var prob=daily.precipitation_probability_max && typeof daily.precipitation_probability_max[i] === 'number' ? daily.precipitation_probability_max[i] : null;
+      var rain=daily.precipitation_sum && typeof daily.precipitation_sum[i] === 'number' ? daily.precipitation_sum[i] : null;
+      var cloud=daily.cloudcover_mean && typeof daily.cloudcover_mean[i] === 'number' ? daily.cloudcover_mean[i] : null;
+      var tmin=daily.temperature_2m_min && typeof daily.temperature_2m_min[i] === 'number' ? daily.temperature_2m_min[i] : null;
+      var tmax=daily.temperature_2m_max && typeof daily.temperature_2m_max[i] === 'number' ? daily.temperature_2m_max[i] : null;
+      var score=evaluateDayScore(prob,rain,cloud,tmin,tmax);
+      var label=date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
+      var descParts=[describePrecipDaily(rain,prob), describeCloud(cloud)];
+      var tempDesc=describeDailyTemp(tmin,tmax); if(tempDesc) descParts.push(tempDesc);
+      days.push({score:score,label:label,desc:descParts.filter(Boolean).join(', ')});
+    }
+    days.sort(function(a,b){ return (b.score||0)-(a.score||0); });
+    var top=days.filter(function(d){ return d.score>=45; }).slice(0,3);
+    if(!top.length) top=days.slice(0,3);
+    if(!top.length) return '';
+    var items=top.map(function(d){ return '<li><strong>'+d.label+'</strong> – '+d.desc+'</li>'; }).join('');
+    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu 10 dni</strong><ul>'+items+'</ul></div>';
+  }
+  function renderSessionSummary(data,dateStr){
+    if(!data){ sessionSummaryNoData(); return; }
+    var points=[];
+    if(data.hourly && Array.isArray(data.hourly.time)){
+      for(var i=0;i<data.hourly.time.length;i++){
+        var iso=data.hourly.time[i];
+        if(!iso || (dateStr && iso.slice(0,10)!==dateStr)) continue;
+        var time=parseLocalISO(iso);
+        if(!(time instanceof Date) || isNaN(time)) continue;
+        var temp=(data.hourly.temperature_2m && typeof data.hourly.temperature_2m[i] === 'number') ? data.hourly.temperature_2m[i] : null;
+        var cloud=(data.hourly.cloudcover && typeof data.hourly.cloudcover[i] === 'number') ? data.hourly.cloudcover[i] : null;
+        var prec=(data.hourly.precipitation && typeof data.hourly.precipitation[i] === 'number') ? data.hourly.precipitation[i] : 0;
+        var score=evaluateHourScore(temp,cloud,prec);
+        points.push({time:time,temp:temp,cloud:cloud,prec:prec,score:score});
+      }
+    }
+    var bestDaysHtml=buildBestDaysHtml(data.daily);
+    if(!points.length){
+      var baseHtml='<strong>Brak danych godzinowych</strong><span class="session-summary__lead">Nie udało się pobrać szczegółowej prognozy dla wybranej daty.</span>';
+      if(bestDaysHtml) baseHtml+=bestDaysHtml;
+      setSessionSummary(baseHtml);
+      return;
+    }
+    var bestScore=points.reduce(function(max,p){ return p.score>max?p.score:max; },0);
+    var rating=classifySessionScore(bestScore);
+    var slots=buildSlots(points,bestScore);
+    var slotsHtml='';
+    if(slots.length){
+      slotsHtml='<div class="session-summary__slots">'+slots.map(function(s){ return '<span>'+slotDescription(s)+'</span>'; }).join('')+'</div>';
+    } else {
+      slotsHtml='<div class="session-summary__slots"><span>Brak wyraźnie dobrego okna — przygotuj alternatywę lub obserwuj zmiany.</span></div>';
+    }
+    var html='<strong>'+rating.title+'</strong><span class="session-summary__lead">'+rating.desc+'</span>'+slotsHtml;
+    if(bestDaysHtml) html+=bestDaysHtml;
+    setSessionSummary(html);
+
   }
   function setSunMeta(dest,sunrise,sunset){
     var riseAz=null, setAz=null;
@@ -736,7 +960,15 @@
     entry.promise=new Promise(function(resolve,reject){
       clearTimeout(entry.timer);
       entry.timer=setTimeout(function(){
-        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily=sunrise,sunset&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation&timezone='+encodeURIComponent(TZ)+'&start_date='+dateStr+'&end_date='+dateStr)
+        var endRange=dateStr;
+        var baseDate=dateFromInput(dateStr);
+        if(baseDate instanceof Date && !isNaN(baseDate)){
+          var endDate=new Date(baseDate);
+          endDate.setUTCDate(endDate.getUTCDate()+9);
+          endRange=endDate.toISOString().slice(0,10);
+        }
+        var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
+        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation&timezone='+encodeURIComponent(TZ)+'&start_date='+dateStr+'&end_date='+endRange)
           .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
           .then(function(data){ entry.data=data; entry.time=Date.now(); delete entry.promise; resolve(data); })
           .catch(function(err){ delete forecastCache[key]; reject(err); });
@@ -754,6 +986,9 @@
       renderHourlyChart(null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
+
+      sessionSummaryDefault();
+
       return;
     }
 
@@ -771,10 +1006,11 @@
 
     clearWeatherPanels();
     renderHourlyChart(null,dStr,true);
+    sessionSummaryLoading();
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data) return;
+        if(!data){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); return; }
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -790,8 +1026,9 @@
           setWeatherOnly('set' , data.hourly, sunset);
         }
         renderHourlyChart(data.hourly, dStr, false);
+        renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); });
+      .catch(function(){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); });
   }
 
   function assignRadarTemplate(template){
@@ -843,6 +1080,7 @@
           if(!frame) continue;
           if(!template && frame.host && frame.path){
             template = buildTemplate(frame.host, frame.path);
+
           }
           if(!template && frame.path){
             var pathStr=String(frame.path);
