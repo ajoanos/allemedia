@@ -1,4 +1,6 @@
-/* SunPlanner v1.7.1 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
+
+/* SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
+
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
   var GMAPS_KEY    = CFG.GMAPS_KEY || '';
@@ -45,7 +47,7 @@
       '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
     '</div>'+
     '<div class="toolbar">'+
-      '<label class="switch"><input id="sp-radar" type="checkbox">Radar opadów</label>'+
+      '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
       '<div class="legend">'+
         '<span class="c1"><i></i>Najlepsza</span>'+
         '<span class="c2"><i></i>Alternatywa</span>'+
@@ -153,8 +155,12 @@
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
         '<div class="weather-legend">'+
-          '<span><i class="line"></i>Temperatura</span>'+
-          '<span><i class="bar"></i>Możliwe opady</span>'+
+
+          '<span><i class="line"></i>Temperatura (°C)</span>'+
+          '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+          '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+          '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -572,8 +578,14 @@
     ctx.fillRect(0,0,width,height);
     ctx.font='12px system-ui, sans-serif';
     ctx.fillStyle='#9ca3af';
-    if(loading){ ctx.fillText('Ładowanie prognozy...',12,height/2); return; }
-    if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych pogodowych.',12,height/2); return; }
+    var leftPad=16;
+    var axisX=Math.min(width-30, Math.max(leftPad+60,width-48));
+    var chartWidth=Math.max(10,axisX-leftPad-12);
+    var bottom=height-28;
+    var chartHeight=height*0.55;
+    var barArea=height*0.28;
+    if(loading){ ctx.fillText('Ładowanie prognozy...',leftPad,height/2); return; }
+    if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych pogodowych.',leftPad,height/2); return; }
     var points=[];
     for(var i=0;i<hourly.time.length;i++){
       var dt=parseLocalISO(hourly.time[i]);
@@ -584,7 +596,7 @@
       var prec=(hourly.precipitation && typeof hourly.precipitation[i] === 'number') ? hourly.precipitation[i] : 0;
       points.push({time:dt,temp:temp,prec:prec});
     }
-    if(!points.length){ ctx.fillText('Brak danych dla wybranego dnia.',12,height/2); return; }
+    if(!points.length){ ctx.fillText('Brak danych dla wybranego dnia.',leftPad,height/2); return; }
     var minTemp=Infinity,maxTemp=-Infinity,maxPrec=0;
     points.forEach(function(p){
       if(p.temp!=null){ if(p.temp<minTemp) minTemp=p.temp; if(p.temp>maxTemp) maxTemp=p.temp; }
@@ -592,32 +604,81 @@
     });
     if(minTemp===Infinity){ minTemp=0; maxTemp=0; }
     if(maxTemp-minTemp<4){ var adj=(4-(maxTemp-minTemp))/2; minTemp-=adj; maxTemp+=adj; }
-    var chartHeight=height*0.6;
-    var bottom=height-24;
     var range=(maxTemp-minTemp)||1;
+    var axisTop=bottom-barArea;
+    function formatPrec(val){
+      var num=Math.max(0,Number(val||0));
+      var decimals=num>=1?1:2;
+      var txt=num.toFixed(decimals);
+      txt=txt.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+      return txt;
+    }
+    function barColor(v){
+      if(v>=2) return 'rgba(30,64,175,0.88)';
+      if(v>=0.6) return 'rgba(96,165,250,0.85)';
+      if(v>0) return 'rgba(199,210,254,0.85)';
+      return null;
+    }
+    var tickMax=maxPrec>0?Math.max(0.5,Math.ceil(maxPrec*2)/2):0;
     ctx.strokeStyle='#ef4444';
     ctx.lineWidth=2;
     ctx.beginPath();
     points.forEach(function(p,idx){
-      var x=(idx/(points.length-1||1))*width;
-      var temp=p.temp!=null?p.temp:minTemp;
-      var y=bottom-((temp-minTemp)/range)*chartHeight;
+      var x=leftPad+(idx/(points.length-1||1))*chartWidth;
+      var tempVal=p.temp!=null?p.temp:minTemp;
+      var y=bottom-((tempVal-minTemp)/range)*chartHeight;
       if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     });
     ctx.stroke();
-    ctx.lineTo(width,bottom);
-    ctx.lineTo(0,bottom);
+    var rightEdge=leftPad+chartWidth;
+    ctx.lineTo(rightEdge,bottom);
+    ctx.lineTo(leftPad,bottom);
     ctx.closePath();
     ctx.fillStyle='rgba(239,68,68,0.12)';
     ctx.fill();
 
-    if(maxPrec>0){
-      ctx.fillStyle='rgba(37,99,235,0.35)';
+    if(tickMax>0){
+      ctx.strokeStyle='rgba(148,163,184,0.3)';
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,6]);
+      for(var t=1;t<=4;t++){
+        var val=(tickMax/4)*t;
+        var y=bottom-(val/tickMax)*barArea;
+        ctx.beginPath();
+        ctx.moveTo(leftPad,y);
+        ctx.lineTo(axisX,y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle='rgba(148,163,184,0.6)';
+      ctx.beginPath();
+      ctx.moveTo(axisX,bottom);
+      ctx.lineTo(axisX,axisTop);
+      ctx.stroke();
+      ctx.fillStyle='#1f2937';
+      ctx.font='10px system-ui, sans-serif';
+      for(var tick=0;tick<=4;tick++){
+        var val2=(tickMax/4)*tick;
+        var y2=bottom-(val2/tickMax)*barArea;
+        ctx.fillText(formatPrec(val2)+' mm',axisX+6,y2+3);
+      }
+
       points.forEach(function(p,idx){
         if(!p.prec) return;
-        var x=(idx/(points.length-1||1))*width;
-        var barHeight=(p.prec/maxPrec)*(height*0.25);
-        ctx.fillRect(x-3,bottom-barHeight,6,barHeight);
+        var fill=barColor(p.prec); if(!fill) return;
+        var x=leftPad+(idx/(points.length-1||1))*chartWidth;
+        var ratio=Math.min(1,p.prec/tickMax);
+        var barHeight=Math.max(3,ratio*barArea);
+        ctx.fillStyle=fill;
+        ctx.fillRect(x-6,bottom-barHeight,12,barHeight);
+        if(p.prec>=0.1){
+          var label=formatPrec(p.prec)+' mm';
+          var maxLabelX=Math.max(leftPad,rightEdge-36);
+          var textX=Math.min(maxLabelX,Math.max(leftPad,x-16));
+          ctx.fillStyle='#1e3a8a';
+          ctx.font='10px system-ui, sans-serif';
+          ctx.fillText(label,textX,bottom-barHeight-6);
+        }
       });
     }
 
@@ -625,12 +686,14 @@
     ctx.font='11px system-ui, sans-serif';
     points.forEach(function(p,idx){
       if(idx%3!==0 && idx!==points.length-1) return;
-      var x=(idx/(points.length-1||1))*width;
+      var x=leftPad+(idx/(points.length-1||1))*chartWidth;
       var lbl=p.time.toLocaleTimeString('pl-PL',{hour:'2-digit'});
-      ctx.fillText(lbl,x-10,height-6);
+      var maxTimeX=Math.max(leftPad,rightEdge-24);
+      var textX=Math.min(maxTimeX,Math.max(leftPad,x-12));
+      ctx.fillText(lbl,textX,height-6);
     });
-    ctx.fillText(Math.round(maxTemp)+'°C',8,bottom-chartHeight-6);
-    ctx.fillText(Math.round(minTemp)+'°C',8,bottom-6);
+    ctx.fillText(Math.round(maxTemp)+'°C',leftPad+4,bottom-chartHeight-10);
+    ctx.fillText(Math.round(minTemp)+'°C',leftPad+4,bottom-6);
   }
   function setSunMeta(dest,sunrise,sunset){
     var riseAz=null, setAz=null;
@@ -774,6 +837,7 @@
           if(!template && typeof frame.time !== 'undefined'){
             template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', frame.time);
           }
+
           if(template) break;
         }
         if(!template) throw new Error('no-template');
@@ -962,6 +1026,8 @@
         var point={lat:lat,lng:lng,label:label||'Moja lokalizacja'};
         if(points.length){ points[0]=point; }
         else points.push(point);
+        if(map && typeof map.panTo==='function'){ map.panTo({lat:lat,lng:lng}); if(typeof map.getZoom==='function' && map.getZoom()<12){ map.setZoom(12); } }
+        if(dragMarker){ dragMarker.setPosition({lat:lat,lng:lng}); dragMarker.setVisible(true); }
         renderList(); recalcRoute(false); updateDerived(); loadGallery();
         toast('Zaktualizowano punkt startowy','ok');
       }
