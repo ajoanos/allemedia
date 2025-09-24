@@ -140,8 +140,8 @@
           '<div id="sp-gallery"></div>'+
         '</div>'+
         '<div id="sp-location-insights" class="location-insights">'+
-          '<h3>Informacje o lokacji</h3>'+
-          '<p class="muted">Dodaj cel podróży, aby zobaczyć zasady na miejscu.</p>'+
+          '<h3>Zasady na miejscu</h3>'+
+          '<p class="muted">Dodaj cel podróży, aby sprawdzić opłaty za sesję i zasady dla dronów.</p>'+
         '</div>'+
       '</div>'+
       '<div class="card">'+
@@ -163,6 +163,10 @@
             '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
             '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
           '</div>'+
+        '</div>'+
+        '<div id="sp-crowd-block" class="crowd-block">'+
+          '<h3>Popularne godziny</h3>'+
+          '<p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -256,10 +260,9 @@
       zoneLabel: 'Tatrzański Park Narodowy (TPN)',
       wedding: {
         paid: true,
-        price: '150 zł / dzień (zgoda na sesję ślubną)',
-        note: 'Złóż zgłoszenie co najmniej 7 dni przed terminem. Opłata obejmuje parę młodą i fotografa, wymagane są również bilety wstępu do parku.',
+        paymentHint: 'Zgłoszenia i opłaty prowadzi Tatrzański Park Narodowy (formularz online).',
         paymentUrl: 'https://tpn.pl/zwiedzaj/filmowanie-i-fotografowanie',
-        paymentLabel: 'Formularz zgłoszenia i płatności TPN'
+        paymentLabel: 'Formularz zgłoszenia TPN'
       },
       drone: {
         allowed: false,
@@ -271,10 +274,9 @@
       zoneLabel: 'TANAP – Tatranský národný park (SK)',
       wedding: {
         paid: true,
-        price: '66 € / dzień (opłata administracyjna TANAP)',
-        note: 'Wniosek złóż minimum 30 dni wcześniej. Opłata obejmuje jedną sesję w wybranym miejscu i terminie.',
+        paymentHint: 'Zgłoszenia przyjmuje administracja TANAP – wniosek należy złożyć online.',
         paymentUrl: 'https://www.tanap.sk/ziadosti-a-povolenia/',
-        paymentLabel: 'Wniosek i płatność TANAP'
+        paymentLabel: 'Wniosek TANAP'
       },
       drone: {
         allowed: false,
@@ -295,9 +297,6 @@
         var label = normalizeLabel(dest.label||'');
         if(label.indexOf('morskie oko') !== -1) return true;
         return isWithinBox(dest.lat, dest.lng, MORSKIE_OKO_BOX);
-      },
-      wedding: {
-        note: 'Na sesję najlepiej wejść poza głównym ruchem turystycznym. Straż TPN może poprosić o okazanie potwierdzenia opłaty przy schronisku.'
       },
       crowd: {
         description: 'Największy tłok na szlaku i przy schronisku przypada między 10:00 a 14:00. Najspokojniej jest przed świtem lub po zachodzie słońca.',
@@ -330,8 +329,7 @@
       },
       wedding: {
         paid: false,
-        price: 'Brak dodatkowej opłaty administracyjnej – konieczne bilety na kolej PKL (ok. 29–43 zł/os. w zależności od sezonu).',
-        note: 'Jeśli planujesz korzystać z prywatnych tarasów lub restauracji, uzgodnij warunki z właścicielem obiektu (PKL lub lokalnymi przedsiębiorcami).'
+        paymentHint: 'W razie korzystania z infrastruktury PKL zgłoś się do obsługi kolejki lub właściciela terenu.'
       },
       drone: {
         allowed: false,
@@ -434,60 +432,81 @@
     return html;
   }
 
+  function updateCrowdHint(crowd){
+    var block=document.getElementById('sp-crowd-block');
+    if(!block) return;
+    if(!crowd || !Array.isArray(crowd.data) || !crowd.data.length){
+      block.innerHTML='<h3>Popularne godziny</h3><p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>';
+      return;
+    }
+    var html='<h3>Popularne godziny</h3>';
+    if(crowd.description){ html+='<p>'+escapeHtml(crowd.description)+'</p>'; }
+    html+=buildCrowdChart(crowd);
+    var scaleNote=crowd.scaleNote || 'Skala 1–5 (5 = największy tłok).';
+    html+='<p class="crowd-block__note">'+escapeHtml(scaleNote)+'</p>';
+    block.innerHTML=html;
+  }
+
   function updateLocationInsights(dest){
     var box=document.getElementById('sp-location-insights');
-    if(!box) return;
+    if(!box){
+      updateCrowdHint(null);
+      return;
+    }
     dest = dest || points[points.length-1];
     if(!dest){
-      box.innerHTML='<h3>Informacje o lokacji</h3><p class="muted">Dodaj cel podróży, aby zobaczyć zasady na miejscu.</p>';
+      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić opłaty za sesję i zasady dla dronów.</p>';
+      updateCrowdHint(null);
       return;
     }
     var insight = computeLocationInsight(dest);
     if(!insight){
-      box.innerHTML='<h3>Informacje o lokacji</h3><p class="muted">Brak zdefiniowanych danych dla tej lokalizacji. Sprawdź lokalne regulaminy przed sesją.</p>';
+      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Brak danych dla tej lokalizacji. Sprawdź regulaminy zarządcy terenu.</p>';
+      updateCrowdHint(null);
       return;
     }
-    var html='<h3>Informacje o lokacji</h3>';
-    var title=insight.title || dest.label || 'Wybrana lokalizacja';
-    html+='<p class="location-insights__place">'+escapeHtml(title)+'</p>';
-    if(insight.zoneLabel){ html+='<div class="badge">'+escapeHtml(insight.zoneLabel)+'</div>'; }
-    html+='<div class="location-insights__grid">';
+    var html='<h3>Zasady na miejscu</h3>';
+    var hasSection=false;
     var wedding=insight.wedding;
     if(wedding){
-      var paidClass = (wedding.paid===false) ? 'location-insights__status location-insights__status--free' : 'location-insights__status location-insights__status--paid';
-      var statusText = wedding.statusText || (wedding.paid===false ? 'Brak dodatkowej opłaty' : 'Sesja płatna');
+      hasSection=true;
+      var paidClass;
+      if(wedding.paid===false){
+        paidClass='location-insights__status location-insights__status--free';
+      } else if(wedding.paid===true){
+        paidClass='location-insights__status location-insights__status--paid';
+      } else {
+        paidClass='location-insights__status location-insights__status--unknown';
+      }
+      var statusText=wedding.statusText || (wedding.paid===false ? 'Sesja bez dodatkowej opłaty' : 'Sesja płatna');
       html+='<div class="location-insights__section"><h4>Sesja ślubna</h4><div class="'+paidClass+'">'+escapeHtml(statusText)+'</div>';
-      if(wedding.price){ html+='<p>'+escapeHtml(wedding.price)+'</p>'; }
-      if(wedding.note){ html+='<p class="location-insights__note">'+escapeHtml(wedding.note)+'</p>'; }
-      if(wedding.paymentUrl){
-        var linkLabel = wedding.paymentLabel || 'Formularz opłaty';
-        html+='<p class="location-insights__links"><a href="'+escapeHtml(wedding.paymentUrl)+'" target="_blank" rel="noopener">'+escapeHtml(linkLabel)+'</a></p>';
+      if(wedding.paymentHint){
+        html+='<p class="location-insights__note">'+escapeHtml(wedding.paymentHint)+'</p>';
+      } else if(wedding.paymentUrl){
+        var linkLabel=wedding.paymentLabel || 'Formularz zgłoszenia';
+        html+='<p class="location-insights__note">Zgłoszenia i opłaty: <a href="'+escapeHtml(wedding.paymentUrl)+'" target="_blank" rel="noopener">'+escapeHtml(linkLabel)+'</a></p>';
       }
       html+='</div>';
     }
     var drone=insight.drone;
     if(drone){
-      var droneClass = drone.allowed ? 'location-insights__status location-insights__status--free' : 'location-insights__status location-insights__status--restricted';
-      var droneText = drone.statusText || (drone.allowed ? 'Loty dozwolone' : 'Zakaz lotów dronem');
-      html+='<div class="location-insights__section"><h4>Drony</h4><div class="'+droneClass+'">'+escapeHtml(droneText)+'</div>';
-      if(drone.text){ html+='<p>'+escapeHtml(drone.text)+'</p>'; }
-      if(drone.note){ html+='<p class="location-insights__note">'+escapeHtml(drone.note)+'</p>'; }
-      html+='</div>';
-    }
-    if(insight.crowd){
-      html+='<div class="location-insights__section"><h4>Popularne godziny</h4>';
-      if(insight.crowd.description){ html+='<p>'+escapeHtml(insight.crowd.description)+'</p>'; }
-      if(insight.crowd.data && insight.crowd.data.length){
-        html+=buildCrowdChart(insight.crowd);
-        var scaleNote=insight.crowd.scaleNote || 'Skala 1–5 (5 = największy tłok).';
-        html+='<p class="location-insights__note">'+escapeHtml(scaleNote)+'</p>';
+      hasSection=true;
+      var droneClass;
+      if(drone.allowed===true){
+        droneClass='location-insights__status location-insights__status--free';
+      } else if(drone.allowed===false){
+        droneClass='location-insights__status location-insights__status--restricted';
       } else {
-        html+='<p class="muted">Brak danych o natężeniu ruchu.</p>';
+        droneClass='location-insights__status location-insights__status--unknown';
       }
-      html+='</div>';
+      var droneText=drone.statusText || (drone.allowed ? 'Loty dozwolone' : 'Zakaz lotów dronem');
+      html+='<div class="location-insights__section"><h4>Drony</h4><div class="'+droneClass+'">'+escapeHtml(droneText)+'</div></div>';
     }
-    html+='</div>';
+    if(!hasSection){
+      html+='<p class="muted">Brak danych o opłatach i zasadach dla dronów.</p>';
+    }
     box.innerHTML=html;
+    updateCrowdHint(insight.crowd);
   }
 
   var RADAR_FALLBACKS = [
