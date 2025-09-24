@@ -135,21 +135,6 @@
 
         '</div>'+
 
-        '<h3 style="margin-top:1rem">Udostępnij / Eksport</h3>'+
-        '<div class="row share-row" style="align-items:flex-start">'+
-          '<div class="col" style="flex:1">'+
-            '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
-              '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
-              '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
-              '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
-              '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
-              '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
-            '</div>'+
-            '<div class="muted" id="sp-link" style="margin-top:.25rem;word-break:break-all"></div>'+
-            '<div class="muted" id="sp-short-status"></div>'+
-          '</div>'+
-        '</div>'+
-
         '<div class="card" style="margin-top:1rem;padding:.75rem">'+
           '<h3>Galeria inspiracji – zdjęcia</h3>'+
           '<div id="sp-gallery"></div>'+
@@ -165,6 +150,31 @@
           '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
           '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
 
+        '</div>'+
+        '<div class="sunshine-block">'+
+          '<h3>Godziny ze słońcem</h3>'+
+          '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
+          '<div class="weather-legend sunshine-legend">'+
+            '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
+            '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
+            '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card share-card">'+
+      '<h3>Udostępnij / Eksport</h3>'+
+      '<div class="row share-row" style="align-items:flex-start">'+
+        '<div class="col" style="flex:1">'+
+          '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
+            '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
+            '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
+            '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
+            '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
+            '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
+          '</div>'+
+          '<div class="muted" id="sp-link" style="margin-top:.25rem;word-break:break-all"></div>'+
+          '<div class="muted" id="sp-short-status"></div>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -713,6 +723,138 @@
     ctx.fillText(Math.round(minTemp)+'°C',leftPad+4,bottom-6);
 
   }
+  function renderSunshineChart(hourly,dateStr,loading){
+    var canvas=document.getElementById('sp-sunshine');
+    if(!canvas) return;
+    var prep=prepareCanvas(canvas); if(!prep) return;
+    var ctx=prep.ctx, width=prep.width, height=prep.height;
+    ctx.fillStyle='#fffbeb';
+    ctx.fillRect(0,0,width,height);
+    ctx.font='12px system-ui, sans-serif';
+    ctx.fillStyle='#b45309';
+    var leftPad=16;
+    var rightPad=16;
+    var chartWidth=Math.max(10,width-leftPad-rightPad);
+    var bottom=height-28;
+    var chartHeight=Math.max(40,height-56);
+    var top=bottom-chartHeight;
+    if(loading){ ctx.fillText('Ładowanie danych o słońcu...',leftPad,height/2); return; }
+    if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych o nasłonecznieniu.',leftPad,height/2); return; }
+    var points=[];
+    for(var i=0;i<hourly.time.length;i++){
+      var dt=parseLocalISO(hourly.time[i]);
+      if(!dt) continue;
+      var day=dt.toISOString().slice(0,10);
+      if(dateStr && day!==dateStr) continue;
+      var dur=(hourly.sunshine_duration && typeof hourly.sunshine_duration[i] === 'number') ? hourly.sunshine_duration[i] : null;
+      if(dur==null) continue;
+      var minutes=Math.max(0,dur/60);
+      points.push({time:dt,minutes:minutes});
+    }
+    if(!points.length){ ctx.fillText('Brak danych o nasłonecznieniu dla wybranego dnia.',leftPad,height/2); return; }
+    points.sort(function(a,b){ return a.time-b.time; });
+    var maxMinutes=points.reduce(function(max,p){ return p.minutes>max?p.minutes:max; },0);
+    var scale=Math.max(60, Math.ceil((maxMinutes||0)/10)*10);
+    if(scale<60) scale=60;
+    if(scale>180) scale=180;
+    var start=points[0].time.getTime();
+    var end=points[points.length-1].time.getTime();
+    if(end<=start) end=start+3600000;
+    function xForDate(date){
+      if(!(date instanceof Date) || isNaN(date)) return null;
+      var ratio=(date.getTime()-start)/(end-start);
+      ratio=Math.min(1,Math.max(0,ratio));
+      return leftPad+ratio*chartWidth;
+    }
+    var sunrise=(lastSunData && lastSunData.rise instanceof Date && !isNaN(lastSunData.rise)) ? lastSunData.rise : null;
+    var sunset =(lastSunData && lastSunData.set  instanceof Date && !isNaN(lastSunData.set )) ? lastSunData.set  : null;
+    var xRise=xForDate(sunrise);
+    var xSet =xForDate(sunset);
+    if(xRise!=null && xSet!=null && xSet>xRise){
+      ctx.fillStyle='rgba(253,224,71,0.18)';
+      ctx.fillRect(xRise, top, Math.min(chartWidth, xSet-xRise), chartHeight);
+      ctx.strokeStyle='rgba(217,119,6,0.45)';
+      ctx.setLineDash([4,4]);
+      ctx.beginPath();
+      ctx.moveTo(xRise, top);
+      ctx.lineTo(xRise, bottom);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(xSet, top);
+      ctx.lineTo(xSet, bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#b45309';
+      ctx.font='10px system-ui, sans-serif';
+      var dawnLabelX=Math.max(leftPad, Math.min(xRise-18, leftPad+chartWidth-36));
+      var duskLabelX=Math.max(leftPad, Math.min(xSet-28, leftPad+chartWidth-36));
+      ctx.fillText('Świt', dawnLabelX, top-6);
+      ctx.fillText('Zachód', duskLabelX, top-6);
+    }
+    ctx.fillStyle='#b45309';
+    ctx.font='11px system-ui, sans-serif';
+    ctx.fillText('Minuty słońca (na godzinę)', leftPad, top-14);
+    ctx.strokeStyle='rgba(217,119,6,0.25)';
+    ctx.setLineDash([4,6]);
+    for(var step=1;step<=3;step++){
+      var ratio=step/3;
+      var y=bottom-ratio*chartHeight;
+      ctx.beginPath();
+      ctx.moveTo(leftPad,y);
+      ctx.lineTo(leftPad+chartWidth,y);
+      ctx.stroke();
+      ctx.fillStyle='#b45309';
+      ctx.font='10px system-ui, sans-serif';
+      ctx.fillText(Math.round(scale*ratio)+' min', leftPad, y-4);
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(217,119,6,0.45)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(leftPad, bottom);
+    ctx.lineTo(leftPad+chartWidth, bottom);
+    ctx.stroke();
+    function sunshineColor(minutes){
+      if(minutes>=50) return 'rgba(251,191,36,0.9)';
+      if(minutes>=20) return 'rgba(253,224,71,0.88)';
+      if(minutes>0) return 'rgba(254,243,199,0.9)';
+      return 'rgba(226,232,240,0.8)';
+    }
+    var rightEdge=leftPad+chartWidth;
+    var denom=(points.length-1)||1;
+    var barWidth=Math.min(28, Math.max(10, chartWidth/(points.length*1.6)));
+    points.forEach(function(p,idx){
+      var x=leftPad+(idx/denom)*chartWidth;
+      var minutes=p.minutes;
+      var ratio=Math.min(1,minutes/scale);
+      var barHeight=Math.max(2,ratio*chartHeight);
+      ctx.fillStyle=sunshineColor(minutes);
+      ctx.fillRect(x-barWidth/2,bottom-barHeight,barWidth,barHeight);
+      if(minutes>=5){
+        var label=Math.round(minutes)+' min';
+        ctx.fillStyle='#92400e';
+        ctx.font='10px system-ui, sans-serif';
+        var textWidth=ctx.measureText(label).width;
+        var textX=Math.max(leftPad, Math.min(rightEdge-textWidth, x-textWidth/2));
+        ctx.fillText(label,textX,bottom-barHeight-6);
+      } else if(minutes<1){
+        ctx.fillStyle='rgba(148,163,184,0.6)';
+        ctx.beginPath();
+        ctx.arc(x,bottom-4,2,0,Math.PI*2);
+        ctx.fill();
+      }
+    });
+    ctx.fillStyle='#b45309';
+    ctx.font='11px system-ui, sans-serif';
+    points.forEach(function(p,idx){
+      if(idx%2!==0 && idx!==points.length-1) return;
+      var x=leftPad+(idx/denom)*chartWidth;
+      var lbl=p.time.toLocaleTimeString('pl-PL',{hour:'2-digit'});
+      var textWidth=ctx.measureText(lbl).width;
+      var textX=Math.max(leftPad, Math.min(rightEdge-textWidth, x-textWidth/2));
+      ctx.fillText(lbl,textX,height-6);
+    });
+  }
   function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
   function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
   function evaluateHourScore(temp,cloud,prec){
@@ -968,7 +1110,7 @@
           endRange=endDate.toISOString().slice(0,10);
         }
         var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
-        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation&timezone='+encodeURIComponent(TZ)+'&start_date='+dateStr+'&end_date='+endRange)
+        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation,sunshine_duration&timezone='+encodeURIComponent(TZ)+'&start_date='+dateStr+'&end_date='+endRange)
           .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
           .then(function(data){ entry.data=data; entry.time=Date.now(); delete entry.promise; resolve(data); })
           .catch(function(err){ delete forecastCache[key]; reject(err); });
@@ -984,6 +1126,7 @@
       setSunMeta(null,null,null);
       clearWeatherPanels();
       renderHourlyChart(null,null,false);
+      renderSunshineChart(null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
 
@@ -1006,11 +1149,12 @@
 
     clearWeatherPanels();
     renderHourlyChart(null,dStr,true);
+    renderSunshineChart(null,dStr,true);
     sessionSummaryLoading();
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); return; }
+        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); return; }
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -1026,9 +1170,10 @@
           setWeatherOnly('set' , data.hourly, sunset);
         }
         renderHourlyChart(data.hourly, dStr, false);
+        renderSunshineChart(data.hourly, dStr, false);
         renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); sessionSummaryNoData(); });
+      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); });
   }
 
   function assignRadarTemplate(template){
@@ -1256,13 +1401,17 @@
     var h=Math.floor(min/60), m=min%60;
     var timeTxt = metrics ? ((h? h+' h ':'')+m+' min') : '—';
     var hourlyCanvas=document.getElementById('sp-hourly');
+    var sunshineCanvas=document.getElementById('sp-sunshine');
     var hourlyImage='';
+    var sunshineImage='';
     try{ hourlyImage=hourlyCanvas && hourlyCanvas.toDataURL ? hourlyCanvas.toDataURL('image/png') : ''; }catch(err2){ hourlyImage=''; }
+    try{ sunshineImage=sunshineCanvas && sunshineCanvas.toDataURL ? sunshineCanvas.toDataURL('image/png') : ''; }catch(err3){ sunshineImage=''; }
     function chartBlock(title,src,alt,empty){
       if(src){ return '<div class="chart-card"><h3>'+title+'</h3><img src="'+esc(src)+'" alt="'+esc(alt)+'"></div>'; }
       return '<div class="chart-card"><h3>'+title+'</h3><p class="muted">'+esc(empty)+'</p></div>';
     }
     var chartsHtml = chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
+    chartsHtml += chartBlock('Godziny ze słońcem', sunshineImage, 'Godziny ze słońcem', 'Brak danych wykresu o słońcu.');
     var html='<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><title>Karta klienta</title><style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;padding:24px;}h1{margin:0 0 12px;font-size:24px;}section{margin-bottom:20px;}table{width:100%;border-collapse:collapse;margin-top:12px;}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left;}ul{padding-left:18px;}small{color:#6b7280;}.muted{color:#6b7280;}.chart-grid{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;}.chart-card{flex:1 1 280px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:16px;padding:16px;box-shadow:0 8px 18px rgba(15,23,42,0.08);} .chart-card h3{margin:0 0 12px;font-size:18px;} .chart-card img{width:100%;display:block;border-radius:12px;border:1px solid #d1d5db;background:#fff;} .chart-card p{margin:8px 0 0;color:#6b7280;}</style></head><body>'+
       '<h1>Karta klienta – '+esc(dest.label||'Plan pleneru')+'</h1>'+
       '<section><strong>Data:</strong> '+esc(dEl.value||'—')+'<br><strong>Cel:</strong> '+esc(dest.label||'—')+'<br><strong>Dystans:</strong> '+esc(distTxt)+'<br><strong>Czas przejazdu:</strong> '+esc(timeTxt)+'</section>'+

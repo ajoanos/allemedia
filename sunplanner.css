@@ -103,6 +103,17 @@
 .weather-legend i.bar.weak{background:#c7d2fe}
 .weather-legend i.bar.medium{background:#60a5fa}
 .weather-legend i.bar.heavy{background:#1e3a8a}
+.sunshine-block{margin-top:1.2rem}
+.sunshine-block h3{margin:0 0 .6rem;font-size:1rem;font-weight:600;color:#b45309}
+.sunshine-canvas{height:160px;min-height:160px;background:#fffbeb;border:1px solid #fcd34d}
+.sunshine-legend{margin-top:.55rem;color:#b45309}
+.sunshine-legend span{color:#b45309;font-weight:500}
+.sunshine-legend i.bar{background:#fde68a}
+.sunshine-legend i.bar.sun-weak{background:#fef3c7}
+.sunshine-legend i.bar.sun-medium{background:#fcd34d}
+.sunshine-legend i.bar.sun-strong{background:#f59e0b}
+.share-card{margin-top:1.2rem}
+.share-card h3{margin-top:0}
 @media(max-width:640px){
   .route-option{min-width:140px}
   .toolbar{flex-direction:column;align-items:flex-start}
