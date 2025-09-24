@@ -1,8 +1,8 @@
 <?php
 /**
- * Template for displaying SunPlanner shared plans.
+ * Template for displaying Allemedia SunPlanner shared plans.
  *
- * @package SunPlanner
+ * @package Allemedia SunPlanner
  */
 
 if (!defined('ABSPATH')) {
@@ -15,9 +15,9 @@ get_header();
 <main id="primary" class="sunplanner-share">
     <div class="sunplanner-share__inner">
         <header class="sunplanner-share__header">
-            <span class="sunplanner-share__badge">SunPlanner</span>
+            <span class="sunplanner-share__badge">Allemedia SunPlanner</span>
             <h1 class="sunplanner-share__title">Udostępniony plan zdjęciowy</h1>
-            <p class="sunplanner-share__desc">Poniżej znajdziesz zapisany plan dnia wraz z mapą, pogodą i kluczowymi godzinami przygotowany w aplikacji SunPlanner.</p>
+            <p class="sunplanner-share__desc">Poniżej znajdziesz zapisany plan dnia wraz z mapą, pogodą i kluczowymi godzinami przygotowany w aplikacji Allemedia SunPlanner.</p>
         </header>
 
         <?php echo do_shortcode('[sunplanner]'); ?>
