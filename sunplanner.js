@@ -53,14 +53,14 @@
     '</div>'+
     '<div id="planner-map" aria-label="Mapa"></div>'+
     '<div class="card route-card">'+
-      '<h3>Punkty trasy (start, przystanki, cel)</h3>'+
+      '<h3>Punkty trasy (start, przystanki, cel podróży)</h3>'+
       '<div id="sp-list"></div>'+
-      '<h3 class="alt-heading">Alternatywne trasy</h3>'+
+      '<h3 class="alt-heading">Alternatywne trasy przejazdu</h3>'+
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
       '<div class="card">'+
-        '<h3>Plan dnia</h3>'+
+        '<h3>Plan dnia – przebieg zdjęć</h3>'+
         '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
         '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
         '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
@@ -143,7 +143,7 @@
         '</div>'+
 
         '<div class="card" style="margin-top:1rem;padding:.75rem">'+
-          '<h3>Galeria inspiracji</h3>'+
+          '<h3>Galeria inspiracji – zdjęcia</h3>'+
           '<div id="sp-gallery"></div>'+
         '</div>'+
       '</div>'+
@@ -156,7 +156,7 @@
         '<canvas id="sp-sun-canvas" class="smallcanvas" aria-label="Wykres słońca"></canvas>'+
       '</div>'+
       '<div class="card">'+
-        '<h3>Mini-wykres godzinowy</h3>'+
+        '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
       '</div>'+
     '</div>'+
@@ -958,7 +958,7 @@
       return '<div class="chart-card"><h3>'+title+'</h3><p class="muted">'+esc(empty)+'</p></div>';
     }
     var chartsHtml = chartBlock('Wykres ścieżki słońca', sunImage, 'Wykres ścieżki słońca', 'Brak danych wykresu.')+
-      chartBlock('Mini-wykres godzinowy', hourlyImage, 'Mini-wykres godzinowy', 'Brak danych wykresu.');
+      chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
     var html='<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><title>Karta klienta</title><style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;padding:24px;}h1{margin:0 0 12px;font-size:24px;}section{margin-bottom:20px;}table{width:100%;border-collapse:collapse;margin-top:12px;}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left;}ul{padding-left:18px;}small{color:#6b7280;}.muted{color:#6b7280;}.chart-grid{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;}.chart-card{flex:1 1 280px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:16px;padding:16px;box-shadow:0 8px 18px rgba(15,23,42,0.08);} .chart-card h3{margin:0 0 12px;font-size:18px;} .chart-card img{width:100%;display:block;border-radius:12px;border:1px solid #d1d5db;background:#fff;} .chart-card p{margin:8px 0 0;color:#6b7280;}</style></head><body>'+
       '<h1>Karta klienta – '+esc(dest.label||'Plan pleneru')+'</h1>'+
       '<section><strong>Data:</strong> '+esc(dEl.value||'—')+'<br><strong>Cel:</strong> '+esc(dest.label||'—')+'<br><strong>Dystans:</strong> '+esc(distTxt)+'<br><strong>Czas przejazdu:</strong> '+esc(timeTxt)+'</section>'+
