@@ -12,8 +12,10 @@ add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; }
 
 /** === Assets === */
 add_action('wp_enqueue_scripts', function () {
+
 $ver = '1.7.2';
 wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [], $ver);
+
 wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
 
 
@@ -82,7 +84,9 @@ wp_enqueue_style('sunplanner-css');
 wp_enqueue_script('sunplanner-app');
     wp_enqueue_script('sunplanner-gmaps');
     ob_start(); ?>
+
 <div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.2"></div>
+
 <?php return ob_get_clean();
 });
 
@@ -102,6 +106,7 @@ add_action('template_redirect', function () {
         global $wp_query;
         if ($wp_query) {
             $wp_query->is_404 = false;
+
             $wp_query->is_home = false;
             $wp_query->is_singular = true;
             $wp_query->is_page = true;
@@ -122,6 +127,7 @@ add_filter('body_class', function ($classes) {
     }
     return $classes;
 });
+
 
 
 /** === REST: create short link === */
