@@ -1152,7 +1152,7 @@
     return timeStr;
   }
 
-  var renderProposalsList = function renderProposalsList(){
+  function renderProposalsList(){
 
     var box=$('#sp-proposals-list');
     if(!box) return;
@@ -1203,7 +1203,7 @@
       box.appendChild(item);
     });
 
-  };
+  }
 
   function addProposal(proposer,date,time,note){
     var cleanDate=(typeof date==='string')?date.trim():'';
@@ -2016,7 +2016,11 @@
       if(noteField) noteField.value='';
     });
   }
-  renderProposalsList();
+
+  if(typeof renderProposalsList==='function'){
+    renderProposalsList();
+  }
+
   $('#sp-copy').addEventListener('click', function(){
     updateLink();
     var linkEl=$('#sp-link');
