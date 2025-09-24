@@ -62,12 +62,12 @@
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
-      '<div class="card">'+
-        '<h3>Plan dnia – przebieg zdjęć</h3>'+
-        '<div id="sp-session-summary" class="session-summary">'+
-          '<strong>Wybierz lokalizację i datę</strong>'+
-          '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
-        '</div>'+
+    '<div class="card">'+
+      '<h3>Plan dnia – przebieg zdjęć</h3>'+
+      '<div id="sp-session-summary" class="session-summary">'+
+        '<strong>Wybierz lokalizację i datę</strong>'+
+        '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
+      '</div>'+
         '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
         '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
         '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
@@ -139,6 +139,10 @@
           '<h3>Galeria inspiracji – zdjęcia</h3>'+
           '<div id="sp-gallery"></div>'+
         '</div>'+
+        '<div id="sp-location-insights" class="location-insights">'+
+          '<h3>Informacje o lokacji</h3>'+
+          '<p class="muted">Dodaj cel podróży, aby zobaczyć zasady na miejscu.</p>'+
+        '</div>'+
       '</div>'+
       '<div class="card">'+
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
@@ -185,11 +189,30 @@
   function $(s){ return document.querySelector(s); }
   function toast(m,type){ var t=$("#sp-toast"); t.textContent=m; t.style.display='block'; t.style.background=(type==='ok'?'#dcfce7':'#fee2e2'); t.style.color=(type==='ok'?'#14532d':'#991b1b'); clearTimeout(toast._t); toast._t=setTimeout(function(){t.style.display='none';}, 4200); }
   function fmt(d){ return d instanceof Date && !isNaN(d) ? d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}) : '—'; }
+  function escapeHtml(str){
+    return String(str==null?'':str).replace(/[&<>"']/g,function(ch){
+      switch(ch){
+        case '&': return '&amp;';
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '"': return '&quot;';
+        case '\'': return '&#39;';
+        default: return ch;
+      }
+    });
+  }
   function setText(id,v){ var el=(id.charAt(0)==='#'?$(id):$('#'+id)); if(el) el.textContent=v; }
   function deg(rad){ return rad*180/Math.PI; }
   function bearingFromAzimuth(az){ return (deg(az)+180+360)%360; }
   function isValidDate(d){ return d instanceof Date && !isNaN(d); }
   function addMinutes(date, minutes){ if(!isValidDate(date)) return null; return new Date(date.getTime()+minutes*60000); }
+  function normalizeLabel(str){
+    if(!str) return '';
+    var lower=String(str).toLowerCase();
+    if(typeof lower.normalize==='function'){ lower=lower.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+    var map={ 'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ż':'z','ź':'z' };
+    return lower.replace(/[ąćęłńóśżź]/g,function(ch){ return map[ch]||ch; });
+  }
 
   function projectPoint(lat,lng,distanceMeters,bearingDeg){
     var R=6378137;
@@ -222,6 +245,250 @@
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
 
   var currentBands = null;
+
+  var TPN_BOX = { lat:[49.15,49.30], lng:[19.73,20.26] };
+  var TANAP_BOX = { lat:[49.08,49.28], lng:[19.70,20.45] };
+  var MORSKIE_OKO_BOX = { lat:[49.17,49.22], lng:[20.02,20.12] };
+  var GUBALOWKA_BOX = { lat:[49.29,49.33], lng:[19.88,19.98] };
+
+  var LOCATION_ZONES = {
+    tpn: {
+      zoneLabel: 'Tatrzański Park Narodowy (TPN)',
+      wedding: {
+        paid: true,
+        price: '150 zł / dzień (zgoda na sesję ślubną)',
+        note: 'Złóż zgłoszenie co najmniej 7 dni przed terminem. Opłata obejmuje parę młodą i fotografa, wymagane są również bilety wstępu do parku.',
+        paymentUrl: 'https://tpn.pl/zwiedzaj/filmowanie-i-fotografowanie',
+        paymentLabel: 'Formularz zgłoszenia i płatności TPN'
+      },
+      drone: {
+        allowed: false,
+        statusText: 'Zakaz lotów dronem',
+        text: 'Loty dronem są zabronione na terenie TPN bez pisemnej zgody dyrektora parku. Zakaz dotyczy także przelotów nad obszarem parku startując spoza jego granic.'
+      }
+    },
+    tanap: {
+      zoneLabel: 'TANAP – Tatranský národný park (SK)',
+      wedding: {
+        paid: true,
+        price: '66 € / dzień (opłata administracyjna TANAP)',
+        note: 'Wniosek złóż minimum 30 dni wcześniej. Opłata obejmuje jedną sesję w wybranym miejscu i terminie.',
+        paymentUrl: 'https://www.tanap.sk/ziadosti-a-povolenia/',
+        paymentLabel: 'Wniosek i płatność TANAP'
+      },
+      drone: {
+        allowed: false,
+        statusText: 'Loty dronem ograniczone',
+        text: 'W TANAP obowiązuje zakaz lotów dronem bez indywidualnej zgody TANAP oraz słowackiego urzędu lotnictwa. W strefie ochronnej praktycznie nie wydaje się pozwoleń.'
+      }
+    }
+  };
+
+  var LOCATION_PRESETS = [
+    {
+      id: 'morskie-oko',
+      title: 'Morskie Oko',
+      zone: 'tpn',
+      zoneLabel: 'Morskie Oko – teren TPN',
+      match: function(dest){
+        if(!dest) return false;
+        var label = normalizeLabel(dest.label||'');
+        if(label.indexOf('morskie oko') !== -1) return true;
+        return isWithinBox(dest.lat, dest.lng, MORSKIE_OKO_BOX);
+      },
+      wedding: {
+        note: 'Na sesję najlepiej wejść poza głównym ruchem turystycznym. Straż TPN może poprosić o okazanie potwierdzenia opłaty przy schronisku.'
+      },
+      crowd: {
+        description: 'Największy tłok na szlaku i przy schronisku przypada między 10:00 a 14:00. Najspokojniej jest przed świtem lub po zachodzie słońca.',
+        scaleNote: 'Skala 1–5 (5 = największy tłok na szlaku i przy schronisku).',
+        maxLevel: 5,
+        data: [
+          {label:'05:00', level:1, tip:'Świt – bardzo spokojnie'},
+          {label:'06:00', level:1, tip:'Pojedynczy turyści'},
+          {label:'07:00', level:2, tip:'Pierwsze busy z Palenicy'},
+          {label:'08:00', level:3, tip:'Ruch zaczyna rosnąć'},
+          {label:'09:00', level:4, tip:'Duży napływ turystów'},
+          {label:'10:00', level:5, tip:'Szczyt ruchu na podejściu i przy schronisku'},
+          {label:'11:00', level:5, tip:'Tłum w okolicy jeziora'},
+          {label:'13:00', level:4, tip:'Wciąż bardzo tłoczno'},
+          {label:'15:00', level:3, tip:'Powroty turystów'},
+          {label:'17:00', level:2, tip:'Stopniowo coraz luźniej'},
+          {label:'19:00', level:1, tip:'Po zachodzie robi się pusto'}
+        ]
+      }
+    },
+    {
+      id: 'gubalowka',
+      title: 'Gubałówka',
+      zoneLabel: 'Gubałówka – Zakopane',
+      match: function(dest){
+        if(!dest) return false;
+        var label = normalizeLabel(dest.label||'');
+        if(label.indexOf('gubalowka') !== -1) return true;
+        return isWithinBox(dest.lat, dest.lng, GUBALOWKA_BOX);
+      },
+      wedding: {
+        paid: false,
+        price: 'Brak dodatkowej opłaty administracyjnej – konieczne bilety na kolej PKL (ok. 29–43 zł/os. w zależności od sezonu).',
+        note: 'Jeśli planujesz korzystać z prywatnych tarasów lub restauracji, uzgodnij warunki z właścicielem obiektu (PKL lub lokalnymi przedsiębiorcami).'
+      },
+      drone: {
+        allowed: false,
+        statusText: 'Loty tylko za zgodą',
+        text: 'Gubałówka znajduje się w strefie zabudowanej Zakopanego – lot wymaga zgody właściciela terenu i zgłoszenia w PAŻP. Latanie nad kolejką i tłumami jest zabronione.'
+      },
+      crowd: {
+        description: 'Deptak przy górnej stacji kolejki zapełnia się od późnego ranka. Najspokojniej jest o świcie i po zachodzie słońca.',
+        scaleNote: 'Skala 1–5 (5 = największy tłok przy górnej stacji).',
+        maxLevel: 5,
+        data: [
+          {label:'07:00', level:1, tip:'Przed otwarciem sklepów'},
+          {label:'08:00', level:2, tip:'Pierwsi turyści'},
+          {label:'09:00', level:3, tip:'Ruch rośnie'},
+          {label:'10:00', level:5, tip:'Pełne wagoniki kolejki'},
+          {label:'11:00', level:5, tip:'Największy tłum na deptaku'},
+          {label:'12:00', level:4, tip:'Stały wysoki ruch'},
+          {label:'13:00', level:4, tip:'Popularny czas na zdjęcia'},
+          {label:'14:00', level:5, tip:'Popołudniowy szczyt'},
+          {label:'16:00', level:4, tip:'Powroty do Zakopanego'},
+          {label:'18:00', level:2, tip:'Coraz luźniej'},
+          {label:'20:00', level:1, tip:'Po zachodzie robi się spokojnie'}
+        ]
+      }
+    }
+  ];
+
+  function isWithinBox(lat,lng,box){
+    if(!box) return false;
+    if(typeof lat!=='number' || typeof lng!=='number' || isNaN(lat) || isNaN(lng)) return false;
+    return lat>=box.lat[0] && lat<=box.lat[1] && lng>=box.lng[0] && lng<=box.lng[1];
+  }
+
+  function makeLocationInsight(entry,dest){
+    entry = entry || {};
+    dest = dest || {};
+    var zone = entry.zone && LOCATION_ZONES[entry.zone] ? LOCATION_ZONES[entry.zone] : null;
+    var info = {
+      title: entry.title || dest.label || '',
+      zoneLabel: entry.zoneLabel || (zone && zone.zoneLabel) || ''
+    };
+    if(zone && zone.wedding){ info.wedding = Object.assign({}, zone.wedding); }
+    if(zone && zone.drone){ info.drone = Object.assign({}, zone.drone); }
+    if(entry.wedding){ info.wedding = Object.assign({}, info.wedding||{}, entry.wedding); }
+    if(entry.drone){ info.drone = Object.assign({}, info.drone||{}, entry.drone); }
+    if(entry.crowd){
+      info.crowd = Object.assign({}, entry.crowd);
+      if(entry.crowd.data){ info.crowd.data = entry.crowd.data.slice(); }
+    }
+    if(entry.description){ info.description = entry.description; }
+    return info;
+  }
+
+  function computeLocationInsight(dest){
+    if(!dest) return null;
+    for(var i=0;i<LOCATION_PRESETS.length;i++){
+      var preset=LOCATION_PRESETS[i];
+      if(preset && typeof preset.match==='function' && preset.match(dest)){
+        return makeLocationInsight(preset, dest);
+      }
+    }
+    if(isWithinBox(dest.lat, dest.lng, TPN_BOX)){
+      return makeLocationInsight({zone:'tpn', title: dest.label || 'Lokalizacja w TPN'}, dest);
+    }
+    if(isWithinBox(dest.lat, dest.lng, TANAP_BOX)){
+      return makeLocationInsight({zone:'tanap', title: dest.label || 'Lokalizacja w TANAP'}, dest);
+    }
+    return null;
+  }
+
+  function buildCrowdChart(crowd){
+    var data = (crowd && Array.isArray(crowd.data)) ? crowd.data : [];
+    if(!data.length) return '';
+    var max = (crowd && typeof crowd.maxLevel === 'number' && !isNaN(crowd.maxLevel) && crowd.maxLevel>0) ? crowd.maxLevel : 0;
+    data.forEach(function(item){
+      var lvl = Number(item && item.level);
+      if(!isNaN(lvl) && lvl>max) max=lvl;
+    });
+    if(max<=0) max=1;
+    var aria = 'Popularność godzinowa: '+data.map(function(item){
+      var lbl=item && item.label ? item.label : '';
+      var lvlTxt=Number(item && item.level);
+      if(isNaN(lvlTxt)) lvlTxt=0;
+      return lbl+' – poziom '+lvlTxt;
+    }).join(', ');
+    var html='<div class="crowd-chart" aria-label="'+escapeHtml(aria)+'">';
+    data.forEach(function(item){
+      var lvl=Number(item && item.level);
+      if(!isFinite(lvl) || lvl<0) lvl=0;
+      if(lvl>max) lvl=max;
+      var displayLevel=Math.round(lvl);
+      var label=item && item.label ? item.label : '';
+      var tip=item && item.tip ? ' title="'+escapeHtml(item.tip)+'"' : '';
+      html+='<div class="crowd-chart__item" style="--level:'+lvl+';--max:'+max+'">'+
+        '<div class="crowd-chart__bar" data-level="'+escapeHtml(String(displayLevel))+'"'+tip+'></div>'+
+        '<span>'+escapeHtml(label)+'</span>'+
+      '</div>';
+    });
+    html+='</div>';
+    return html;
+  }
+
+  function updateLocationInsights(dest){
+    var box=document.getElementById('sp-location-insights');
+    if(!box) return;
+    dest = dest || points[points.length-1];
+    if(!dest){
+      box.innerHTML='<h3>Informacje o lokacji</h3><p class="muted">Dodaj cel podróży, aby zobaczyć zasady na miejscu.</p>';
+      return;
+    }
+    var insight = computeLocationInsight(dest);
+    if(!insight){
+      box.innerHTML='<h3>Informacje o lokacji</h3><p class="muted">Brak zdefiniowanych danych dla tej lokalizacji. Sprawdź lokalne regulaminy przed sesją.</p>';
+      return;
+    }
+    var html='<h3>Informacje o lokacji</h3>';
+    var title=insight.title || dest.label || 'Wybrana lokalizacja';
+    html+='<p class="location-insights__place">'+escapeHtml(title)+'</p>';
+    if(insight.zoneLabel){ html+='<div class="badge">'+escapeHtml(insight.zoneLabel)+'</div>'; }
+    html+='<div class="location-insights__grid">';
+    var wedding=insight.wedding;
+    if(wedding){
+      var paidClass = (wedding.paid===false) ? 'location-insights__status location-insights__status--free' : 'location-insights__status location-insights__status--paid';
+      var statusText = wedding.statusText || (wedding.paid===false ? 'Brak dodatkowej opłaty' : 'Sesja płatna');
+      html+='<div class="location-insights__section"><h4>Sesja ślubna</h4><div class="'+paidClass+'">'+escapeHtml(statusText)+'</div>';
+      if(wedding.price){ html+='<p>'+escapeHtml(wedding.price)+'</p>'; }
+      if(wedding.note){ html+='<p class="location-insights__note">'+escapeHtml(wedding.note)+'</p>'; }
+      if(wedding.paymentUrl){
+        var linkLabel = wedding.paymentLabel || 'Formularz opłaty';
+        html+='<p class="location-insights__links"><a href="'+escapeHtml(wedding.paymentUrl)+'" target="_blank" rel="noopener">'+escapeHtml(linkLabel)+'</a></p>';
+      }
+      html+='</div>';
+    }
+    var drone=insight.drone;
+    if(drone){
+      var droneClass = drone.allowed ? 'location-insights__status location-insights__status--free' : 'location-insights__status location-insights__status--restricted';
+      var droneText = drone.statusText || (drone.allowed ? 'Loty dozwolone' : 'Zakaz lotów dronem');
+      html+='<div class="location-insights__section"><h4>Drony</h4><div class="'+droneClass+'">'+escapeHtml(droneText)+'</div>';
+      if(drone.text){ html+='<p>'+escapeHtml(drone.text)+'</p>'; }
+      if(drone.note){ html+='<p class="location-insights__note">'+escapeHtml(drone.note)+'</p>'; }
+      html+='</div>';
+    }
+    if(insight.crowd){
+      html+='<div class="location-insights__section"><h4>Popularne godziny</h4>';
+      if(insight.crowd.description){ html+='<p>'+escapeHtml(insight.crowd.description)+'</p>'; }
+      if(insight.crowd.data && insight.crowd.data.length){
+        html+=buildCrowdChart(insight.crowd);
+        var scaleNote=insight.crowd.scaleNote || 'Skala 1–5 (5 = największy tłok).';
+        html+='<p class="location-insights__note">'+escapeHtml(scaleNote)+'</p>';
+      } else {
+        html+='<p class="muted">Brak danych o natężeniu ruchu.</p>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+    box.innerHTML=html;
+  }
 
   var RADAR_FALLBACKS = [
     'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
@@ -295,6 +562,7 @@
       }catch(e){ }
     }
   })();
+  updateLocationInsights();
 
   // SunCalc lite (fallback)
   var SunCalcLite=(function(){
@@ -458,6 +726,7 @@
     var dest=points[points.length-1];
     setText('sp-loc', dest ? (dest.label || (dest.lat.toFixed(4)+','+dest.lng.toFixed(4))) : '—');
     setText('sp-date-label', dEl.value || '—');
+    updateLocationInsights(dest);
     updateLink();
   }
 
