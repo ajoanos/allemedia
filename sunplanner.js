@@ -1,4 +1,4 @@
-/* SunPlanner v1.7.0 - rozbudowany planer z wykresem słońca, radarową warstwą mapy, autosave i eksportami */
+/* SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
   var GMAPS_KEY    = CFG.GMAPS_KEY || '';
@@ -7,6 +7,7 @@
   var TZ           = CFG.TZ || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw');
   var REST_URL     = CFG.REST_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
+  var RADAR_URL    = CFG.RADAR_URL || '';
   var BASE_URL = (function(){
     function stripQueryAndHash(url){ return url.replace(/[?#].*$/, ''); }
     var locOrigin = location.origin || (location.protocol + '//' + location.host);
@@ -44,7 +45,7 @@
       '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
     '</div>'+
     '<div class="toolbar">'+
-      '<label class="switch"><input id="sp-radar" type="checkbox">Radar opadów</label>'+
+      '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
       '<div class="legend">'+
         '<span class="c1"><i></i>Najlepsza</span>'+
         '<span class="c2"><i></i>Alternatywa</span>'+
@@ -67,12 +68,7 @@
         '<div class="rowd"><span>Dystans</span><strong id="sp-t-dist">—</strong></div>'+
 
         '<div class="golden-block">'+
-          '<div class="glow-info">'+
-            '<h4>Poranek</h4>'+
-            '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
-            '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
-          '</div>'+
-          '<div class="grid2">'+
+          '<div class="grid2 glow-grid">'+
             '<div class="card inner">'+
               '<h3>Świt <small id="sp-rise-date" class="muted"></small></h3>'+
               '<div class="rowd"><span>Świt</span><strong id="sp-rise-sun">—</strong></div>'+
@@ -94,6 +90,11 @@
                 '<div class="rowd"><span>Wilg.</span><strong id="sp-rise-h">—</strong></div>'+
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-rise-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-rise-p">—</strong></div>'+
+              '</div>'+
+              '<div class="glow-info morning">'+
+                '<h4>Poranek</h4>'+
+                '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
+                '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
               '</div>'+
             '</div>'+
             '<div class="card inner">'+
@@ -118,12 +119,12 @@
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-set-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-set-p">—</strong></div>'+
               '</div>'+
+              '<div class="glow-info align-right evening">'+
+                '<h4>Wieczór</h4>'+
+                '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
+                '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+              '</div>'+
             '</div>'+
-          '</div>'+
-          '<div class="glow-info align-right">'+
-            '<h4>Wieczór</h4>'+
-            '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
-            '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
           '</div>'+
         '</div>'+
 
@@ -148,16 +149,14 @@
         '</div>'+
       '</div>'+
       '<div class="card">'+
-        '<h3>Wykres ścieżki słońca</h3>'+
-        '<div class="sun-meta">'+
-          '<div><span class="muted">Świt</span><strong id="sp-sunrise-time">—</strong><small id="sp-sunrise-az">—</small></div>'+
-          '<div><span class="muted">Zachód</span><strong id="sp-sunset-time">—</strong><small id="sp-sunset-az">—</small></div>'+
-        '</div>'+
-        '<canvas id="sp-sun-canvas" class="smallcanvas" aria-label="Wykres słońca"></canvas>'+
-      '</div>'+
-      '<div class="card">'+
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+        '<div class="weather-legend">'+
+          '<span><i class="line"></i>Temperatura (°C)</span>'+
+          '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+          '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+          '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+        '</div>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -169,6 +168,8 @@
   function setText(id,v){ var el=(id.charAt(0)==='#'?$(id):$('#'+id)); if(el) el.textContent=v; }
   function deg(rad){ return rad*180/Math.PI; }
   function bearingFromAzimuth(az){ return (deg(az)+180+360)%360; }
+  function isValidDate(d){ return d instanceof Date && !isNaN(d); }
+  function addMinutes(date, minutes){ if(!isValidDate(date)) return null; return new Date(date.getTime()+minutes*60000); }
 
   function projectPoint(lat,lng,distanceMeters,bearingDeg){
     var R=6378137;
@@ -193,7 +194,11 @@
   var shortLinkValue = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
-  var RADAR_FALLBACK_TEMPLATE = 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png';
+  var RADAR_FALLBACKS = [
+    'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
+    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
+    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png'
+  ];
   var restoredFromShare = false;
   var STORAGE_KEY = 'sunplanner-state';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
@@ -307,6 +312,31 @@
       goldPM: pair(t.goldenHour, t.sunset),
       blueAM: pair(t.civilDawn,  t.sunrise),
       bluePM: pair(t.sunset,     t.civilDusk)
+    };
+  }
+
+  function applyBands(b){
+    function line(label, range){
+      if(range && isValidDate(range[0]) && isValidDate(range[1])){
+        return label + fmt(range[0])+'–'+fmt(range[1]);
+      }
+      return label + '— —';
+    }
+    setText('sp-gold-am', line('☀️ Poranna złota godzina: ', b && b.goldAM));
+    setText('sp-blue-am', line('🌌 Poranna niebieska godzina: ', b && b.blueAM));
+    setText('sp-gold-pm', line('☀️ Wieczorna złota godzina: ', b && b.goldPM));
+    setText('sp-blue-pm', line('🌌 Wieczorna niebieska godzina: ', b && b.bluePM));
+  }
+
+  function deriveBandsFromSun(sunrise,sunset){
+    if(!isValidDate(sunrise) || !isValidDate(sunset)) return null;
+    var GOLD=60, BLUE=35;
+    function rng(a,b){ if(!isValidDate(a) || !isValidDate(b)) return null; return a<=b?[a,b]:[b,a]; }
+    return {
+      goldAM: rng(sunrise, addMinutes(sunrise, GOLD)),
+      goldPM: rng(addMinutes(sunset, -GOLD), sunset),
+      blueAM: rng(addMinutes(sunrise, -BLUE), sunrise),
+      bluePM: rng(sunset, addMinutes(sunset, BLUE))
     };
   }
 
@@ -532,86 +562,6 @@
     ctx.clearRect(0,0,width,height);
     return {ctx:ctx,width:width,height:height};
   }
-  function renderSunChart(lat,lng,date,sunrise,sunset){
-    var canvas=document.getElementById('sp-sun-canvas');
-    if(!canvas) return;
-    var prep=prepareCanvas(canvas); if(!prep) return;
-    var ctx=prep.ctx, width=prep.width, height=prep.height;
-    ctx.fillStyle='#f9fafb';
-    ctx.fillRect(0,0,width,height);
-    if(typeof lat!=='number' || typeof lng!=='number' || !(date instanceof Date)){
-      ctx.fillStyle='#9ca3af';
-      ctx.font='12px system-ui, sans-serif';
-      ctx.fillText('Dodaj cel, aby zobaczyć wykres.',12,height/2);
-      return;
-    }
-    var start=new Date(date); start.setHours(0,0,0,0);
-    var steps=48;
-    var pts=[], altMin=90, altMax=-90;
-    for(var i=0;i<=steps;i++){
-      var dt=new Date(start.getTime()+i*30*60000);
-      var pos=SunCalc.getPosition(dt, lat, lng) || {};
-      var alt=pos.altitude!=null ? deg(pos.altitude) : -10;
-      pts.push({time:dt,alt:alt});
-      if(alt<altMin) altMin=alt;
-      if(alt>altMax) altMax=alt;
-    }
-    altMin=Math.min(altMin,-10);
-    altMax=Math.max(altMax,75);
-    var range=altMax-altMin || 1;
-    ctx.fillStyle='rgba(30,64,175,0.1)';
-    ctx.beginPath();
-    pts.forEach(function(pt,idx){
-      var x=(idx/(pts.length-1||1))*width;
-      var y=height-((pt.alt-altMin)/range)*height;
-      if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    });
-    ctx.lineTo(width,height); ctx.lineTo(0,height); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='#1e3a8a';
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    pts.forEach(function(pt,idx){
-      var x=(idx/(pts.length-1||1))*width;
-      var y=height-((pt.alt-altMin)/range)*height;
-      if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-
-    var zeroY=height-((0-altMin)/range)*height;
-    ctx.strokeStyle='rgba(107,114,128,0.4)';
-    ctx.setLineDash([4,4]);
-    ctx.beginPath();
-    ctx.moveTo(0,zeroY); ctx.lineTo(width,zeroY); ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.font='11px system-ui, sans-serif';
-    ctx.fillStyle='#374151';
-    function mark(time,label,color){
-      if(!(time instanceof Date) || isNaN(time)) return;
-      var x=((time - start)/86400000)*width;
-      if(x<0 || x>width) return;
-      var pos=SunCalc.getPosition(time, lat, lng) || {};
-      var alt=pos.altitude!=null ? deg(pos.altitude) : 0;
-      var y=height-((alt-altMin)/range)*height;
-      ctx.fillStyle=color;
-      ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#1f2937';
-      var txt=label+' '+fmt(time);
-      var tx=x+8; if(tx>width-70) tx=x-70; if(tx<0) tx=2;
-      ctx.fillText(txt, tx, y-6);
-    }
-    mark(sunrise,'Świt','#f59e0b');
-    mark(sunset,'Zachód','#f97316');
-
-    ctx.fillStyle='#6b7280';
-    for(var h=0;h<=24;h+=3){
-      var x=(h/24)*width;
-      ctx.fillRect(x,height-4,1,4);
-      var lbl=('0'+h).slice(-2)+':00';
-      var tx=x-12; if(tx<0) tx=0; if(tx>width-24) tx=width-24;
-      ctx.fillText(lbl, tx, height-6);
-    }
-  }
   function renderHourlyChart(hourly,dateStr,loading){
     var canvas=document.getElementById('sp-hourly');
     if(!canvas) return;
@@ -621,8 +571,14 @@
     ctx.fillRect(0,0,width,height);
     ctx.font='12px system-ui, sans-serif';
     ctx.fillStyle='#9ca3af';
-    if(loading){ ctx.fillText('Ładowanie prognozy...',12,height/2); return; }
-    if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych pogodowych.',12,height/2); return; }
+    var leftPad=16;
+    var axisX=Math.min(width-30, Math.max(leftPad+60,width-48));
+    var chartWidth=Math.max(10,axisX-leftPad-12);
+    var bottom=height-28;
+    var chartHeight=height*0.55;
+    var barArea=height*0.28;
+    if(loading){ ctx.fillText('Ładowanie prognozy...',leftPad,height/2); return; }
+    if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych pogodowych.',leftPad,height/2); return; }
     var points=[];
     for(var i=0;i<hourly.time.length;i++){
       var dt=parseLocalISO(hourly.time[i]);
@@ -633,7 +589,7 @@
       var prec=(hourly.precipitation && typeof hourly.precipitation[i] === 'number') ? hourly.precipitation[i] : 0;
       points.push({time:dt,temp:temp,prec:prec});
     }
-    if(!points.length){ ctx.fillText('Brak danych dla wybranego dnia.',12,height/2); return; }
+    if(!points.length){ ctx.fillText('Brak danych dla wybranego dnia.',leftPad,height/2); return; }
     var minTemp=Infinity,maxTemp=-Infinity,maxPrec=0;
     points.forEach(function(p){
       if(p.temp!=null){ if(p.temp<minTemp) minTemp=p.temp; if(p.temp>maxTemp) maxTemp=p.temp; }
@@ -641,32 +597,81 @@
     });
     if(minTemp===Infinity){ minTemp=0; maxTemp=0; }
     if(maxTemp-minTemp<4){ var adj=(4-(maxTemp-minTemp))/2; minTemp-=adj; maxTemp+=adj; }
-    var chartHeight=height*0.6;
-    var bottom=height-24;
     var range=(maxTemp-minTemp)||1;
+    var axisTop=bottom-barArea;
+    function formatPrec(val){
+      var num=Math.max(0,Number(val||0));
+      var decimals=num>=1?1:2;
+      var txt=num.toFixed(decimals);
+      txt=txt.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+      return txt;
+    }
+    function barColor(v){
+      if(v>=2) return 'rgba(30,64,175,0.88)';
+      if(v>=0.6) return 'rgba(96,165,250,0.85)';
+      if(v>0) return 'rgba(199,210,254,0.85)';
+      return null;
+    }
+    var tickMax=maxPrec>0?Math.max(0.5,Math.ceil(maxPrec*2)/2):0;
     ctx.strokeStyle='#ef4444';
     ctx.lineWidth=2;
     ctx.beginPath();
     points.forEach(function(p,idx){
-      var x=(idx/(points.length-1||1))*width;
-      var temp=p.temp!=null?p.temp:minTemp;
-      var y=bottom-((temp-minTemp)/range)*chartHeight;
+      var x=leftPad+(idx/(points.length-1||1))*chartWidth;
+      var tempVal=p.temp!=null?p.temp:minTemp;
+      var y=bottom-((tempVal-minTemp)/range)*chartHeight;
       if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     });
     ctx.stroke();
-    ctx.lineTo(width,bottom);
-    ctx.lineTo(0,bottom);
+    var rightEdge=leftPad+chartWidth;
+    ctx.lineTo(rightEdge,bottom);
+    ctx.lineTo(leftPad,bottom);
     ctx.closePath();
     ctx.fillStyle='rgba(239,68,68,0.12)';
     ctx.fill();
 
-    if(maxPrec>0){
-      ctx.fillStyle='rgba(37,99,235,0.35)';
+    if(tickMax>0){
+      ctx.strokeStyle='rgba(148,163,184,0.3)';
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,6]);
+      for(var t=1;t<=4;t++){
+        var val=(tickMax/4)*t;
+        var y=bottom-(val/tickMax)*barArea;
+        ctx.beginPath();
+        ctx.moveTo(leftPad,y);
+        ctx.lineTo(axisX,y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle='rgba(148,163,184,0.6)';
+      ctx.beginPath();
+      ctx.moveTo(axisX,bottom);
+      ctx.lineTo(axisX,axisTop);
+      ctx.stroke();
+      ctx.fillStyle='#1f2937';
+      ctx.font='10px system-ui, sans-serif';
+      for(var tick=0;tick<=4;tick++){
+        var val2=(tickMax/4)*tick;
+        var y2=bottom-(val2/tickMax)*barArea;
+        ctx.fillText(formatPrec(val2)+' mm',axisX+6,y2+3);
+      }
+
       points.forEach(function(p,idx){
         if(!p.prec) return;
-        var x=(idx/(points.length-1||1))*width;
-        var barHeight=(p.prec/maxPrec)*(height*0.25);
-        ctx.fillRect(x-3,bottom-barHeight,6,barHeight);
+        var fill=barColor(p.prec); if(!fill) return;
+        var x=leftPad+(idx/(points.length-1||1))*chartWidth;
+        var ratio=Math.min(1,p.prec/tickMax);
+        var barHeight=Math.max(3,ratio*barArea);
+        ctx.fillStyle=fill;
+        ctx.fillRect(x-6,bottom-barHeight,12,barHeight);
+        if(p.prec>=0.1){
+          var label=formatPrec(p.prec)+' mm';
+          var maxLabelX=Math.max(leftPad,rightEdge-36);
+          var textX=Math.min(maxLabelX,Math.max(leftPad,x-16));
+          ctx.fillStyle='#1e3a8a';
+          ctx.font='10px system-ui, sans-serif';
+          ctx.fillText(label,textX,bottom-barHeight-6);
+        }
       });
     }
 
@@ -674,23 +679,21 @@
     ctx.font='11px system-ui, sans-serif';
     points.forEach(function(p,idx){
       if(idx%3!==0 && idx!==points.length-1) return;
-      var x=(idx/(points.length-1||1))*width;
+      var x=leftPad+(idx/(points.length-1||1))*chartWidth;
       var lbl=p.time.toLocaleTimeString('pl-PL',{hour:'2-digit'});
-      ctx.fillText(lbl,x-10,height-6);
+      var maxTimeX=Math.max(leftPad,rightEdge-24);
+      var textX=Math.min(maxTimeX,Math.max(leftPad,x-12));
+      ctx.fillText(lbl,textX,height-6);
     });
-    ctx.fillText(Math.round(maxTemp)+'°C',8,bottom-chartHeight-6);
-    ctx.fillText(Math.round(minTemp)+'°C',8,bottom-6);
+    ctx.fillText(Math.round(maxTemp)+'°C',leftPad+4,bottom-chartHeight-10);
+    ctx.fillText(Math.round(minTemp)+'°C',leftPad+4,bottom-6);
   }
   function setSunMeta(dest,sunrise,sunset){
-    setText('sp-sunrise-time', fmt(sunrise));
-    setText('sp-sunset-time', fmt(sunset));
     var riseAz=null, setAz=null;
     if(dest && typeof dest.lat==='number' && typeof dest.lng==='number'){
       if(sunrise instanceof Date && !isNaN(sunrise)){ var posR=SunCalc.getPosition(sunrise,dest.lat,dest.lng); if(posR && typeof posR.azimuth==='number') riseAz=Math.round(bearingFromAzimuth(posR.azimuth)); }
       if(sunset instanceof Date && !isNaN(sunset)){ var posS=SunCalc.getPosition(sunset,dest.lat,dest.lng); if(posS && typeof posS.azimuth==='number') setAz=Math.round(bearingFromAzimuth(posS.azimuth)); }
     }
-    setText('sp-sunrise-az', riseAz!=null ? ('Azymut '+riseAz+'°') : '—');
-    setText('sp-sunset-az', setAz!=null ? ('Azymut '+setAz+'°') : '—');
     lastSunData.rise = (sunrise instanceof Date && !isNaN(sunrise)) ? sunrise : null;
     lastSunData.set  = (sunset  instanceof Date && !isNaN(sunset )) ? sunset  : null;
     lastSunData.lat  = dest && typeof dest.lat==='number' ? dest.lat : null;
@@ -740,25 +743,19 @@
     if(!dest || !dStr){
       setSunMeta(null,null,null);
       clearWeatherPanels();
-      renderSunChart(null,null,null);
       renderHourlyChart(null,null,false);
       updateSunDirection(null,null);
+      applyBands(null);
       return;
     }
 
     var base=dateFromInput(dStr);
-    var b=bands(dest.lat, dest.lng, base);
-    function rng(a,b){ return fmt(a)+'–'+fmt(b); }
-    setText('sp-gold-am','☀️ Poranna złota godzina: '+rng(b.goldAM[0],b.goldAM[1]));
-    setText('sp-blue-am','🌌 Poranna niebieska godzina: '+rng(b.blueAM[0],b.blueAM[1]));
-    setText('sp-gold-pm','☀️ Wieczorna złota godzina: '+rng(b.goldPM[0],b.goldPM[1]));
-    setText('sp-blue-pm','🌌 Wieczorna niebieska godzina: '+rng(b.bluePM[0],b.bluePM[1]));
+    applyBands(bands(dest.lat, dest.lng, base));
 
     var t=SunCalc.getTimes(base, dest.lat, dest.lng);
     var sunrise=t.sunrise, sunset=t.sunset;
 
     setSunMeta(dest, sunrise, sunset);
-    renderSunChart(dest.lat, dest.lng, base, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
 
     fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
@@ -775,43 +772,85 @@
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
         if(ss instanceof Date && !isNaN(ss)) sunset=ss;
         setSunMeta(dest, sunrise, sunset);
-        renderSunChart(dest.lat, dest.lng, base, sunrise, sunset);
         updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
         fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
         fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+        var derivedBands = deriveBandsFromSun(sunrise, sunset);
+        if(derivedBands) applyBands(derivedBands);
         if(data.hourly){
-          setWeatherOnly('rise', data.hourly, sunset);
-          setWeatherOnly('set' , data.hourly, sunrise);
+          setWeatherOnly('rise', data.hourly, sunrise);
+          setWeatherOnly('set' , data.hourly, sunset);
         }
         renderHourlyChart(data.hourly, dStr, false);
       })
       .catch(function(){ renderHourlyChart(null,dStr,false); });
   }
 
-  function fetchRadarTemplate(){
-    return fetch('https://api.rainviewer.com/public/weather-maps.json')
+  function assignRadarTemplate(template){
+    if(!template) return false;
+    radarTemplate = template;
+    radarFetchedAt = Date.now();
+    return true;
+  }
+  function useRadarFallback(){
+    for(var i=0;i<RADAR_FALLBACKS.length;i++){
+      var tpl=RADAR_FALLBACKS[i];
+      if(tpl){ assignRadarTemplate(tpl); return; }
+    }
+  }
+  function fetchRadarDirect(){
+    return fetch('https://api.rainviewer.com/public/weather-maps.json',{headers:{'Accept':'application/json'}})
       .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
       .then(function(data){
-        var frames = (data && data.radar && data.radar.nowcast) ? data.radar.nowcast : [];
+        var nowcast = (data && data.radar && Array.isArray(data.radar.nowcast)) ? data.radar.nowcast : [];
+        var past = (data && data.radar && Array.isArray(data.radar.past)) ? data.radar.past : [];
+        var frames = nowcast.concat(past);
         if(!frames.length) throw new Error('no-data');
-        var latest = frames[frames.length-1];
         var template = null;
-        if(latest){
-          if(latest.path){
-            template = 'https://tilecache.rainviewer.com/v2/radar/'+latest.path+'256/{z}/{x}/{y}/2/1_1.png';
-          } else if(typeof latest.time !== 'undefined'){
-            template = 'https://tilecache.rainviewer.com/v2/radar/'+latest.time+'/256/{z}/{x}/{y}/2/1_1.png';
+        function buildTemplate(base,path){
+          if(!path) return null;
+          var host=(base||'').replace(/\/+$/,'/');
+          var clean=String(path).replace(/^\/+|\/+$/g,'');
+          if(!clean) return null;
+          return host + clean + '/256/{z}/{x}/{y}/2/1_1.png';
+        }
+        for(var i=frames.length-1;i>=0;i--){
+          var frame=frames[i];
+          if(!frame) continue;
+          if(!template && frame.host && frame.path){
+            template = buildTemplate(frame.host, frame.path);
           }
+          if(!template && frame.path){
+            var pathStr=String(frame.path);
+            var base = pathStr.indexOf('v3/') === 0 ? 'https://tilecache.rainviewer.com/' : 'https://tilecache.rainviewer.com/v2/radar/';
+            template = buildTemplate(base, pathStr);
+          }
+          if(!template && typeof frame.time !== 'undefined'){
+            template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', frame.time);
+          }
+          if(template) break;
         }
         if(!template) throw new Error('no-template');
-        radarTemplate = template;
-        radarFetchedAt = Date.now();
-      })
-      .catch(function(err){
-        console.warn('SunPlanner radar template fallback', err);
-        radarTemplate = RADAR_FALLBACK_TEMPLATE;
-        radarFetchedAt = Date.now();
+        assignRadarTemplate(template);
       });
+  }
+  function fetchRadarViaProxy(){
+    if(!RADAR_URL) return Promise.reject(new Error('no-proxy'));
+    return fetch(RADAR_URL,{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
+      .then(function(data){
+        if(data && data.template){ assignRadarTemplate(data.template); return; }
+        throw new Error('no-template');
+      });
+  }
+  function fetchRadarTemplate(){
+    var promise;
+    if(RADAR_URL){
+      promise = fetchRadarViaProxy().catch(function(err){ console.warn('SunPlanner radar proxy fallback', err); return fetchRadarDirect(); });
+    } else {
+      promise = fetchRadarDirect();
+    }
+    return promise.catch(function(err){ console.warn('SunPlanner radar template fallback', err); useRadarFallback(); });
   }
   function ensureRadarLayer(){
     var needsRefresh = !radarTemplate || (Date.now() - radarFetchedAt > 10*60*1000);
@@ -867,7 +906,7 @@
     if(box){
       box.innerHTML='';
       if(url){
-        var span=document.createElement('span'); span.textContent='Krótki link: ';
+        var span=document.createElement('strong'); span.textContent='Krótki link: ';
         var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.textContent=url;
         box.appendChild(span); box.appendChild(a);
       }
@@ -948,17 +987,14 @@
     var min=metrics ? Math.round(metrics.durationSec/60) : 0;
     var h=Math.floor(min/60), m=min%60;
     var timeTxt = metrics ? ((h? h+' h ':'')+m+' min') : '—';
-    var sunCanvas=document.getElementById('sp-sun-canvas');
     var hourlyCanvas=document.getElementById('sp-hourly');
-    var sunImage='', hourlyImage='';
-    try{ sunImage=sunCanvas && sunCanvas.toDataURL ? sunCanvas.toDataURL('image/png') : ''; }catch(err){ sunImage=''; }
+    var hourlyImage='';
     try{ hourlyImage=hourlyCanvas && hourlyCanvas.toDataURL ? hourlyCanvas.toDataURL('image/png') : ''; }catch(err2){ hourlyImage=''; }
     function chartBlock(title,src,alt,empty){
       if(src){ return '<div class="chart-card"><h3>'+title+'</h3><img src="'+esc(src)+'" alt="'+esc(alt)+'"></div>'; }
       return '<div class="chart-card"><h3>'+title+'</h3><p class="muted">'+esc(empty)+'</p></div>';
     }
-    var chartsHtml = chartBlock('Wykres ścieżki słońca', sunImage, 'Wykres ścieżki słońca', 'Brak danych wykresu.')+
-      chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
+    var chartsHtml = chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
     var html='<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><title>Karta klienta</title><style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;padding:24px;}h1{margin:0 0 12px;font-size:24px;}section{margin-bottom:20px;}table{width:100%;border-collapse:collapse;margin-top:12px;}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left;}ul{padding-left:18px;}small{color:#6b7280;}.muted{color:#6b7280;}.chart-grid{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;}.chart-card{flex:1 1 280px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:16px;padding:16px;box-shadow:0 8px 18px rgba(15,23,42,0.08);} .chart-card h3{margin:0 0 12px;font-size:18px;} .chart-card img{width:100%;display:block;border-radius:12px;border:1px solid #d1d5db;background:#fff;} .chart-card p{margin:8px 0 0;color:#6b7280;}</style></head><body>'+
       '<h1>Karta klienta – '+esc(dest.label||'Plan pleneru')+'</h1>'+
       '<section><strong>Data:</strong> '+esc(dEl.value||'—')+'<br><strong>Cel:</strong> '+esc(dest.label||'—')+'<br><strong>Dystans:</strong> '+esc(distTxt)+'<br><strong>Czas przejazdu:</strong> '+esc(timeTxt)+'</section>'+
@@ -980,6 +1016,8 @@
         var point={lat:lat,lng:lng,label:label||'Moja lokalizacja'};
         if(points.length){ points[0]=point; }
         else points.push(point);
+        if(map && typeof map.panTo==='function'){ map.panTo({lat:lat,lng:lng}); if(typeof map.getZoom==='function' && map.getZoom()<12){ map.setZoom(12); } }
+        if(dragMarker){ dragMarker.setPosition({lat:lat,lng:lng}); dragMarker.setVisible(true); }
         renderList(); recalcRoute(false); updateDerived(); loadGallery();
         toast('Zaktualizowano punkt startowy','ok');
       }
