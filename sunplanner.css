@@ -46,12 +46,26 @@
 .glow-info.align-right{background:linear-gradient(135deg,rgba(191,219,254,.85),rgba(147,197,253,.85));color:#1e3a8a;text-align:right;align-items:flex-end}
 .glow-info h4{margin:0;font-size:1rem;font-weight:600}
 .glow-line{margin:0;font-size:.95rem;font-weight:600;line-height:1.35;text-shadow:0 1px 0 rgba(255,255,255,.45);letter-spacing:.01em}
-@media(min-width:980px){.cards{grid-template-columns:1fr}.grid2{grid-template-columns:1fr 1fr}}
+@media(min-width:980px){.cards{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}.grid2{grid-template-columns:1fr 1fr}.main-plan{grid-column:1/-1}.card-proposals{grid-column:1/-1}}
 .muted{color:#6b7280;font-size:.9rem}
 .badge{margin:.35rem 0;padding:.25rem .5rem;background:#f3f4f6;border-radius:6px;display:inline-block;font-size:.85rem;color:#374151}
 
 .kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.25rem .8rem;margin-top:.35rem}
-.waypoint{display:flex;justify-content:space-between;align-items:center;border:1px dashed #d1d5db;border-radius:10px;padding:.45rem .6rem;margin:.35rem 0}
+.waypoint{display:flex;flex-direction:column;gap:.75rem;border:1px dashed #d1d5db;border-radius:12px;padding:.75rem 1rem;margin:.5rem 0;background:#fff}
+.waypoint__header{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem}
+.waypoint__label{font-weight:600;color:#0f172a}
+.waypoint__actions{display:flex;gap:.35rem}
+.waypoint__meta{display:grid;gap:.75rem}
+.meta-section{border-top:1px dashed #e5e7eb;padding-top:.6rem}
+.meta-section:first-of-type{border-top:none;padding-top:0}
+.meta-section strong{display:block;font-size:.95rem;margin-bottom:.35rem;color:#0f172a}
+.meta-checks{display:flex;flex-wrap:wrap;gap:.5rem}
+.meta-check{display:inline-flex;align-items:center;gap:.35rem;font-size:.9rem;color:#374151;cursor:pointer}
+.meta-check input{width:16px;height:16px}
+.meta-text{width:100%;min-height:60px;padding:.5rem .65rem;border:1px solid #d1d5db;border-radius:.6rem;font-size:.95rem;resize:vertical;background:#fff}
+.meta-text:focus{outline:2px solid rgba(233,66,68,.25);outline-offset:2px}
+.meta-select{width:100%;padding:.5rem .65rem;border:1px solid #d1d5db;border-radius:.6rem;font-size:.95rem;background:#fff}
+.meta-auto{margin:.35rem 0 0;font-size:.85rem;color:#2563eb}
 .ring{width:56px;height:56px;position:relative}
 .ring .text{position:absolute;inset:0;display:grid;place-items:center;font-weight:600;font-size:.85rem}
 .slider{width:100%}
@@ -103,6 +117,28 @@
 .weather-legend i.bar.weak{background:#c7d2fe}
 .weather-legend i.bar.medium{background:#60a5fa}
 .weather-legend i.bar.heavy{background:#1e3a8a}
+.card-gallery #sp-gallery{margin-top:.5rem}
+.card-sunshine .smallcanvas,.card-crowd .smallcanvas{margin-bottom:.5rem}
+.card-proposals .btn.secondary{white-space:nowrap}
+.share-card{margin-top:1.5rem}
+.photographer-toggle{margin:.75rem 0 .35rem}
+.photographer-toggle input{width:18px;height:18px}
+.proposal-form{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0}
+.proposal-form .input{flex:1;min-width:140px}
+.proposal-form .btn{min-width:160px}
+.proposal-form--photographer{margin-top:.5rem}
+.proposal-list{display:flex;flex-direction:column;gap:.6rem;margin-top:.75rem}
+.proposal-item{background:#f8fafc;border:1px solid #e5e7eb;border-radius:.9rem;padding:.75rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.proposal-item__header{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem}
+.proposal-item__time{font-weight:700;color:#0f172a;font-size:1.05rem}
+.proposal-item__meta{display:flex;flex-wrap:wrap;gap:.5rem;font-size:.85rem;color:#475569}
+.proposal-item__status{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+.proposal-item__status.pending{background:#fef3c7;color:#92400e}
+.proposal-item__status.accepted{background:#dcfce7;color:#166534}
+.proposal-item__status.declined{background:#fee2e2;color:#991b1b}
+.proposal-actions{display:flex;flex-wrap:wrap;gap:.4rem}
+.proposal-actions .btn{min-width:140px}
+.proposal-note{font-size:.85rem;color:#475569}
 @media(max-width:640px){
   .route-option{min-width:140px}
   .toolbar{flex-direction:column;align-items:flex-start}
