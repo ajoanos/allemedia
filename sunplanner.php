@@ -18,8 +18,28 @@ wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [],
 wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
 
 
-// Stub Google callback
-$stub = 'window.initSunPlannerMap = function(){ window.dispatchEvent(new Event("sunplanner:gmaps-ready")); };';
+// Stub Google callback with compatibility fallbacks
+$stub = <<<'JS'
+window.__sunplannerGmapsReady = window.__sunplannerGmapsReady || false;
+window.initSunPlannerMap = function () {
+    window.__sunplannerGmapsReady = true;
+    var eventName = 'sunplanner:gmaps-ready';
+    var event;
+    if (typeof window.CustomEvent === 'function') {
+        event = new CustomEvent(eventName);
+    } else {
+        try {
+            event = document.createEvent('Event');
+            event.initEvent(eventName, true, true);
+        } catch (err) {
+            event = null;
+        }
+    }
+    if (event && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(event);
+    }
+};
+JS;
 
 wp_add_inline_script('sunplanner-app', $stub, 'before');
 

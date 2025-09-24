@@ -226,6 +226,8 @@
 
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
+  var mapBootstrapped = false;
+  var mapErrorShown = false;
   var dirRenderers = [];
   var points = [];
   var driveMin = 0;
@@ -2050,8 +2052,66 @@
     persistState();
   }
 
-  // start
-  function startApp(){ try{ updateSunWeather(); }catch(e){} if(window.google && window.google.maps){ initMap(); } }
-  if(window.google && window.google.maps) startApp();
-  window.addEventListener('sunplanner:gmaps-ready', startApp, { once:true });
+  // start & Google Maps bootstrapping helpers
+  function showMapError(){
+    if(mapErrorShown) return;
+    mapErrorShown = true;
+    toast('Nie udało się załadować mapy Google. Sprawdź połączenie lub klucz API.');
+  }
+
+  function initMapIfReady(){
+    if(mapBootstrapped) return true;
+    if(window.google && window.google.maps){
+      mapBootstrapped = true;
+      try {
+        initMap();
+      } catch(err){
+        mapBootstrapped = false;
+        console.error('Allemedia SunPlanner: błąd inicjalizacji mapy', err);
+        showMapError();
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function waitForGoogleMaps(attempt){
+    if(initMapIfReady()) return;
+    if(attempt >= 40){
+      console.warn('Allemedia SunPlanner: Google Maps nie załadowało się w czasie.');
+      showMapError();
+      return;
+    }
+    setTimeout(function(){ waitForGoogleMaps(attempt+1); }, 250);
+  }
+
+  function startApp(){
+    try { updateSunWeather(); }
+    catch(err){ console.warn('Allemedia SunPlanner: problem przy aktualizacji pogody', err); }
+    if(initMapIfReady()) return;
+    waitForGoogleMaps(0);
+  }
+
+  startApp();
+
+  if(window.__sunplannerGmapsReady){
+    waitForGoogleMaps(0);
+  }
+
+  window.addEventListener('sunplanner:gmaps-ready', function(){ waitForGoogleMaps(0); }, { once:true });
+
+  (function monitorGoogleMapsScript(){
+    var tries=0;
+    function bind(){
+      var script=document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+      if(!script){
+        if(tries++ < 10){ setTimeout(bind, 200); }
+        return;
+      }
+      script.addEventListener('load', function(){ waitForGoogleMaps(0); }, { once:true });
+      script.addEventListener('error', function(){ showMapError(); }, { once:true });
+    }
+    bind();
+  })();
 })();
