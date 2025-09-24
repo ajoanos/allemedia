@@ -949,13 +949,31 @@
       ctx.strokeStyle='rgba(148,163,184,0.3)';
       ctx.lineWidth=1;
       ctx.setLineDash([4,6]);
+      ctx.fillStyle='#64748b';
       for(var t=1;t<=4;t++){
         var val=(tickMax/4)*t;
         var y=bottom-(val/tickMax)*barArea;
         ctx.beginPath();
         ctx.moveTo(leftPad,y);
         ctx.lineTo(axisX,y);
-    ctx.stroke();
+        ctx.stroke();
+        ctx.fillText(formatPrec(val)+' mm', axisX+8, y+4);
+      }
+      ctx.setLineDash([]);
+      points.forEach(function(p,idx){
+        if(!p.prec) return;
+        var color=barColor(p.prec);
+        if(!color) return;
+        var x=leftPad+(idx/(points.length-1||1))*chartWidth;
+        var heightPct=Math.min(p.prec,tickMax)/tickMax;
+        var barHeight=heightPct*barArea;
+        var barWidth=Math.max(6,chartWidth/(points.length||1)*0.6);
+        ctx.fillStyle=color;
+        ctx.fillRect(x-barWidth/2, bottom, barWidth, -barHeight);
+      });
+    } else {
+      ctx.setLineDash([]);
+    }
   }
 
   function renderSunshineChart(hourly,dateStr,sunrise,sunset,loading){
