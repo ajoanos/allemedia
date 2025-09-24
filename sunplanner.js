@@ -736,6 +736,10 @@
 
   // geocode
   var placesService;
+  function hasPlacesLibrary(){
+    return !!(window.google && window.google.maps && window.google.maps.places && typeof window.google.maps.places.Autocomplete === 'function');
+  }
+
   function geocode(text){
     return new Promise(function(resolve,reject){
       if(!geocoder || !map){ reject(new Error('mapa niegotowa')); return; }
@@ -744,13 +748,17 @@
           var loc=res[0].geometry.location;
           resolve({lat:loc.lat(),lng:loc.lng(),label:res[0].formatted_address});
         } else {
-          if(!placesService) placesService = new google.maps.places.PlacesService(map);
-          placesService.textSearch({query:text},function(r2,st2){
-            if(st2==='OK' && r2[0]){
-              var loc=r2[0].geometry.location;
-              resolve({lat:loc.lat(),lng:loc.lng(),label:r2[0].name});
-            } else reject(new Error('Nie znaleziono'));
-          });
+          if(hasPlacesLibrary()){
+            if(!placesService) placesService = new google.maps.places.PlacesService(map);
+            placesService.textSearch({query:text},function(r2,st2){
+              if(st2==='OK' && r2[0]){
+                var loc=r2[0].geometry.location;
+                resolve({lat:loc.lat(),lng:loc.lng(),label:r2[0].name});
+              } else reject(new Error('Nie znaleziono'));
+            });
+          } else {
+            reject(new Error('Nie znaleziono'));
+          }
         }
       });
     });
@@ -1943,14 +1951,18 @@
     dragMarker=new google.maps.Marker({position:DEF,map:map,draggable:true,visible:false});
     google.maps.event.addListener(map,'click',function(e){ dragMarker.setPosition(e.latLng); dragMarker.setVisible(true); });
 
-    placesAutocomplete=new google.maps.places.Autocomplete($('#sp-place'),{fields:['geometry','name']});
-    placesAutocomplete.addListener('place_changed',function(){
-      var pl=placesAutocomplete.getPlace(); if(!pl || !pl.geometry) return;
-      var pos=pl.geometry.location;
-      points.push({lat:pos.lat(),lng:pos.lng(),label:pl.name||$('#sp-place').value||'Punkt'});
-      $('#sp-place').value='';
-      renderList(); recalcRoute(false); updateDerived(); loadGallery();
-    });
+    if(hasPlacesLibrary()){
+      placesAutocomplete=new google.maps.places.Autocomplete($('#sp-place'),{fields:['geometry','name']});
+      placesAutocomplete.addListener('place_changed',function(){
+        var pl=placesAutocomplete.getPlace(); if(!pl || !pl.geometry) return;
+        var pos=pl.geometry.location;
+        points.push({lat:pos.lat(),lng:pos.lng(),label:pl.name||$('#sp-place').value||'Punkt'});
+        $('#sp-place').value='';
+        renderList(); recalcRoute(false); updateDerived(); loadGallery();
+      });
+    } else {
+      console.warn('Allemedia SunPlanner: biblioteka Google Places niedostępna – autocomplete wyłączone.');
+    }
 
     renderList(); updateDerived(); renderRouteOptions();
     if(points.length>=2) recalcRoute(false); else updateSunWeather();
