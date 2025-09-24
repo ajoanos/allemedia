@@ -143,6 +143,44 @@ add_action('template_redirect', function () {
         global $wp_query;
         if ($wp_query) {
             $wp_query->is_404 = false;
+            $wp_query->is_home = false;
+            $wp_query->is_singular = true;
+            $wp_query->is_page = true;
+        }
+    }
+});
+
+add_filter('document_title_parts', function ($parts) {
+    if (get_query_var('sunplan')) {
+        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+    }
+    return $parts;
+});
+
+add_filter('body_class', function ($classes) {
+    if (get_query_var('sunplan')) {
+        $classes[] = 'sunplanner-share-page';
+    }
+    return $classes;
+});
+
+
+add_filter('template_include', function ($template) {
+    if (get_query_var('sunplan')) {
+        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
+        if (file_exists($share_template)) {
+            return $share_template;
+        }
+    }
+    return $template;
+});
+
+add_action('template_redirect', function () {
+    if (get_query_var('sunplan')) {
+        status_header(200);
+        global $wp_query;
+        if ($wp_query) {
+            $wp_query->is_404 = false;
 
             $wp_query->is_home = false;
             $wp_query->is_singular = true;
@@ -241,13 +279,30 @@ function sunplanner_build_radar_template($base, $path)
         return '';
     }
 
-    $host = rtrim((string) $base, '/') . '/';
-    $clean_path = trim((string) $path, '/');
-    if ($clean_path === '') {
+    $raw = trim((string) $path);
+    if ($raw === '') {
         return '';
     }
 
-    return sunplanner_filter_radar_template($host . $clean_path . '/256/{z}/{x}/{y}/2/1_1.png');
+    if (preg_match('#^https?://#i', $raw)) {
+        $candidate = $raw;
+    } else {
+        $host = rtrim((string) $base, '/') . '/';
+        $clean_path = ltrim($raw, '/');
+        $candidate = $host . $clean_path;
+    }
+
+    if (strpos($candidate, 'https://tilecache.rainviewer.com/') !== 0) {
+        $candidate = 'https://tilecache.rainviewer.com/' . ltrim($candidate, '/');
+    }
+
+    if (strpos($candidate, '{z}') !== false && strpos($candidate, '{x}') !== false && strpos($candidate, '{y}') !== false) {
+        return sunplanner_filter_radar_template($candidate);
+    }
+
+    $candidate = rtrim($candidate, '/');
+
+    return sunplanner_filter_radar_template($candidate . '/256/{z}/{x}/{y}/2/1_1.png');
 }
 
 function sunplanner_resolve_radar_template()
@@ -265,6 +320,7 @@ function sunplanner_resolve_radar_template()
         'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
         'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
         'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png',
+        'https://tilecache.rainviewer.com/v2/radar/last/256/{z}/{x}/{y}/2/1_1.png',
     ];
 
     $response = wp_remote_get('https://api.rainviewer.com/public/weather-maps.json', [
@@ -293,6 +349,9 @@ function sunplanner_resolve_radar_template()
                     $path = 'v2/radar/' . $frame['time'];
                 }
                 $template = sunplanner_build_radar_template($host, $path);
+                if ($template === '' && isset($frame['url'])) {
+                    $template = sunplanner_build_radar_template('', $frame['url']);
+                }
                 if ($template !== '') {
                     set_transient($cache_key, $template, 10 * MINUTE_IN_SECONDS);
                     return $template;

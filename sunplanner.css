@@ -16,6 +16,7 @@
 .rowd{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0}
 .col{display:flex;flex-direction:column}
 .input{flex:1;min-width:180px;padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:1rem}
+
 .btn{padding:.55rem .9rem;border-radius:.5rem;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;transition:all .18s ease;font-weight:600;box-shadow:0 2px 6px rgba(233,66,68,.18)}
 .btn:hover,.btn:focus-visible{transform:translateY(-1px);box-shadow:0 8px 18px rgba(233,66,68,.25)}
 .btn:focus-visible{outline:3px solid rgba(233,66,68,.35);outline-offset:2px}
@@ -25,7 +26,6 @@
 .btn.ghost:hover,.btn.ghost:focus-visible{border-color:var(--accent);color:#991b1b}
 .banner{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:.5rem .75rem;border-radius:.5rem;margin:.5rem 0}
 #planner-map{width:100%;min-height:440px;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.08);overflow:hidden;overscroll-behavior:contain}
-
 .cards{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
 .card{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.07);padding:1rem}
 .card.inner{box-shadow:none;border:1px solid #e5e7eb;border-radius:12px;background:#fff}

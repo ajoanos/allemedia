@@ -203,7 +203,8 @@
   var RADAR_FALLBACKS = [
     'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
     'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
-    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png'
+    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png',
+    'https://tilecache.rainviewer.com/v2/radar/last/256/{z}/{x}/{y}/2/1_1.png'
   ];
 
   var restoredFromShare = false;
@@ -816,12 +817,27 @@
         var template = null;
         function buildTemplate(base,path){
           if(!path) return null;
-          var host=(base||'').replace(/\/+$/,'/');
-          var clean=String(path).replace(/^\/+|\/+$/g,'');
-          if(!clean) return null;
-          return host + clean + '/256/{z}/{x}/{y}/2/1_1.png';
-        }
 
+          var raw=String(path).trim();
+          if(!raw) return null;
+          var host='';
+          var clean=raw;
+          if(/^https?:\/\//i.test(clean)){
+            host='';
+          } else {
+            host=(base||'').replace(/\/+$/,'/');
+            clean=clean.replace(/^\/+/, '');
+          }
+          var candidate=(host||'')+clean;
+          if(candidate.indexOf('https://tilecache.rainviewer.com/')!==0){
+            if(/^https?:\/\//i.test(candidate)) return null;
+            candidate='https://tilecache.rainviewer.com/'+candidate.replace(/^\/+/, '');
+          }
+          if(candidate.indexOf('{z}')!==-1 && candidate.indexOf('{x}')!==-1 && candidate.indexOf('{y}')!==-1){
+            return candidate;
+          }
+          return candidate.replace(/\/+$/, '') + '/256/{z}/{x}/{y}/2/1_1.png';
+        }
         for(var i=frames.length-1;i>=0;i--){
           var frame=frames[i];
           if(!frame) continue;
@@ -832,7 +848,9 @@
             var pathStr=String(frame.path);
             var base = pathStr.indexOf('v3/') === 0 ? 'https://tilecache.rainviewer.com/' : 'https://tilecache.rainviewer.com/v2/radar/';
             template = buildTemplate(base, pathStr);
-
+          }
+          if(!template && frame.url){
+            template = buildTemplate('', frame.url);
           }
           if(!template && typeof frame.time !== 'undefined'){
             template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', frame.time);
@@ -842,6 +860,7 @@
         }
         if(!template) throw new Error('no-template');
         assignRadarTemplate(template);
+
       });
   }
   function fetchRadarViaProxy(){
@@ -853,6 +872,7 @@
         throw new Error('no-template');
       });
   }
+
   function fetchRadarTemplate(){
     var promise;
     if(RADAR_URL){
