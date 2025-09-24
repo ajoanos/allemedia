@@ -126,25 +126,69 @@ add_filter('body_class', function ($classes) {
 
 /** === REST: create short link === */
 add_action('rest_api_init', function () {
-register_rest_route('sunplanner/v1', '/share', [
-'methods' => 'POST',
-'permission_callback' => '__return_true',
-'args' => [
-'sp' => ['required' => true, 'type' => 'string'],
-],
-'callback' => function (WP_REST_Request $req) {
-$sp = $req->get_param('sp');
-if (!is_string($sp) || $sp === '') {
-return new WP_REST_Response(['error' => 'empty'], 400);
-}
-$id = substr(wp_hash($sp . microtime(true)), 0, 8);
-$opt_key = 'sunplanner_share_' . $id;
-add_option($opt_key, $sp, '', 'no');
-$url = home_url('/sp/' . rawurlencode($id) . '/');
-return ['id' => $id, 'url' => $url];
-}
-]);
+    register_rest_route('sunplanner/v1', '/share', [
+        'methods' => 'POST',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'sp' => ['required' => true, 'type' => 'string'],
+        ],
+        'callback' => function (WP_REST_Request $req) {
+            $sp = $req->get_param('sp');
+            if (!is_string($sp) || $sp === '') {
+                return new WP_REST_Response(['error' => 'empty'], 400);
+            }
+
+            $id = '';
+            $tries = 0;
+            while ($tries < 5 && $id === '') {
+                $raw = substr(wp_hash($sp . microtime(true) . wp_rand()), 0, 12);
+                $candidate = substr(sanitize_key($raw), 0, 8);
+                if ($candidate === '') {
+                    $tries++;
+                    continue;
+                }
+                $opt_key = 'sunplanner_share_' . $candidate;
+                if (false !== get_option($opt_key, false)) {
+                    $tries++;
+                    continue;
+                }
+                if (add_option($opt_key, $sp, '', 'no')) {
+                    $id = $candidate;
+                }
+                $tries++;
+            }
+
+            if ($id === '') {
+                return new WP_REST_Response(['error' => 'unavailable'], 500);
+            }
+
+            $url = home_url(trailingslashit('sp/' . rawurlencode($id)));
+            return ['id' => $id, 'url' => $url];
+        }
+    ]);
 });
+
+function sunplanner_filter_radar_template($template)
+{
+    if (!is_string($template)) {
+        return '';
+    }
+
+    $template = trim($template);
+    if ($template === '') {
+        return '';
+    }
+
+    if (strpos($template, 'https://tilecache.rainviewer.com/') !== 0) {
+        return '';
+    }
+
+    if (strpos($template, '{z}') === false || strpos($template, '{x}') === false || strpos($template, '{y}') === false) {
+        return '';
+    }
+
+    return $template;
+}
 
 function sunplanner_build_radar_template($base, $path)
 {
@@ -158,7 +202,7 @@ function sunplanner_build_radar_template($base, $path)
         return '';
     }
 
-    return $host . $clean_path . '/256/{z}/{x}/{y}/2/1_1.png';
+    return sunplanner_filter_radar_template($host . $clean_path . '/256/{z}/{x}/{y}/2/1_1.png');
 }
 
 function sunplanner_resolve_radar_template()
@@ -166,7 +210,10 @@ function sunplanner_resolve_radar_template()
     $cache_key = 'sunplanner_radar_template';
     $cached = get_transient($cache_key);
     if (is_string($cached) && $cached !== '') {
-        return $cached;
+        $valid = sunplanner_filter_radar_template($cached);
+        if ($valid !== '') {
+            return $valid;
+        }
     }
 
     $fallbacks = [
@@ -210,8 +257,9 @@ function sunplanner_resolve_radar_template()
     }
 
     foreach ($fallbacks as $fallback) {
-        if ($fallback !== '') {
-            return $fallback;
+        $valid = sunplanner_filter_radar_template($fallback);
+        if ($valid !== '') {
+            return $valid;
         }
     }
 
@@ -229,7 +277,7 @@ add_action('rest_api_init', function () {
             }
 
             return [
-                'template' => esc_url_raw($template),
+                'template' => $template,
             ];
         },
     ]);

@@ -91,6 +91,11 @@
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-rise-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-rise-p">—</strong></div>'+
               '</div>'+
+              '<div class="glow-info morning">'+
+                '<h4>Poranek</h4>'+
+                '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
+                '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
+              '</div>'+
             '</div>'+
             '<div class="card inner">'+
               '<h3>Zachód <small id="sp-set-date" class="muted"></small></h3>'+
@@ -114,18 +119,11 @@
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-set-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-set-p">—</strong></div>'+
               '</div>'+
-            '</div>'+
-          '</div>'+
-          '<div class="glow-band">'+
-            '<div class="glow-info morning">'+
-              '<h4>Poranek</h4>'+
-              '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
-              '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
-            '</div>'+
-            '<div class="glow-info align-right evening">'+
-              '<h4>Wieczór</h4>'+
-              '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
-              '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+              '<div class="glow-info align-right evening">'+
+                '<h4>Wieczór</h4>'+
+                '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
+                '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+              '</div>'+
             '</div>'+
           '</div>'+
         '</div>'+
