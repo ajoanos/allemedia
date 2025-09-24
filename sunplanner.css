@@ -3,6 +3,13 @@
 *{box-sizing:border-box}
 .sunplanner-wrap{width:100%}
 .sunplanner{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;line-height:1.45}
+.sunplanner-share{min-height:60vh}
+.sunplanner-share__inner{margin:0 auto;max-width:1200px;padding:2rem 1rem}
+.sunplanner-share__header{text-align:center;margin-bottom:2rem}
+.sunplanner-share__badge{display:inline-block;padding:.35rem .75rem;border-radius:999px;background:#fef3c7;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+.sunplanner-share__title{margin:.85rem 0 .4rem;font-size:2rem;font-weight:700;color:#0f172a}
+.sunplanner-share__desc{margin:0 auto;max-width:640px;color:#475569;font-size:1rem}
+.sunplanner-share__desc a{color:inherit;text-decoration:underline}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;margin:.6rem 0}
 .rowd{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0}
 .col{display:flex;flex-direction:column}
@@ -19,9 +26,9 @@
 .route-card .alt-heading{margin:0}
 .grid2{display:grid;grid-template-columns:1fr;gap:.8rem}
 .golden-block{display:flex;flex-direction:column;gap:1rem;margin-top:1rem}
-.glow-band{display:flex;flex-wrap:wrap;gap:1rem}
-.glow-info{flex:1 1 220px;min-width:200px;background:linear-gradient(135deg,rgba(253,230,138,.85),rgba(253,186,116,.85));border-radius:16px;padding:1rem;color:#78350f;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:.35rem;box-shadow:0 4px 14px rgba(253,186,116,.25)}
-.glow-band .glow-info{flex:1 1 260px}
+
+.glow-info{flex:none;width:100%;min-width:0;background:linear-gradient(135deg,rgba(253,230,138,.85),rgba(253,186,116,.85));border-radius:16px;padding:1rem;color:#78350f;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:.35rem;box-shadow:0 4px 14px rgba(253,186,116,.25);margin-top:.75rem}
+
 .glow-info.align-right{background:linear-gradient(135deg,rgba(191,219,254,.85),rgba(147,197,253,.85));color:#1e3a8a;text-align:right;align-items:flex-end}
 .glow-info h4{margin:0;font-size:1rem;font-weight:600}
 .glow-line{margin:0;font-size:.95rem;font-weight:600;line-height:1.35;text-shadow:0 1px 0 rgba(255,255,255,.45);letter-spacing:.01em}
@@ -53,7 +60,9 @@
 .route-option:hover{border-color:var(--accent);box-shadow:0 6px 18px rgba(233,66,68,.15)}
 .route-option.active{border-color:var(--accent);background:#fef2f2;color:#991b1b}
 .share-row .btn{flex:1;min-width:160px}
-#sp-short-status{margin-top:.25rem;font-size:.85rem}
+#sp-short-status{margin-top:.6rem;font-size:.95rem;font-weight:600;color:#111}
+#sp-short-status a{color:var(--accent);font-weight:700;text-decoration:none}
+#sp-short-status a:hover{color:#b91c1c;text-decoration:underline}
 .toolbar{justify-content:space-between;margin:.4rem 0 1rem}
 .toolbar .switch{font-size:.9rem;color:#374151}
 .toolbar .switch input{margin-right:.3rem}
@@ -69,7 +78,8 @@
   .toolbar{flex-direction:column;align-items:flex-start}
   .toolbar .btn{width:100%}
   .share-row .btn{min-width:140px}
+  .sunplanner-share__title{font-size:1.65rem}
 }
 @media(max-width:780px){
-  .glow-info,.glow-info.align-right{flex:1 1 100%;text-align:left;align-items:flex-start}
+  .glow-info.align-right{text-align:left;align-items:flex-start}
 }

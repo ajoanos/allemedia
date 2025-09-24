@@ -7,6 +7,7 @@
   var TZ           = CFG.TZ || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw');
   var REST_URL     = CFG.REST_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
+  var RADAR_URL    = CFG.RADAR_URL || '';
   var BASE_URL = (function(){
     function stripQueryAndHash(url){ return url.replace(/[?#].*$/, ''); }
     var locOrigin = location.origin || (location.protocol + '//' + location.host);
@@ -90,6 +91,11 @@
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-rise-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-rise-p">—</strong></div>'+
               '</div>'+
+              '<div class="glow-info morning">'+
+                '<h4>Poranek</h4>'+
+                '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
+                '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
+              '</div>'+
             '</div>'+
             '<div class="card inner">'+
               '<h3>Zachód <small id="sp-set-date" class="muted"></small></h3>'+
@@ -113,20 +119,14 @@
                 '<div class="rowd"><span>Widocz.</span><strong id="sp-set-v">—</strong></div>'+
                 '<div class="rowd"><span>Opady</span><strong id="sp-set-p">—</strong></div>'+
               '</div>'+
+              '<div class="glow-info align-right evening">'+
+                '<h4>Wieczór</h4>'+
+                '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
+                '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+              '</div>'+
             '</div>'+
           '</div>'+
-          '<div class="glow-band">'+
-            '<div class="glow-info morning">'+
-              '<h4>Poranek</h4>'+
-              '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
-              '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
-            '</div>'+
-            '<div class="glow-info align-right evening">'+
-              '<h4>Wieczór</h4>'+
-              '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
-              '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
-            '</div>'+
-          '</div>'+
+
         '</div>'+
 
         '<h3 style="margin-top:1rem">Udostępnij / Eksport</h3>'+
@@ -167,6 +167,8 @@
   function setText(id,v){ var el=(id.charAt(0)==='#'?$(id):$('#'+id)); if(el) el.textContent=v; }
   function deg(rad){ return rad*180/Math.PI; }
   function bearingFromAzimuth(az){ return (deg(az)+180+360)%360; }
+  function isValidDate(d){ return d instanceof Date && !isNaN(d); }
+  function addMinutes(date, minutes){ if(!isValidDate(date)) return null; return new Date(date.getTime()+minutes*60000); }
 
   function projectPoint(lat,lng,distanceMeters,bearingDeg){
     var R=6378137;
@@ -191,7 +193,13 @@
   var shortLinkValue = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
-  var RADAR_FALLBACK_TEMPLATE = 'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png';
+
+  var RADAR_FALLBACKS = [
+    'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
+    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
+    'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png'
+  ];
+
   var restoredFromShare = false;
   var STORAGE_KEY = 'sunplanner-state';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
@@ -305,6 +313,31 @@
       goldPM: pair(t.goldenHour, t.sunset),
       blueAM: pair(t.civilDawn,  t.sunrise),
       bluePM: pair(t.sunset,     t.civilDusk)
+    };
+  }
+
+  function applyBands(b){
+    function line(label, range){
+      if(range && isValidDate(range[0]) && isValidDate(range[1])){
+        return label + fmt(range[0])+'–'+fmt(range[1]);
+      }
+      return label + '— —';
+    }
+    setText('sp-gold-am', line('☀️ Poranna złota godzina: ', b && b.goldAM));
+    setText('sp-blue-am', line('🌌 Poranna niebieska godzina: ', b && b.blueAM));
+    setText('sp-gold-pm', line('☀️ Wieczorna złota godzina: ', b && b.goldPM));
+    setText('sp-blue-pm', line('🌌 Wieczorna niebieska godzina: ', b && b.bluePM));
+  }
+
+  function deriveBandsFromSun(sunrise,sunset){
+    if(!isValidDate(sunrise) || !isValidDate(sunset)) return null;
+    var GOLD=60, BLUE=35;
+    function rng(a,b){ if(!isValidDate(a) || !isValidDate(b)) return null; return a<=b?[a,b]:[b,a]; }
+    return {
+      goldAM: rng(sunrise, addMinutes(sunrise, GOLD)),
+      goldPM: rng(addMinutes(sunset, -GOLD), sunset),
+      blueAM: rng(addMinutes(sunrise, -BLUE), sunrise),
+      bluePM: rng(sunset, addMinutes(sunset, BLUE))
     };
   }
 
@@ -656,16 +689,12 @@
       clearWeatherPanels();
       renderHourlyChart(null,null,false);
       updateSunDirection(null,null);
+      applyBands(null);
       return;
     }
 
     var base=dateFromInput(dStr);
-    var b=bands(dest.lat, dest.lng, base);
-    function rng(a,b){ return fmt(a)+'–'+fmt(b); }
-    setText('sp-gold-am','☀️ Poranna złota godzina: '+rng(b.goldAM[0],b.goldAM[1]));
-    setText('sp-blue-am','🌌 Poranna niebieska godzina: '+rng(b.blueAM[0],b.blueAM[1]));
-    setText('sp-gold-pm','☀️ Wieczorna złota godzina: '+rng(b.goldPM[0],b.goldPM[1]));
-    setText('sp-blue-pm','🌌 Wieczorna niebieska godzina: '+rng(b.bluePM[0],b.bluePM[1]));
+    applyBands(bands(dest.lat, dest.lng, base));
 
     var t=SunCalc.getTimes(base, dest.lat, dest.lng);
     var sunrise=t.sunrise, sunset=t.sunset;
@@ -690,6 +719,8 @@
         updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
         fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
         fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+        var derivedBands = deriveBandsFromSun(sunrise, sunset);
+        if(derivedBands) applyBands(derivedBands);
         if(data.hourly){
           setWeatherOnly('rise', data.hourly, sunrise);
           setWeatherOnly('set' , data.hourly, sunset);
@@ -699,13 +730,26 @@
       .catch(function(){ renderHourlyChart(null,dStr,false); });
   }
 
-  function fetchRadarTemplate(){
-    return fetch('https://api.rainviewer.com/public/weather-maps.json')
+  function assignRadarTemplate(template){
+    if(!template) return false;
+    radarTemplate = template;
+    radarFetchedAt = Date.now();
+    return true;
+  }
+  function useRadarFallback(){
+    for(var i=0;i<RADAR_FALLBACKS.length;i++){
+      var tpl=RADAR_FALLBACKS[i];
+      if(tpl){ assignRadarTemplate(tpl); return; }
+    }
+  }
+  function fetchRadarDirect(){
+    return fetch('https://api.rainviewer.com/public/weather-maps.json',{headers:{'Accept':'application/json'}})
       .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
       .then(function(data){
-        var frames = (data && data.radar && data.radar.nowcast) ? data.radar.nowcast : [];
+        var nowcast = (data && data.radar && Array.isArray(data.radar.nowcast)) ? data.radar.nowcast : [];
+        var past = (data && data.radar && Array.isArray(data.radar.past)) ? data.radar.past : [];
+        var frames = nowcast.concat(past);
         if(!frames.length) throw new Error('no-data');
-        var latest = frames[frames.length-1];
         var template = null;
         function buildTemplate(base,path){
           if(!path) return null;
@@ -714,28 +758,45 @@
           if(!clean) return null;
           return host + clean + '/256/{z}/{x}/{y}/2/1_1.png';
         }
-        if(latest){
-          if(!template && latest.host && latest.path){
-            template = buildTemplate(latest.host, latest.path);
+
+        for(var i=frames.length-1;i>=0;i--){
+          var frame=frames[i];
+          if(!frame) continue;
+          if(!template && frame.host && frame.path){
+            template = buildTemplate(frame.host, frame.path);
           }
-          if(!template && latest.path){
-            var pathStr = String(latest.path);
+          if(!template && frame.path){
+            var pathStr=String(frame.path);
             var base = pathStr.indexOf('v3/') === 0 ? 'https://tilecache.rainviewer.com/' : 'https://tilecache.rainviewer.com/v2/radar/';
             template = buildTemplate(base, pathStr);
+
           }
-          if(!template && typeof latest.time !== 'undefined'){
-            template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', latest.time);
+          if(!template && typeof frame.time !== 'undefined'){
+            template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', frame.time);
           }
+          if(template) break;
         }
         if(!template) throw new Error('no-template');
-        radarTemplate = template;
-        radarFetchedAt = Date.now();
-      })
-      .catch(function(err){
-        console.warn('SunPlanner radar template fallback', err);
-        radarTemplate = RADAR_FALLBACK_TEMPLATE;
-        radarFetchedAt = Date.now();
+        assignRadarTemplate(template);
       });
+  }
+  function fetchRadarViaProxy(){
+    if(!RADAR_URL) return Promise.reject(new Error('no-proxy'));
+    return fetch(RADAR_URL,{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
+      .then(function(data){
+        if(data && data.template){ assignRadarTemplate(data.template); return; }
+        throw new Error('no-template');
+      });
+  }
+  function fetchRadarTemplate(){
+    var promise;
+    if(RADAR_URL){
+      promise = fetchRadarViaProxy().catch(function(err){ console.warn('SunPlanner radar proxy fallback', err); return fetchRadarDirect(); });
+    } else {
+      promise = fetchRadarDirect();
+    }
+    return promise.catch(function(err){ console.warn('SunPlanner radar template fallback', err); useRadarFallback(); });
   }
   function ensureRadarLayer(){
     var needsRefresh = !radarTemplate || (Date.now() - radarFetchedAt > 10*60*1000);
@@ -791,7 +852,7 @@
     if(box){
       box.innerHTML='';
       if(url){
-        var span=document.createElement('span'); span.textContent='Krótki link: ';
+        var span=document.createElement('strong'); span.textContent='Krótki link: ';
         var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.textContent=url;
         box.appendChild(span); box.appendChild(a);
       }
