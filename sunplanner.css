@@ -1,3 +1,4 @@
+@charset "UTF-8";
 :root{--accent:#e94244;--ring-bg:#e5e7eb;}
 *{box-sizing:border-box}
 .sunplanner-wrap{width:100%}

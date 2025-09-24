@@ -59,6 +59,21 @@ wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 ]);
 });
 
+// Ensure enqueued assets are explicitly marked as UTF-8 for proper character rendering
+add_filter('script_loader_tag', function ($tag, $handle, $src) {
+if ($handle === 'sunplanner-app' && strpos($tag, ' charset=') === false) {
+$tag = str_replace('<script ', '<script charset="utf-8" ', $tag);
+}
+return $tag;
+}, 10, 3);
+
+add_filter('style_loader_tag', function ($html, $handle, $href, $media) {
+if ($handle === 'sunplanner-css' && strpos($html, ' charset=') === false) {
+$html = str_replace('<link ', '<link charset="utf-8" ', $html);
+}
+return $html;
+}, 10, 4);
+
 
 /** === Shortcode === */
 add_shortcode('sunplanner', function () {
