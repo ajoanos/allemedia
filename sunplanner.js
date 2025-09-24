@@ -1151,7 +1151,9 @@
     }
     return timeStr;
   }
+
   var renderProposalsList = function renderProposalsList(){
+
     var box=$('#sp-proposals-list');
     if(!box) return;
     if(!sessionSlots.length){
@@ -1200,7 +1202,9 @@
       item.appendChild(actions);
       box.appendChild(item);
     });
+
   };
+
   function addProposal(proposer,date,time,note){
     var cleanDate=(typeof date==='string')?date.trim():'';
     var cleanTime=(typeof time==='string')?time.trim():'';
