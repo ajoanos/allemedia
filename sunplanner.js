@@ -1,4 +1,4 @@
-/* SunPlanner v1.7.0 - rozbudowany planer z wykresem słońca, radarową warstwą mapy, autosave i eksportami */
+/* SunPlanner v1.7.1 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
   var GMAPS_KEY    = CFG.GMAPS_KEY || '';
@@ -67,12 +67,7 @@
         '<div class="rowd"><span>Dystans</span><strong id="sp-t-dist">—</strong></div>'+
 
         '<div class="golden-block">'+
-          '<div class="glow-info">'+
-            '<h4>Poranek</h4>'+
-            '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
-            '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
-          '</div>'+
-          '<div class="grid2">'+
+          '<div class="grid2 glow-grid">'+
             '<div class="card inner">'+
               '<h3>Świt <small id="sp-rise-date" class="muted"></small></h3>'+
               '<div class="rowd"><span>Świt</span><strong id="sp-rise-sun">—</strong></div>'+
@@ -120,10 +115,17 @@
               '</div>'+
             '</div>'+
           '</div>'+
-          '<div class="glow-info align-right">'+
-            '<h4>Wieczór</h4>'+
-            '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
-            '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+          '<div class="glow-band">'+
+            '<div class="glow-info morning">'+
+              '<h4>Poranek</h4>'+
+              '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
+              '<p id="sp-blue-am" class="glow-line">🌌 Poranna niebieska godzina: — —</p>'+
+            '</div>'+
+            '<div class="glow-info align-right evening">'+
+              '<h4>Wieczór</h4>'+
+              '<p id="sp-gold-pm" class="glow-line">☀️ Wieczorna złota godzina: — —</p>'+
+              '<p id="sp-blue-pm" class="glow-line">🌌 Wieczorna niebieska godzina: — —</p>'+
+            '</div>'+
           '</div>'+
         '</div>'+
 
@@ -148,16 +150,12 @@
         '</div>'+
       '</div>'+
       '<div class="card">'+
-        '<h3>Wykres ścieżki słońca</h3>'+
-        '<div class="sun-meta">'+
-          '<div><span class="muted">Świt</span><strong id="sp-sunrise-time">—</strong><small id="sp-sunrise-az">—</small></div>'+
-          '<div><span class="muted">Zachód</span><strong id="sp-sunset-time">—</strong><small id="sp-sunset-az">—</small></div>'+
-        '</div>'+
-        '<canvas id="sp-sun-canvas" class="smallcanvas" aria-label="Wykres słońca"></canvas>'+
-      '</div>'+
-      '<div class="card">'+
         '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
         '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+        '<div class="weather-legend">'+
+          '<span><i class="line"></i>Temperatura</span>'+
+          '<span><i class="bar"></i>Możliwe opady</span>'+
+        '</div>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -193,7 +191,7 @@
   var shortLinkValue = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
-  var RADAR_FALLBACK_TEMPLATE = 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png';
+  var RADAR_FALLBACK_TEMPLATE = 'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png';
   var restoredFromShare = false;
   var STORAGE_KEY = 'sunplanner-state';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
@@ -532,86 +530,6 @@
     ctx.clearRect(0,0,width,height);
     return {ctx:ctx,width:width,height:height};
   }
-  function renderSunChart(lat,lng,date,sunrise,sunset){
-    var canvas=document.getElementById('sp-sun-canvas');
-    if(!canvas) return;
-    var prep=prepareCanvas(canvas); if(!prep) return;
-    var ctx=prep.ctx, width=prep.width, height=prep.height;
-    ctx.fillStyle='#f9fafb';
-    ctx.fillRect(0,0,width,height);
-    if(typeof lat!=='number' || typeof lng!=='number' || !(date instanceof Date)){
-      ctx.fillStyle='#9ca3af';
-      ctx.font='12px system-ui, sans-serif';
-      ctx.fillText('Dodaj cel, aby zobaczyć wykres.',12,height/2);
-      return;
-    }
-    var start=new Date(date); start.setHours(0,0,0,0);
-    var steps=48;
-    var pts=[], altMin=90, altMax=-90;
-    for(var i=0;i<=steps;i++){
-      var dt=new Date(start.getTime()+i*30*60000);
-      var pos=SunCalc.getPosition(dt, lat, lng) || {};
-      var alt=pos.altitude!=null ? deg(pos.altitude) : -10;
-      pts.push({time:dt,alt:alt});
-      if(alt<altMin) altMin=alt;
-      if(alt>altMax) altMax=alt;
-    }
-    altMin=Math.min(altMin,-10);
-    altMax=Math.max(altMax,75);
-    var range=altMax-altMin || 1;
-    ctx.fillStyle='rgba(30,64,175,0.1)';
-    ctx.beginPath();
-    pts.forEach(function(pt,idx){
-      var x=(idx/(pts.length-1||1))*width;
-      var y=height-((pt.alt-altMin)/range)*height;
-      if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    });
-    ctx.lineTo(width,height); ctx.lineTo(0,height); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='#1e3a8a';
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    pts.forEach(function(pt,idx){
-      var x=(idx/(pts.length-1||1))*width;
-      var y=height-((pt.alt-altMin)/range)*height;
-      if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-
-    var zeroY=height-((0-altMin)/range)*height;
-    ctx.strokeStyle='rgba(107,114,128,0.4)';
-    ctx.setLineDash([4,4]);
-    ctx.beginPath();
-    ctx.moveTo(0,zeroY); ctx.lineTo(width,zeroY); ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.font='11px system-ui, sans-serif';
-    ctx.fillStyle='#374151';
-    function mark(time,label,color){
-      if(!(time instanceof Date) || isNaN(time)) return;
-      var x=((time - start)/86400000)*width;
-      if(x<0 || x>width) return;
-      var pos=SunCalc.getPosition(time, lat, lng) || {};
-      var alt=pos.altitude!=null ? deg(pos.altitude) : 0;
-      var y=height-((alt-altMin)/range)*height;
-      ctx.fillStyle=color;
-      ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#1f2937';
-      var txt=label+' '+fmt(time);
-      var tx=x+8; if(tx>width-70) tx=x-70; if(tx<0) tx=2;
-      ctx.fillText(txt, tx, y-6);
-    }
-    mark(sunrise,'Świt','#f59e0b');
-    mark(sunset,'Zachód','#f97316');
-
-    ctx.fillStyle='#6b7280';
-    for(var h=0;h<=24;h+=3){
-      var x=(h/24)*width;
-      ctx.fillRect(x,height-4,1,4);
-      var lbl=('0'+h).slice(-2)+':00';
-      var tx=x-12; if(tx<0) tx=0; if(tx>width-24) tx=width-24;
-      ctx.fillText(lbl, tx, height-6);
-    }
-  }
   function renderHourlyChart(hourly,dateStr,loading){
     var canvas=document.getElementById('sp-hourly');
     if(!canvas) return;
@@ -682,15 +600,11 @@
     ctx.fillText(Math.round(minTemp)+'°C',8,bottom-6);
   }
   function setSunMeta(dest,sunrise,sunset){
-    setText('sp-sunrise-time', fmt(sunrise));
-    setText('sp-sunset-time', fmt(sunset));
     var riseAz=null, setAz=null;
     if(dest && typeof dest.lat==='number' && typeof dest.lng==='number'){
       if(sunrise instanceof Date && !isNaN(sunrise)){ var posR=SunCalc.getPosition(sunrise,dest.lat,dest.lng); if(posR && typeof posR.azimuth==='number') riseAz=Math.round(bearingFromAzimuth(posR.azimuth)); }
       if(sunset instanceof Date && !isNaN(sunset)){ var posS=SunCalc.getPosition(sunset,dest.lat,dest.lng); if(posS && typeof posS.azimuth==='number') setAz=Math.round(bearingFromAzimuth(posS.azimuth)); }
     }
-    setText('sp-sunrise-az', riseAz!=null ? ('Azymut '+riseAz+'°') : '—');
-    setText('sp-sunset-az', setAz!=null ? ('Azymut '+setAz+'°') : '—');
     lastSunData.rise = (sunrise instanceof Date && !isNaN(sunrise)) ? sunrise : null;
     lastSunData.set  = (sunset  instanceof Date && !isNaN(sunset )) ? sunset  : null;
     lastSunData.lat  = dest && typeof dest.lat==='number' ? dest.lat : null;
@@ -740,7 +654,6 @@
     if(!dest || !dStr){
       setSunMeta(null,null,null);
       clearWeatherPanels();
-      renderSunChart(null,null,null);
       renderHourlyChart(null,null,false);
       updateSunDirection(null,null);
       return;
@@ -758,7 +671,6 @@
     var sunrise=t.sunrise, sunset=t.sunset;
 
     setSunMeta(dest, sunrise, sunset);
-    renderSunChart(dest.lat, dest.lng, base, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
 
     fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
@@ -775,13 +687,12 @@
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
         if(ss instanceof Date && !isNaN(ss)) sunset=ss;
         setSunMeta(dest, sunrise, sunset);
-        renderSunChart(dest.lat, dest.lng, base, sunrise, sunset);
         updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
         fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
         fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
         if(data.hourly){
-          setWeatherOnly('rise', data.hourly, sunset);
-          setWeatherOnly('set' , data.hourly, sunrise);
+          setWeatherOnly('rise', data.hourly, sunrise);
+          setWeatherOnly('set' , data.hourly, sunset);
         }
         renderHourlyChart(data.hourly, dStr, false);
       })
@@ -796,11 +707,24 @@
         if(!frames.length) throw new Error('no-data');
         var latest = frames[frames.length-1];
         var template = null;
+        function buildTemplate(base,path){
+          if(!path) return null;
+          var host=(base||'').replace(/\/+$/,'/');
+          var clean=String(path).replace(/^\/+|\/+$/g,'');
+          if(!clean) return null;
+          return host + clean + '/256/{z}/{x}/{y}/2/1_1.png';
+        }
         if(latest){
-          if(latest.path){
-            template = 'https://tilecache.rainviewer.com/v2/radar/'+latest.path+'256/{z}/{x}/{y}/2/1_1.png';
-          } else if(typeof latest.time !== 'undefined'){
-            template = 'https://tilecache.rainviewer.com/v2/radar/'+latest.time+'/256/{z}/{x}/{y}/2/1_1.png';
+          if(!template && latest.host && latest.path){
+            template = buildTemplate(latest.host, latest.path);
+          }
+          if(!template && latest.path){
+            var pathStr = String(latest.path);
+            var base = pathStr.indexOf('v3/') === 0 ? 'https://tilecache.rainviewer.com/' : 'https://tilecache.rainviewer.com/v2/radar/';
+            template = buildTemplate(base, pathStr);
+          }
+          if(!template && typeof latest.time !== 'undefined'){
+            template = buildTemplate('https://tilecache.rainviewer.com/v2/radar/', latest.time);
           }
         }
         if(!template) throw new Error('no-template');
@@ -948,17 +872,14 @@
     var min=metrics ? Math.round(metrics.durationSec/60) : 0;
     var h=Math.floor(min/60), m=min%60;
     var timeTxt = metrics ? ((h? h+' h ':'')+m+' min') : '—';
-    var sunCanvas=document.getElementById('sp-sun-canvas');
     var hourlyCanvas=document.getElementById('sp-hourly');
-    var sunImage='', hourlyImage='';
-    try{ sunImage=sunCanvas && sunCanvas.toDataURL ? sunCanvas.toDataURL('image/png') : ''; }catch(err){ sunImage=''; }
+    var hourlyImage='';
     try{ hourlyImage=hourlyCanvas && hourlyCanvas.toDataURL ? hourlyCanvas.toDataURL('image/png') : ''; }catch(err2){ hourlyImage=''; }
     function chartBlock(title,src,alt,empty){
       if(src){ return '<div class="chart-card"><h3>'+title+'</h3><img src="'+esc(src)+'" alt="'+esc(alt)+'"></div>'; }
       return '<div class="chart-card"><h3>'+title+'</h3><p class="muted">'+esc(empty)+'</p></div>';
     }
-    var chartsHtml = chartBlock('Wykres ścieżki słońca', sunImage, 'Wykres ścieżki słońca', 'Brak danych wykresu.')+
-      chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
+    var chartsHtml = chartBlock('Mini-wykres godzinowy – prognoza pogody', hourlyImage, 'Mini-wykres godzinowy – prognoza pogody', 'Brak danych wykresu.');
     var html='<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><title>Karta klienta</title><style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;padding:24px;}h1{margin:0 0 12px;font-size:24px;}section{margin-bottom:20px;}table{width:100%;border-collapse:collapse;margin-top:12px;}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left;}ul{padding-left:18px;}small{color:#6b7280;}.muted{color:#6b7280;}.chart-grid{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;}.chart-card{flex:1 1 280px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:16px;padding:16px;box-shadow:0 8px 18px rgba(15,23,42,0.08);} .chart-card h3{margin:0 0 12px;font-size:18px;} .chart-card img{width:100%;display:block;border-radius:12px;border:1px solid #d1d5db;background:#fff;} .chart-card p{margin:8px 0 0;color:#6b7280;}</style></head><body>'+
       '<h1>Karta klienta – '+esc(dest.label||'Plan pleneru')+'</h1>'+
       '<section><strong>Data:</strong> '+esc(dEl.value||'—')+'<br><strong>Cel:</strong> '+esc(dest.label||'—')+'<br><strong>Dystans:</strong> '+esc(distTxt)+'<br><strong>Czas przejazdu:</strong> '+esc(timeTxt)+'</section>'+
