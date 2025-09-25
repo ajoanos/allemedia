@@ -132,6 +132,22 @@
 .contact-card .input{width:100%}
 .input.textarea{min-height:110px;resize:vertical}
 .contact-section textarea{font-family:inherit}
+.contact-slots{display:flex;flex-direction:column;gap:.6rem;margin:.5rem 0 1rem}
+.contact-slot{position:relative;display:flex;flex-direction:column;gap:.6rem;padding:.75rem;border:1px solid #cbd5f5;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.contact-slot-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.5rem}
+.contact-slot-actions{display:flex;flex-wrap:wrap;gap:.45rem}
+.contact-slot .btn{flex:1;min-width:140px}
+.contact-slot-badge{position:absolute;top:-10px;right:12px;display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:999px;background:#15803d;color:#f0fdf4;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;box-shadow:0 4px 12px rgba(21,128,61,.25)}
+.contact-slot--selected{border-color:#16a34a;background:#dcfce7}
+.contact-slot--selected .contact-slot-badge{display:inline-flex}
+.contact-slot--selected .contact-slot-actions .btn{border-color:#15803d;color:#14532d}
+.contact-slot-empty{padding:.65rem .8rem;border:1px dashed #cbd5f5;border-radius:10px;background:#f1f5f9;color:#475569;text-align:center;font-size:.85rem}
+.contact-actions{display:flex;flex-direction:column;gap:.6rem;margin-top:1.2rem}
+.contact-actions .btn{min-width:200px}
+.contact-status{min-height:1.2rem;font-size:.85rem}
+.contact-status.is-ok{color:#166534}
+.contact-status.is-error{color:#b91c1c}
+.contact-status.is-pending{color:#92400e}
 @media(min-width:860px){.contact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .share-card{margin-top:1.2rem}
 .share-card h3{margin-top:0}

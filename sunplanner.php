@@ -66,6 +66,7 @@ wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 'TZ' => wp_timezone_string(),
 'SHARED_SP' => $shared_sp,
 'REST_URL' => esc_url_raw( rest_url('sunplanner/v1/share') ),
+'CONTACT_URL' => esc_url_raw( rest_url('sunplanner/v1/contact') ),
 'SITE_ORIGIN' => esc_url_raw( home_url('/') ),
 'RADAR_URL' => esc_url_raw( rest_url('sunplanner/v1/radar') ),
 ]);
@@ -295,6 +296,214 @@ add_action('rest_api_init', function () {
         }
     ]);
 });
+
+add_action('rest_api_init', function () {
+    register_rest_route('sunplanner/v1', '/contact', [
+        'methods' => 'POST',
+        'permission_callback' => '__return_true',
+        'callback' => 'sunplanner_handle_contact_request',
+    ]);
+});
+
+function sunplanner_contact_clean_slot($slot)
+{
+    $clean = [
+        'date' => '',
+        'time' => '',
+        'favorite' => false,
+    ];
+
+    if (!is_array($slot)) {
+        return $clean;
+    }
+
+    $date = isset($slot['date']) ? substr((string) $slot['date'], 0, 10) : '';
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $clean['date'] = $date;
+    }
+
+    $time = isset($slot['time']) ? substr((string) $slot['time'], 0, 5) : '';
+    if (preg_match('/^\d{2}:\d{2}$/', $time)) {
+        $clean['time'] = $time;
+    }
+
+    $clean['favorite'] = !empty($slot['favorite']);
+
+    return $clean;
+}
+
+function sunplanner_contact_prepare_slots($slots)
+{
+    $prepared = [];
+    if (is_array($slots)) {
+        foreach ($slots as $slot) {
+            $prepared[] = sunplanner_contact_clean_slot($slot);
+            if (count($prepared) >= 6) {
+                break;
+            }
+        }
+    }
+    return $prepared;
+}
+
+function sunplanner_contact_format_slot_line($slot)
+{
+    $slot = is_array($slot) ? $slot : [];
+    $date = isset($slot['date']) ? $slot['date'] : '';
+    $time = isset($slot['time']) ? $slot['time'] : '';
+    $favorite = !empty($slot['favorite']);
+
+    $date_label = '—';
+    if ($date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $timestamp = strtotime($date . ' 12:00:00');
+        if ($timestamp) {
+            $date_label = wp_date(get_option('date_format'), $timestamp);
+        }
+    }
+
+    $time_label = '';
+    if ($time && preg_match('/^\d{2}:\d{2}$/', $time)) {
+        $time_label = $time;
+    }
+
+    $line = '- ' . $date_label;
+    if ($time_label !== '') {
+        $line .= ' ' . sprintf(__('o %s', 'sunplanner'), $time_label);
+    }
+    if ($favorite) {
+        $line .= ' ' . __('(najlepszy termin)', 'sunplanner');
+    }
+
+    return $line;
+}
+
+function sunplanner_contact_format_plan_date($date)
+{
+    if (!is_string($date) || $date === '') {
+        return '';
+    }
+    $date = substr($date, 0, 10);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return '';
+    }
+    $timestamp = strtotime($date . ' 12:00:00');
+    if (!$timestamp) {
+        return '';
+    }
+    return wp_date(get_option('date_format'), $timestamp);
+}
+
+function sunplanner_handle_contact_request(WP_REST_Request $req)
+{
+    $params = $req->get_json_params();
+    if (!is_array($params)) {
+        return new WP_REST_Response(['error' => 'invalid'], 400);
+    }
+
+    $target = isset($params['target']) ? sanitize_key($params['target']) : '';
+    if (!in_array($target, ['photographer', 'couple'], true)) {
+        return new WP_REST_Response(['error' => 'invalid_target'], 400);
+    }
+
+    $state = isset($params['state']) && is_array($params['state']) ? $params['state'] : [];
+    $contact = isset($state['contact']) && is_array($state['contact']) ? $state['contact'] : [];
+
+    $couple_email = isset($contact['coupleEmail']) ? sanitize_email($contact['coupleEmail']) : '';
+    $phot_email = isset($contact['photographerEmail']) ? sanitize_email($contact['photographerEmail']) : '';
+    $couple_note = isset($contact['coupleNote']) ? sanitize_textarea_field($contact['coupleNote']) : '';
+    $phot_note = isset($contact['photographerNote']) ? sanitize_textarea_field($contact['photographerNote']) : '';
+
+    $couple_slots = sunplanner_contact_prepare_slots(isset($contact['coupleSlots']) ? $contact['coupleSlots'] : []);
+    $phot_slots = sunplanner_contact_prepare_slots(isset($contact['photographerSlots']) ? $contact['photographerSlots'] : []);
+
+    $link = isset($params['link']) ? esc_url_raw($params['link']) : '';
+    if ($link !== '') {
+        $home = home_url();
+        if (strpos($link, $home) !== 0) {
+            $link = '';
+        }
+    }
+
+    $plan_date = isset($state['date']) ? sunplanner_contact_format_plan_date($state['date']) : '';
+    $points = isset($state['pts']) && is_array($state['pts']) ? $state['pts'] : [];
+    $destination = '';
+    if (!empty($points)) {
+        $last_point = $points[count($points) - 1];
+        if (is_array($last_point) && isset($last_point['label'])) {
+            $destination = sanitize_text_field($last_point['label']);
+        }
+    }
+
+    $recipient = $target === 'photographer' ? $phot_email : $couple_email;
+    if ($recipient === '') {
+        return new WP_REST_Response(['error' => 'missing_email'], 400);
+    }
+
+    $reply_to = $target === 'photographer' ? $couple_email : $phot_email;
+    $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
+
+    $subject = sprintf(__('SunPlanner: formularz został zaktualizowany (%s)', 'sunplanner'), $site_name ? $site_name : 'SunPlanner');
+
+    $lines = [];
+    $lines[] = __('Cześć!', 'sunplanner');
+    $lines[] = __('Formularz planowania sesji został zaktualizowany.', 'sunplanner');
+    if ($site_name) {
+        $lines[] = sprintf(__('Plan pochodzi ze strony: %s', 'sunplanner'), $site_name);
+    }
+    if ($plan_date) {
+        $lines[] = sprintf(__('Data w planerze: %s', 'sunplanner'), $plan_date);
+    }
+    if ($destination !== '') {
+        $lines[] = sprintf(__('Cel sesji: %s', 'sunplanner'), $destination);
+    }
+    if ($link) {
+        $lines[] = sprintf(__('Podgląd planu: %s', 'sunplanner'), $link);
+    }
+
+    $lines[] = '';
+    $lines[] = __('Propozycje młodej pary:', 'sunplanner');
+    if (!empty($couple_slots)) {
+        foreach ($couple_slots as $slot) {
+            $lines[] = sunplanner_contact_format_slot_line($slot);
+        }
+    } else {
+        $lines[] = '- —';
+    }
+
+    $lines[] = '';
+    $lines[] = __('Dostępność fotografa:', 'sunplanner');
+    if (!empty($phot_slots)) {
+        foreach ($phot_slots as $slot) {
+            $lines[] = sunplanner_contact_format_slot_line($slot);
+        }
+    } else {
+        $lines[] = '- —';
+    }
+
+    $lines[] = '';
+    $lines[] = __('Wiadomość młodej pary:', 'sunplanner');
+    $lines[] = $couple_note !== '' ? $couple_note : '—';
+    $lines[] = '';
+    $lines[] = __('Wiadomość fotografa:', 'sunplanner');
+    $lines[] = $phot_note !== '' ? $phot_note : '—';
+    $lines[] = '';
+    $lines[] = __('Wiadomość wygenerowana automatycznie w SunPlanner.', 'sunplanner');
+
+    $headers = ['Content-Type: text/plain; charset=UTF-8'];
+    if ($reply_to) {
+        $headers[] = 'Reply-To: ' . $reply_to;
+    }
+
+    $sent = wp_mail($recipient, $subject, implode("\n", $lines), $headers);
+    if (!$sent) {
+        return new WP_REST_Response(['error' => 'mail_failed'], 500);
+    }
+
+    return new WP_REST_Response([
+        'ok' => true,
+        'message' => __('Powiadomienie wysłane.', 'sunplanner'),
+    ], 200);
+}
 
 function sunplanner_filter_radar_template($template)
 {
