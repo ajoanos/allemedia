@@ -10,6 +10,7 @@
   var REST_URL     = CFG.REST_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
   var RADAR_URL    = CFG.RADAR_URL || '';
+  var NOTIFY_URL   = CFG.NOTIFY_URL || '';
   var BASE_URL = (function(){
     function stripQueryAndHash(url){ return url.replace(/[?#].*$/, ''); }
     var locOrigin = location.origin || (location.protocol + '//' + location.host);
@@ -164,10 +165,6 @@
             '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
           '</div>'+
         '</div>'+
-        '<div id="sp-crowd-block" class="crowd-block">'+
-          '<h3>Popularne godziny</h3>'+
-          '<p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>'+
-        '</div>'+
       '</div>'+
     '</div>'+
     '<div class="card share-card">'+
@@ -186,8 +183,62 @@
         '</div>'+
       '</div>'+
     '</div>'+
+    '<div class="card planner-card">'+
+      '<h3>Planer terminów sesji plenerowej</h3>'+
+      '<p class="muted">Zbierz propozycje terminów od młodej pary i fotografa oraz zatwierdź najlepszy termin.</p>'+
+      '<div class="planner-grid">'+
+        '<section class="planner-section">'+
+          '<div class="planner-section__header">'+
+            '<h4>Propozycje młodej pary</h4>'+
+            '<p class="muted">Dodaj kilka dogodnych terminów, aby fotograf mógł je zaakceptować lub odrzucić.</p>'+
+          '</div>'+
+          '<label class="planner-field">'+
+            '<span>Email młodej pary</span>'+
+            '<input id="sp-couple-email" class="input" type="email" placeholder="np. para@example.com">'+
+          '</label>'+
+          '<label class="planner-field">'+
+            '<span>Uwagi od młodej pary</span>'+
+            '<textarea id="sp-couple-notes" class="input" rows="3" placeholder="Dodatkowe informacje, preferencje, prośby"></textarea>'+
+          '</label>'+
+          '<div class="planner-add">'+
+            '<input id="sp-couple-date" class="input" type="date">'+
+            '<input id="sp-couple-time" class="input" type="time">'+
+            '<button id="sp-couple-add" class="btn secondary" type="button">Dodaj termin</button>'+
+          '</div>'+
+          '<div id="sp-couple-slots" class="planner-slots"></div>'+
+        '</section>'+
+        '<section class="planner-section">'+
+          '<div class="planner-section__header">'+
+            '<h4>Terminy proponowane przez fotografa</h4>'+
+            '<p class="muted">Fotograf może zaproponować własne wolne terminy, a para zaakceptuje najlepszy.</p>'+
+          '</div>'+
+          '<label class="planner-field">'+
+            '<span>Email fotografa</span>'+
+            '<input id="sp-photographer-email" class="input" type="email" placeholder="np. fotograf@example.com">'+
+          '</label>'+
+          '<label class="planner-field">'+
+            '<span>Uwagi fotografa</span>'+
+            '<textarea id="sp-photographer-notes" class="input" rows="3" placeholder="Uwagi organizacyjne, dodatkowe informacje"></textarea>'+
+          '</label>'+
+          '<div class="planner-add">'+
+            '<input id="sp-photographer-date" class="input" type="date">'+
+            '<input id="sp-photographer-time" class="input" type="time">'+
+            '<button id="sp-photographer-add" class="btn secondary" type="button">Dodaj termin</button>'+
+          '</div>'+
+          '<div id="sp-photographer-slots" class="planner-slots"></div>'+
+        '</section>'+
+      '</div>'+
+      '<div class="planner-actions">'+
+        '<div class="planner-actions__buttons">'+
+          '<button id="sp-notify-photographer" class="btn secondary" type="button">Powiadom fotografa</button>'+
+          '<button id="sp-notify-couple" class="btn secondary" type="button">Powiadom młodą parę</button>'+
+        '</div>'+
+        '<div id="sp-planner-status" class="muted"></div>'+
+      '</div>'+
+    '</div>'+
   '</div>';
   sessionSummaryDefault();
+  applyPlannerState(null);
 
   // helpers
   function $(s){ return document.querySelector(s); }
@@ -234,6 +285,273 @@
   function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
   function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
   function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
+
+  var plannerState = {
+    couple: { email:'', notes:'', slots:[] },
+    photographer: { email:'', notes:'', slots:[] }
+  };
+
+  function generateSlotId(){
+    return 'slot-' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function normalizeSlot(slot){
+    if(!slot || typeof slot !== 'object') return null;
+    var date = typeof slot.date === 'string' ? slot.date : '';
+    var time = typeof slot.time === 'string' ? slot.time : '';
+    var status = slot.status === 'accepted' || slot.status === 'declined' ? slot.status : 'pending';
+    var id = typeof slot.id === 'string' && slot.id ? slot.id : generateSlotId();
+    return { id:id, date:date, time:time, status:status };
+  }
+
+  function plannerStatusLabel(status){
+    switch(status){
+      case 'accepted': return 'zaakceptowano';
+      case 'declined': return 'nie pasuje';
+      default: return 'oczekuje na decyzję';
+    }
+  }
+
+  function formatSlotLabel(slot){
+    if(!slot) return '';
+    var date = slot.date || '';
+    var time = slot.time || '';
+    if(date){
+      var parts = date.split('-');
+      if(parts.length === 3){
+        var year = Number(parts[0]);
+        var month = Number(parts[1]) - 1;
+        var day = Number(parts[2]);
+        if(!isNaN(year) && !isNaN(month) && !isNaN(day)){
+          if(time){
+            var tParts = time.split(':');
+            var hour = Number(tParts[0] || 0);
+            var minute = Number(tParts[1] || 0);
+            var dt = new Date(year, month, day, hour, minute);
+            if(!isNaN(dt.getTime())){
+              return dt.toLocaleString('pl-PL',{ dateStyle:'long', timeStyle:'short' });
+            }
+          } else {
+            var dOnly = new Date(year, month, day);
+            if(!isNaN(dOnly.getTime())){
+              return dOnly.toLocaleDateString('pl-PL',{ dateStyle:'long' });
+            }
+          }
+        }
+      }
+    }
+    return (date||'') + (time ? ' ' + time : '');
+  }
+
+  function plannerSlotClass(status){
+    if(status === 'accepted') return 'planner-slot planner-slot--accepted';
+    if(status === 'declined') return 'planner-slot planner-slot--declined';
+    return 'planner-slot';
+  }
+
+  function renderPlannerSlots(side){
+    var containerId = side === 'photographer' ? 'sp-photographer-slots' : 'sp-couple-slots';
+    var container = document.getElementById(containerId);
+    if(!container) return;
+    var slots = plannerState[side] && Array.isArray(plannerState[side].slots) ? plannerState[side].slots : [];
+    if(!slots.length){
+      container.innerHTML = '<p class="muted">Brak proponowanych terminów.</p>';
+      return;
+    }
+    var html = '<ul class="planner-slot-list">';
+    slots.forEach(function(slot){
+      var cls = plannerSlotClass(slot.status);
+      var label = formatSlotLabel(slot);
+      var statusText = plannerStatusLabel(slot.status);
+      var id = slot.id || generateSlotId();
+      slot.id = id;
+      html += '<li class="'+cls+'" data-slot-id="'+escapeHtml(id)+'">';
+      html += '<div class="planner-slot__info">'+escapeHtml(label||'Termin bez daty')+'<span class="planner-slot__status">'+escapeHtml(statusText)+'</span></div>';
+      html += '<div class="planner-slot__actions">';
+      html += '<button type="button" class="planner-slot__btn" data-action="accept" data-slot-id="'+escapeHtml(id)+'">Akceptuj</button>';
+      html += '<button type="button" class="planner-slot__btn planner-slot__btn--decline" data-action="decline" data-slot-id="'+escapeHtml(id)+'">Nie pasuje</button>';
+      html += '</div>';
+      html += '</li>';
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+    container.querySelectorAll('button[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(ev){
+        var slotId = ev.currentTarget.getAttribute('data-slot-id');
+        var action = ev.currentTarget.getAttribute('data-action');
+        updateSlotStatus(side, slotId, action === 'accept' ? 'accepted' : 'declined');
+      });
+    });
+  }
+
+  function updateSlotStatus(side, slotId, status){
+    if(!slotId || !plannerState[side]) return;
+    var slots = plannerState[side].slots || [];
+    for(var i=0;i<slots.length;i++){
+      if(slots[i].id === slotId){
+        if(slots[i].status === status){
+          slots[i].status = 'pending';
+        } else {
+          slots[i].status = status;
+        }
+        break;
+      }
+    }
+    renderPlannerSlots(side);
+    updateLink();
+  }
+
+  function syncPlannerInputs(){
+    var couple = plannerState.couple || {};
+    var photographer = plannerState.photographer || {};
+    var el;
+    el = document.getElementById('sp-couple-email'); if(el) el.value = couple.email || '';
+    el = document.getElementById('sp-couple-notes'); if(el) el.value = couple.notes || '';
+    el = document.getElementById('sp-photographer-email'); if(el) el.value = photographer.email || '';
+    el = document.getElementById('sp-photographer-notes'); if(el) el.value = photographer.notes || '';
+    renderPlannerSlots('couple');
+    renderPlannerSlots('photographer');
+  }
+
+  function plannerSlotsPayload(slots){
+    return (Array.isArray(slots)?slots:[]).map(function(slot){
+      var normalized = normalizeSlot(slot);
+      if(!normalized) return null;
+      return {
+        id: normalized.id,
+        date: normalized.date,
+        time: normalized.time,
+        status: normalized.status
+      };
+    }).filter(Boolean);
+  }
+
+  function collectPlannerState(){
+    return {
+      couple: {
+        email: (plannerState.couple.email || '').trim(),
+        notes: (plannerState.couple.notes || '').trim(),
+        slots: plannerSlotsPayload(plannerState.couple.slots)
+      },
+      photographer: {
+        email: (plannerState.photographer.email || '').trim(),
+        notes: (plannerState.photographer.notes || '').trim(),
+        slots: plannerSlotsPayload(plannerState.photographer.slots)
+      }
+    };
+  }
+
+  function applyPlannerState(data){
+    if(!data || typeof data !== 'object'){
+      plannerState.couple = { email:'', notes:'', slots:[] };
+      plannerState.photographer = { email:'', notes:'', slots:[] };
+    } else {
+      var c = data.couple || {};
+      var p = data.photographer || {};
+      plannerState.couple = {
+        email: typeof c.email === 'string' ? c.email : '',
+        notes: typeof c.notes === 'string' ? c.notes : '',
+        slots: plannerSlotsPayload(c.slots)
+      };
+      plannerState.photographer = {
+        email: typeof p.email === 'string' ? p.email : '',
+        notes: typeof p.notes === 'string' ? p.notes : '',
+        slots: plannerSlotsPayload(p.slots)
+      };
+    }
+    syncPlannerInputs();
+  }
+
+  function addPlannerSlot(side, date, time){
+    if(!plannerState[side]) return;
+    var slot = normalizeSlot({ date:(date||'').trim(), time:(time||'').trim(), status:'pending' });
+    plannerState[side].slots = plannerState[side].slots || [];
+    plannerState[side].slots.push(slot);
+    renderPlannerSlots(side);
+    updateLink();
+  }
+
+  function validateEmail(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function buildPlannerSummary(target){
+    var state = collectPlannerState();
+    var lines = [];
+    if(target === 'photographer'){
+      lines.push('Cześć!');
+      lines.push('Młoda para zaktualizowała planer terminów w SunPlannerze.');
+      if(state.couple.email){ lines.push('Kontakt do młodej pary: ' + state.couple.email); }
+      if(state.couple.notes){ lines.push('Uwagi od młodej pary:\n' + state.couple.notes); }
+    } else {
+      lines.push('Cześć!');
+      lines.push('Fotograf zaktualizował planer terminów w SunPlannerze.');
+      if(state.photographer.email){ lines.push('Kontakt do fotografa: ' + state.photographer.email); }
+      if(state.photographer.notes){ lines.push('Uwagi od fotografa:\n' + state.photographer.notes); }
+    }
+    lines.push('');
+    lines.push('Propozycje młodej pary:');
+    if(state.couple.slots.length){
+      state.couple.slots.forEach(function(slot){
+        lines.push('- ' + formatSlotLabel(slot) + ' (' + plannerStatusLabel(slot.status) + ')');
+      });
+    } else {
+      lines.push('- brak terminów');
+    }
+    lines.push('');
+    lines.push('Propozycje fotografa:');
+    if(state.photographer.slots.length){
+      state.photographer.slots.forEach(function(slot){
+        lines.push('- ' + formatSlotLabel(slot) + ' (' + plannerStatusLabel(slot.status) + ')');
+      });
+    } else {
+      lines.push('- brak terminów');
+    }
+    lines.push('');
+    if(target === 'photographer' && state.photographer.notes){
+      lines.push('Ostatnie uwagi fotografa:');
+      lines.push(state.photographer.notes);
+      lines.push('');
+    }
+    if(target === 'couple' && state.couple.notes){
+      lines.push('Ostatnie uwagi młodej pary:');
+      lines.push(state.couple.notes);
+      lines.push('');
+    }
+    lines.push('Planer: ' + location.href);
+    return lines.join('\n');
+  }
+
+  function sendPlannerNotification(target){
+    if(!NOTIFY_URL){ toast('Powiadomienia e-mail są chwilowo niedostępne.'); return; }
+    var state = collectPlannerState();
+    var email = target === 'photographer' ? state.photographer.email : state.couple.email;
+    if(!email){ toast('Podaj adres e-mail, aby wysłać powiadomienie.'); return; }
+    if(!validateEmail(email)){ toast('Adres e-mail wygląda nieprawidłowo.'); return; }
+    var statusEl = document.getElementById('sp-planner-status');
+    if(statusEl) statusEl.textContent = 'Wysyłanie powiadomienia...';
+    var payload = {
+      target: target,
+      email: email,
+      subject: 'SunPlanner – nowe informacje w planerze sesji plenerowej',
+      message: buildPlannerSummary(target)
+    };
+    fetch(NOTIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    }).then(function(res){
+      if(!res.ok){ throw new Error('http ' + res.status); }
+      return res.json();
+    }).then(function(){
+      toast('Powiadomienie wysłane.', 'ok');
+      if(statusEl){ statusEl.textContent = 'Powiadomienie wysłane na adres ' + email + '.'; }
+    }).catch(function(){
+      toast('Nie udało się wysłać powiadomienia.');
+      if(statusEl){ statusEl.textContent = 'Błąd wysyłki powiadomienia.'; }
+    });
+  }
 
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
@@ -400,69 +718,19 @@
     return null;
   }
 
-  function buildCrowdChart(crowd){
-    var data = (crowd && Array.isArray(crowd.data)) ? crowd.data : [];
-    if(!data.length) return '';
-    var max = (crowd && typeof crowd.maxLevel === 'number' && !isNaN(crowd.maxLevel) && crowd.maxLevel>0) ? crowd.maxLevel : 0;
-    data.forEach(function(item){
-      var lvl = Number(item && item.level);
-      if(!isNaN(lvl) && lvl>max) max=lvl;
-    });
-    if(max<=0) max=1;
-    var aria = 'Popularność godzinowa: '+data.map(function(item){
-      var lbl=item && item.label ? item.label : '';
-      var lvlTxt=Number(item && item.level);
-      if(isNaN(lvlTxt)) lvlTxt=0;
-      return lbl+' – poziom '+lvlTxt;
-    }).join(', ');
-    var html='<div class="crowd-chart" aria-label="'+escapeHtml(aria)+'">';
-    data.forEach(function(item){
-      var lvl=Number(item && item.level);
-      if(!isFinite(lvl) || lvl<0) lvl=0;
-      if(lvl>max) lvl=max;
-      var displayLevel=Math.round(lvl);
-      var label=item && item.label ? item.label : '';
-      var tip=item && item.tip ? ' title="'+escapeHtml(item.tip)+'"' : '';
-      html+='<div class="crowd-chart__item" style="--level:'+lvl+';--max:'+max+'">'+
-        '<div class="crowd-chart__bar" data-level="'+escapeHtml(String(displayLevel))+'"'+tip+'></div>'+
-        '<span>'+escapeHtml(label)+'</span>'+
-      '</div>';
-    });
-    html+='</div>';
-    return html;
-  }
-
-  function updateCrowdHint(crowd){
-    var block=document.getElementById('sp-crowd-block');
-    if(!block) return;
-    if(!crowd || !Array.isArray(crowd.data) || !crowd.data.length){
-      block.innerHTML='<h3>Popularne godziny</h3><p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>';
-      return;
-    }
-    var html='<h3>Popularne godziny</h3>';
-    if(crowd.description){ html+='<p>'+escapeHtml(crowd.description)+'</p>'; }
-    html+=buildCrowdChart(crowd);
-    var scaleNote=crowd.scaleNote || 'Skala 1–5 (5 = największy tłok).';
-    html+='<p class="crowd-block__note">'+escapeHtml(scaleNote)+'</p>';
-    block.innerHTML=html;
-  }
-
   function updateLocationInsights(dest){
     var box=document.getElementById('sp-location-insights');
     if(!box){
-      updateCrowdHint(null);
       return;
     }
     dest = dest || points[points.length-1];
     if(!dest){
       box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>';
-      updateCrowdHint(null);
       return;
     }
     var insight = computeLocationInsight(dest);
     if(!insight){
       box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Brak danych dla tej lokalizacji. Sprawdź regulaminy zarządcy terenu.</p>';
-      updateCrowdHint(null);
       return;
     }
     var html='<h3>Zasady na miejscu</h3>';
@@ -490,7 +758,6 @@
       html+='<p class="muted">Brak danych o zasadach dla dronów.</p>';
     }
     box.innerHTML=html;
-    updateCrowdHint(insight.crowd);
   }
 
   var RADAR_FALLBACKS = [
@@ -535,7 +802,8 @@
       sr:$('#sp-slider-rise').value,
       ss:$('#sp-slider-set').value,
       rad: (radarEl && radarEl.checked)?1:0,
-      pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};})
+      pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
+      planner: collectPlannerState()
     };
   }
   function unpackState(obj){
@@ -546,6 +814,11 @@
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
     if(Object.prototype.toString.call(obj.pts)==='[object Array]'){
       points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
+    }
+    if(obj.planner){
+      applyPlannerState(obj.planner);
+    } else {
+      applyPlannerState(null);
     }
   }
   function persistState(){ if(!storageAvailable) return; try{ window.localStorage.setItem(STORAGE_KEY, b64url.enc(packState())); }catch(e){} }
@@ -1874,6 +2147,42 @@
   $('#sp-client-card').addEventListener('click', openClientCard);
   $('#sp-print').addEventListener('click', function(){ window.print(); });
   $('#sp-geo').addEventListener('click', locateStart);
+  var coupleEmailInput=$('#sp-couple-email');
+  if(coupleEmailInput){ coupleEmailInput.addEventListener('input', function(e){ plannerState.couple.email=e.target.value; updateLink(); }); }
+  var coupleNotesInput=$('#sp-couple-notes');
+  if(coupleNotesInput){ coupleNotesInput.addEventListener('input', function(e){ plannerState.couple.notes=e.target.value; updateLink(); }); }
+  var photographerEmailInput=$('#sp-photographer-email');
+  if(photographerEmailInput){ photographerEmailInput.addEventListener('input', function(e){ plannerState.photographer.email=e.target.value; updateLink(); }); }
+  var photographerNotesInput=$('#sp-photographer-notes');
+  if(photographerNotesInput){ photographerNotesInput.addEventListener('input', function(e){ plannerState.photographer.notes=e.target.value; updateLink(); }); }
+  var coupleDateInput=$('#sp-couple-date');
+  var coupleTimeInput=$('#sp-couple-time');
+  var photographerDateInput=$('#sp-photographer-date');
+  var photographerTimeInput=$('#sp-photographer-time');
+  if(coupleDateInput && dEl.value){ coupleDateInput.value = dEl.value; }
+  if(photographerDateInput && dEl.value){ photographerDateInput.value = dEl.value; }
+  if(coupleDateInput){ coupleDateInput.min = dEl.min; coupleDateInput.max = dEl.max; }
+  if(photographerDateInput){ photographerDateInput.min = dEl.min; photographerDateInput.max = dEl.max; }
+  var coupleAddBtn=$('#sp-couple-add');
+  if(coupleAddBtn){
+    coupleAddBtn.addEventListener('click', function(){
+      if(!coupleDateInput || !coupleDateInput.value){ toast('Podaj datę proponowanego terminu.'); return; }
+      addPlannerSlot('couple', coupleDateInput.value, coupleTimeInput?coupleTimeInput.value:'');
+      if(coupleTimeInput) coupleTimeInput.value='';
+    });
+  }
+  var photographerAddBtn=$('#sp-photographer-add');
+  if(photographerAddBtn){
+    photographerAddBtn.addEventListener('click', function(){
+      if(!photographerDateInput || !photographerDateInput.value){ toast('Podaj datę wolnego terminu fotografa.'); return; }
+      addPlannerSlot('photographer', photographerDateInput.value, photographerTimeInput?photographerTimeInput.value:'');
+      if(photographerTimeInput) photographerTimeInput.value='';
+    });
+  }
+  var notifyPhotographerBtn=$('#sp-notify-photographer');
+  if(notifyPhotographerBtn){ notifyPhotographerBtn.addEventListener('click', function(){ sendPlannerNotification('photographer'); }); }
+  var notifyCoupleBtn=$('#sp-notify-couple');
+  if(notifyCoupleBtn){ notifyCoupleBtn.addEventListener('click', function(){ sendPlannerNotification('couple'); }); }
   var radarToggle=$('#sp-radar');
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
