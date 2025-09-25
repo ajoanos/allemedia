@@ -665,7 +665,12 @@
     fetch(CONTACT_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ target:target, state:packState(), link:location.href })
+      body:JSON.stringify({
+        target:target,
+        state:packState(),
+        link:location.href,
+        shortLink: shortLinkValue || ''
+      })
     })
       .then(function(r){
         if(!r.ok) throw new Error('http');
