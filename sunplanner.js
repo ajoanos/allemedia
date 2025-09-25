@@ -141,7 +141,7 @@
         '</div>'+
         '<div id="sp-location-insights" class="location-insights">'+
           '<h3>Zasady na miejscu</h3>'+
-          '<p class="muted">Dodaj cel podróży, aby sprawdzić opłaty za sesję i zasady dla dronów.</p>'+
+          '<p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>'+
         '</div>'+
       '</div>'+
       '<div class="card">'+
@@ -455,7 +455,7 @@
     }
     dest = dest || points[points.length-1];
     if(!dest){
-      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić opłaty za sesję i zasady dla dronów.</p>';
+      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>';
       updateCrowdHint(null);
       return;
     }
@@ -466,31 +466,8 @@
       return;
     }
     var html='<h3>Zasady na miejscu</h3>';
-    var hasSection=false;
-    var wedding=insight.wedding;
-    if(wedding){
-      hasSection=true;
-      var paidClass;
-      if(wedding.paid===false){
-        paidClass='location-insights__status location-insights__status--free';
-      } else if(wedding.paid===true){
-        paidClass='location-insights__status location-insights__status--paid';
-      } else {
-        paidClass='location-insights__status location-insights__status--unknown';
-      }
-      var statusText=wedding.statusText || (wedding.paid===false ? 'Sesja bez dodatkowej opłaty' : 'Sesja płatna');
-      html+='<div class="location-insights__section"><h4>Sesja ślubna</h4><div class="'+paidClass+'">'+escapeHtml(statusText)+'</div>';
-      if(wedding.paymentHint){
-        html+='<p class="location-insights__note">'+escapeHtml(wedding.paymentHint)+'</p>';
-      } else if(wedding.paymentUrl){
-        var linkLabel=wedding.paymentLabel || 'Formularz zgłoszenia';
-        html+='<p class="location-insights__note">Zgłoszenia i opłaty: <a href="'+escapeHtml(wedding.paymentUrl)+'" target="_blank" rel="noopener">'+escapeHtml(linkLabel)+'</a></p>';
-      }
-      html+='</div>';
-    }
     var drone=insight.drone;
     if(drone){
-      hasSection=true;
       var droneClass;
       if(drone.allowed===true){
         droneClass='location-insights__status location-insights__status--free';
@@ -500,10 +477,17 @@
         droneClass='location-insights__status location-insights__status--unknown';
       }
       var droneText=drone.statusText || (drone.allowed ? 'Loty dozwolone' : 'Zakaz lotów dronem');
-      html+='<div class="location-insights__section"><h4>Drony</h4><div class="'+droneClass+'">'+escapeHtml(droneText)+'</div></div>';
-    }
-    if(!hasSection){
-      html+='<p class="muted">Brak danych o opłatach i zasadach dla dronów.</p>';
+      html+='<div class="location-insights__section"><h4>Drony</h4><div class="'+droneClass+'">'+escapeHtml(droneText)+'</div>';
+      if(drone.text){
+        html+='<p class="location-insights__note">'+escapeHtml(drone.text)+'</p>';
+      }
+      if(drone.url){
+        var droneLabel=drone.linkLabel || 'Szczegóły przepisów';
+        html+='<p class="location-insights__note"><a href="'+escapeHtml(drone.url)+'" target="_blank" rel="noopener">'+escapeHtml(droneLabel)+'</a></p>';
+      }
+      html+='</div>';
+    } else {
+      html+='<p class="muted">Brak danych o zasadach dla dronów.</p>';
     }
     box.innerHTML=html;
     updateCrowdHint(insight.crowd);
@@ -1208,6 +1192,15 @@
     if(!(typeof min==='number') || isNaN(min) || !(typeof max==='number') || isNaN(max)) return '';
     return 'temperatury '+Math.round(min)+'–'+Math.round(max)+'°C';
   }
+  function isDaylightTime(time,sunrise,sunset){
+    if(!(time instanceof Date) || isNaN(time)) return false;
+    if(isValidDate(sunrise) && isValidDate(sunset)){
+      var t=time.getTime();
+      return t>=sunrise.getTime() && t<=sunset.getTime();
+    }
+    var hour=time.getHours();
+    return hour>=7 && hour<=21;
+  }
   function rangeIntersect(range,band){
     if(!range || !band || !(range.start instanceof Date) || !(range.end instanceof Date)) return false;
     if(!(band[0] instanceof Date) || !(band[1] instanceof Date)) return false;
@@ -1226,8 +1219,11 @@
     if(!tags.length) return '';
     return ' '+tags.map(function(t){return '<span class="session-summary__tag">'+t+'</span>';}).join(' ');
   }
-  function classifySessionScore(score){
-    if(score>=85) return {title:'Idealny dzień na plener', desc:'Światło i pogoda wyglądają znakomicie — możesz śmiało planować sesję.'};
+  function classifySessionScore(score,context){
+    context=context||{};
+    var allowIdeal=context.allowIdeal;
+    if(typeof allowIdeal!=='boolean'){ allowIdeal=true; }
+    if(score>=85 && allowIdeal) return {title:'Idealny dzień na plener', desc:'Światło i pogoda wyglądają znakomicie — możesz śmiało planować sesję.'};
     if(score>=70) return {title:'Bardzo dobry dzień', desc:'Prognozy sprzyjają zdjęciom w plenerze, wykorzystaj najlepsze okna czasowe.'};
     if(score>=55) return {title:'Dzień z dobrym potencjałem', desc:'Warunki powinny być korzystne, choć warto obserwować zmiany w prognozie.'};
     if(score>=40) return {title:'Wymagające warunki', desc:'Możliwe trudniejsze światło lub opady — przygotuj wariant awaryjny.'};
@@ -1316,6 +1312,8 @@
   function renderSessionSummary(data,dateStr){
     if(!data){ sessionSummaryNoData(); return; }
     var points=[];
+    var sunrise=(lastSunData && lastSunData.rise instanceof Date && !isNaN(lastSunData.rise)) ? lastSunData.rise : null;
+    var sunset =(lastSunData && lastSunData.set  instanceof Date && !isNaN(lastSunData.set )) ? lastSunData.set  : null;
     if(data.hourly && Array.isArray(data.hourly.time)){
       for(var i=0;i<data.hourly.time.length;i++){
         var iso=data.hourly.time[i];
@@ -1325,8 +1323,10 @@
         var temp=(data.hourly.temperature_2m && typeof data.hourly.temperature_2m[i] === 'number') ? data.hourly.temperature_2m[i] : null;
         var cloud=(data.hourly.cloudcover && typeof data.hourly.cloudcover[i] === 'number') ? data.hourly.cloudcover[i] : null;
         var prec=(data.hourly.precipitation && typeof data.hourly.precipitation[i] === 'number') ? data.hourly.precipitation[i] : 0;
+        var sunshineSec=(data.hourly.sunshine_duration && typeof data.hourly.sunshine_duration[i] === 'number') ? data.hourly.sunshine_duration[i] : null;
+        var sunshineMin=(typeof sunshineSec === 'number') ? sunshineSec/60 : null;
         var score=evaluateHourScore(temp,cloud,prec);
-        points.push({time:time,temp:temp,cloud:cloud,prec:prec,score:score});
+        points.push({time:time,temp:temp,cloud:cloud,prec:prec,score:score,sunshine:sunshineMin,isDaylight:isDaylightTime(time,sunrise,sunset)});
       }
     }
     var bestDaysHtml=buildBestDaysHtml(data.daily);
@@ -1336,14 +1336,39 @@
       setSessionSummary(baseHtml);
       return;
     }
-    var bestScore=points.reduce(function(max,p){ return p.score>max?p.score:max; },0);
-    var rating=classifySessionScore(bestScore);
-    var slots=buildSlots(points,bestScore);
+    var daylightPoints=points.filter(function(p){ return p.isDaylight; });
+    var evaluationPoints=daylightPoints.length ? daylightPoints : points;
+    var bestScore=0;
+    evaluationPoints.forEach(function(p){ if(p.score>bestScore) bestScore=p.score; });
+
+    var dayIndex=-1;
+    if(data.daily && Array.isArray(data.daily.time)){
+      dayIndex=data.daily.time.indexOf(dateStr);
+    }
+    var dailyRain=(dayIndex>=0 && data.daily && Array.isArray(data.daily.precipitation_sum) && typeof data.daily.precipitation_sum[dayIndex] === 'number') ? data.daily.precipitation_sum[dayIndex] : null;
+    var dailyProb=(dayIndex>=0 && data.daily && Array.isArray(data.daily.precipitation_probability_max) && typeof data.daily.precipitation_probability_max[dayIndex] === 'number') ? data.daily.precipitation_probability_max[dayIndex] : null;
+    var rainExpected=evaluationPoints.some(function(p){ return typeof p.prec==='number' && p.prec>=0.2; });
+    if(!rainExpected && typeof dailyRain==='number' && dailyRain>0.5) rainExpected=true;
+    if(!rainExpected && typeof dailyProb==='number' && dailyProb>=50) rainExpected=true;
+
+    var totalSunshine=0;
+    daylightPoints.forEach(function(p){ if(typeof p.sunshine==='number' && !isNaN(p.sunshine)) totalSunshine+=p.sunshine; });
+    var hasSunshine=daylightPoints.length>0 && totalSunshine>=20;
+    if(!hasSunshine && daylightPoints.length){
+      hasSunshine=daylightPoints.some(function(p){ return typeof p.cloud==='number' && p.cloud<=55; });
+    }
+
+    var rating=classifySessionScore(bestScore,{allowIdeal: hasSunshine && !rainExpected});
     var slotsHtml='';
-    if(slots.length){
-      slotsHtml='<div class="session-summary__slots">'+slots.map(function(s){ return '<span>'+slotDescription(s)+'</span>'; }).join('')+'</div>';
+    if(daylightPoints.length){
+      var slots=buildSlots(daylightPoints,bestScore);
+      if(slots.length){
+        slotsHtml='<div class="session-summary__slots">'+slots.map(function(s){ return '<span>'+slotDescription(s)+'</span>'; }).join('')+'</div>';
+      } else {
+        slotsHtml='<div class="session-summary__slots"><span>Brak wyraźnie dobrego okna — przygotuj alternatywę lub obserwuj zmiany.</span></div>';
+      }
     } else {
-      slotsHtml='<div class="session-summary__slots"><span>Brak wyraźnie dobrego okna — przygotuj alternatywę lub obserwuj zmiany.</span></div>';
+      slotsHtml='<div class="session-summary__slots"><span>Brak jasnych godzin – poczekaj na światło dzienne.</span></div>';
     }
     var html='<strong>'+rating.title+'</strong><span class="session-summary__lead">'+rating.desc+'</span>'+slotsHtml;
     if(bestDaysHtml) html+=bestDaysHtml;
