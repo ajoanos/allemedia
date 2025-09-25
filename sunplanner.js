@@ -8,6 +8,7 @@
   var UNSPLASH_KEY = CFG.UNSPLASH_KEY || '';
   var TZ           = CFG.TZ || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw');
   var REST_URL     = CFG.REST_URL || '';
+  var CONTACT_URL  = CFG.CONTACT_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
   var RADAR_URL    = CFG.RADAR_URL || '';
   var BASE_URL = (function(){
@@ -35,6 +36,15 @@
 
   var root = document.getElementById('sunplanner-app');
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
+
+  var contactState = {
+    coupleSlots: [],
+    photographerSlots: [],
+    coupleNote: '',
+    photographerNote: '',
+    coupleEmail: '',
+    photographerEmail: ''
+  };
 
   root.innerHTML =
   '<div class="sunplanner">'+
@@ -168,26 +178,31 @@
     '</div>'+
     '<div class="card contact-card">'+
       '<h3>Kontakt młoda para – fotograf</h3>'+
-      '<p class="muted">Wpiszcie preferowane terminy i wymieńcie się wiadomościami, aby szybciej ustalić szczegóły sesji.</p>'+
+      '<p class="muted">Zaproponujcie kilka terminów po obu stronach, oznaczcie najlepsze i szybko poinformujcie się nawzajem o zmianach.</p>'+
       '<div class="contact-grid">'+
         '<div class="contact-section">'+
           '<h4>Propozycje młodej pary</h4>'+
-          '<label class="contact-label" for="sp-contact-couple-date">Preferowana data</label>'+
-          '<input id="sp-contact-couple-date" class="input" type="date">'+
-          '<label class="contact-label" for="sp-contact-couple-time">Preferowana godzina</label>'+
-          '<input id="sp-contact-couple-time" class="input" type="time">'+
+          '<label class="contact-label" for="sp-contact-couple-email">Email młodej pary</label>'+
+          '<input id="sp-contact-couple-email" class="input" type="email" placeholder="para@example.com">'+
+          '<div id="sp-contact-couple-slots" class="contact-slots"></div>'+
+          '<button id="sp-contact-add-couple" class="btn ghost" type="button">Dodaj termin</button>'+
           '<label class="contact-label" for="sp-contact-couple-note">Wiadomość do fotografa</label>'+
           '<textarea id="sp-contact-couple-note" class="input textarea" rows="3" placeholder="Opisz swoje oczekiwania lub pytania..."></textarea>'+
         '</div>'+
         '<div class="contact-section">'+
           '<h4>Dostępność fotografa</h4>'+
-          '<label class="contact-label" for="sp-contact-photographer-date">Pasująca data</label>'+
-          '<input id="sp-contact-photographer-date" class="input" type="date">'+
-          '<label class="contact-label" for="sp-contact-photographer-time">Pasująca godzina</label>'+
-          '<input id="sp-contact-photographer-time" class="input" type="time">'+
+          '<label class="contact-label" for="sp-contact-photographer-email">Email fotografa</label>'+
+          '<input id="sp-contact-photographer-email" class="input" type="email" placeholder="fotograf@example.com">'+
+          '<div id="sp-contact-photographer-slots" class="contact-slots"></div>'+
+          '<button id="sp-contact-add-photographer" class="btn ghost" type="button">Dodaj termin</button>'+
           '<label class="contact-label" for="sp-contact-photographer-note">Wiadomość do młodej pary</label>'+
           '<textarea id="sp-contact-photographer-note" class="input textarea" rows="3" placeholder="Dodaj swoje uwagi lub propozycje..."></textarea>'+
         '</div>'+
+      '</div>'+
+      '<div class="contact-actions">'+
+        '<button id="sp-contact-send-photographer" class="btn" type="button">Wyślij informację do fotografa</button>'+
+        '<button id="sp-contact-send-couple" class="btn secondary" type="button">Wyślij powiadomienie do młodej pary</button>'+
+        '<p id="sp-contact-status" class="contact-status muted"></p>'+
       '</div>'+
     '</div>'+
     '<div class="card share-card">'+
@@ -254,6 +269,142 @@
   function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
   function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
   function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
+
+  var coupleSlotsEl = document.getElementById('sp-contact-couple-slots');
+  var photSlotsEl = document.getElementById('sp-contact-photographer-slots');
+  var addCoupleBtn = document.getElementById('sp-contact-add-couple');
+  var addPhotBtn = document.getElementById('sp-contact-add-photographer');
+  var coupleEmailEl = document.getElementById('sp-contact-couple-email');
+  var photEmailEl = document.getElementById('sp-contact-photographer-email');
+  var coupleNoteEl = document.getElementById('sp-contact-couple-note');
+  var photNoteEl = document.getElementById('sp-contact-photographer-note');
+  var contactStatusEl = document.getElementById('sp-contact-status');
+  var sendPhotBtn = document.getElementById('sp-contact-send-photographer');
+  var sendCoupleBtn = document.getElementById('sp-contact-send-couple');
+
+  function cleanContactSlots(arr){
+    var clean=[];
+    if(Array.isArray(arr)){
+      for(var i=0;i<arr.length && clean.length<6;i++){
+        var slot=arr[i]||{};
+        var date=typeof slot.date==='string'?slot.date.slice(0,10):'';
+        var time=typeof slot.time==='string'?slot.time.slice(0,5):'';
+        clean.push({
+          date:date,
+          time:time,
+          favorite:!!slot.favorite
+        });
+      }
+    }
+    return clean;
+  }
+
+  function renderContactSlots(type){
+    var key=type==='photographer'?'photographerSlots':'coupleSlots';
+    var wrap=type==='photographer'?photSlotsEl:coupleSlotsEl;
+    if(!wrap) return;
+    wrap.innerHTML='';
+    var slots=contactState[key];
+    if(!slots.length){
+      var empty=document.createElement('div');
+      empty.className='contact-slot-empty muted';
+      empty.textContent='Dodaj termin, aby zapisać propozycję.';
+      wrap.appendChild(empty);
+      return;
+    }
+    slots.forEach(function(slot,idx){
+      var row=document.createElement('div');
+      row.className='contact-slot'+(slot.favorite?' contact-slot--selected':'');
+      var fields=document.createElement('div');
+      fields.className='contact-slot-row';
+      var date=document.createElement('input');
+      date.type='date';
+      date.className='input contact-slot-input';
+      date.value=slot.date||'';
+      date.addEventListener('input', function(e){ contactState[key][idx].date=e.target.value; });
+      date.addEventListener('change', function(){ updateLink(); });
+      var time=document.createElement('input');
+      time.type='time';
+      time.className='input contact-slot-input';
+      time.value=slot.time||'';
+      time.addEventListener('input', function(e){ contactState[key][idx].time=e.target.value; });
+      time.addEventListener('change', function(){ updateLink(); });
+      fields.appendChild(date);
+      fields.appendChild(time);
+
+      var actions=document.createElement('div');
+      actions.className='contact-slot-actions';
+      var favBtn=document.createElement('button');
+      favBtn.type='button';
+      favBtn.className='btn ghost contact-slot-fav';
+      var badge=document.createElement('span');
+      badge.className='contact-slot-badge';
+      badge.textContent='Najlepszy termin';
+      if(!slot.favorite) badge.style.display='none';
+      favBtn.textContent=slot.favorite?'Usuń oznaczenie':'Oznacz jako najlepszy';
+      favBtn.addEventListener('click', function(){
+        var current=contactState[key][idx];
+        current.favorite=!current.favorite;
+        favBtn.textContent=current.favorite?'Usuń oznaczenie':'Oznacz jako najlepszy';
+        row.classList.toggle('contact-slot--selected', current.favorite);
+        badge.style.display=current.favorite?'inline-flex':'none';
+        updateLink();
+      });
+      var removeBtn=document.createElement('button');
+      removeBtn.type='button';
+      removeBtn.className='btn ghost contact-slot-remove';
+      removeBtn.textContent='Usuń termin';
+      removeBtn.addEventListener('click', function(){
+        contactState[key].splice(idx,1);
+        renderContactSlots(type);
+        updateLink();
+      });
+      actions.appendChild(favBtn);
+      actions.appendChild(removeBtn);
+
+      row.appendChild(fields);
+      row.appendChild(actions);
+      row.appendChild(badge);
+      wrap.appendChild(row);
+    });
+  }
+
+  function setContactInputs(){
+    if(coupleEmailEl) coupleEmailEl.value=contactState.coupleEmail||'';
+    if(photEmailEl) photEmailEl.value=contactState.photographerEmail||'';
+    if(coupleNoteEl) coupleNoteEl.value=contactState.coupleNote||'';
+    if(photNoteEl) photNoteEl.value=contactState.photographerNote||'';
+    renderContactSlots('couple');
+    renderContactSlots('photographer');
+  }
+
+  function setContactState(partial){
+    partial=partial||{};
+    contactState.coupleEmail=typeof partial.coupleEmail==='string'?partial.coupleEmail.trim():'';
+    contactState.photographerEmail=typeof partial.photographerEmail==='string'?partial.photographerEmail.trim():'';
+    contactState.coupleNote=typeof partial.coupleNote==='string'?partial.coupleNote:'';
+    contactState.photographerNote=typeof partial.photographerNote==='string'?partial.photographerNote:'';
+    contactState.coupleSlots=cleanContactSlots(partial.coupleSlots);
+    contactState.photographerSlots=cleanContactSlots(partial.photographerSlots);
+    setContactInputs();
+  }
+
+  function addContactSlot(type){
+    var key=type==='photographer'?'photographerSlots':'coupleSlots';
+    if(contactState[key].length>=6){ toast('Dodaj maksymalnie 6 terminów'); return; }
+    contactState[key].push({date:'',time:'',favorite:false});
+    renderContactSlots(type);
+    updateLink();
+  }
+
+  function setContactStatus(message,type){
+    if(!contactStatusEl) return;
+    contactStatusEl.textContent=message||'';
+    contactStatusEl.classList.remove('is-ok','is-error','is-pending');
+    if(type){ contactStatusEl.classList.add('is-'+type); }
+  }
+
+  setContactInputs();
 
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
@@ -459,12 +610,6 @@
   };
   function packState(){
     var radarEl=$('#sp-radar');
-    var coupleDateEl=$('#sp-contact-couple-date');
-    var coupleTimeEl=$('#sp-contact-couple-time');
-    var coupleNoteEl=$('#sp-contact-couple-note');
-    var photDateEl=$('#sp-contact-photographer-date');
-    var photTimeEl=$('#sp-contact-photographer-time');
-    var photNoteEl=$('#sp-contact-photographer-note');
     return {
       date:dEl.value,
       sr:$('#sp-slider-rise').value,
@@ -472,12 +617,16 @@
       rad: (radarEl && radarEl.checked)?1:0,
       pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
       contact:{
-        coupleDate: coupleDateEl ? coupleDateEl.value : '',
-        coupleTime: coupleTimeEl ? coupleTimeEl.value : '',
-        coupleNote: coupleNoteEl ? coupleNoteEl.value.trim() : '',
-        photographerDate: photDateEl ? photDateEl.value : '',
-        photographerTime: photTimeEl ? photTimeEl.value : '',
-        photographerNote: photNoteEl ? photNoteEl.value.trim() : ''
+        coupleEmail: contactState.coupleEmail || '',
+        photographerEmail: contactState.photographerEmail || '',
+        coupleNote: contactState.coupleNote || '',
+        photographerNote: contactState.photographerNote || '',
+        coupleSlots: cleanContactSlots(contactState.coupleSlots).map(function(slot){
+          return { date: slot.date || '', time: slot.time || '', favorite: !!slot.favorite };
+        }),
+        photographerSlots: cleanContactSlots(contactState.photographerSlots).map(function(slot){
+          return { date: slot.date || '', time: slot.time || '', favorite: !!slot.favorite };
+        })
       }
     };
   }
@@ -491,15 +640,49 @@
       points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
     }
     var contact = obj.contact || {};
-    var el;
-    if((el=$('#sp-contact-couple-date'))) el.value = contact.coupleDate || '';
-    if((el=$('#sp-contact-couple-time'))) el.value = contact.coupleTime || '';
-    if((el=$('#sp-contact-couple-note'))) el.value = contact.coupleNote || '';
-    if((el=$('#sp-contact-photographer-date'))) el.value = contact.photographerDate || '';
-    if((el=$('#sp-contact-photographer-time'))) el.value = contact.photographerTime || '';
-    if((el=$('#sp-contact-photographer-note'))) el.value = contact.photographerNote || '';
+    setContactState({
+      coupleEmail: contact.coupleEmail || '',
+      photographerEmail: contact.photographerEmail || '',
+      coupleNote: contact.coupleNote || '',
+      photographerNote: contact.photographerNote || '',
+      coupleSlots: Array.isArray(contact.coupleSlots)?contact.coupleSlots:[],
+      photographerSlots: Array.isArray(contact.photographerSlots)?contact.photographerSlots:[]
+    });
   }
   function persistState(){ if(!storageAvailable) return; try{ window.localStorage.setItem(STORAGE_KEY, b64url.enc(packState())); }catch(e){} }
+  function sendContactUpdate(target){
+    if(!CONTACT_URL){ toast('Wysyłka powiadomień jest chwilowo niedostępna'); return; }
+    var sendTo = target==='photographer' ? (contactState.photographerEmail||'') : (contactState.coupleEmail||'');
+    if(!sendTo){
+      toast(target==='photographer'?'Podaj adres e-mail fotografa.':'Podaj adres e-mail młodej pary.');
+      return;
+    }
+    var btn = target==='photographer' ? sendPhotBtn : sendCoupleBtn;
+    var originalText = btn ? btn.textContent : '';
+    if(btn){ btn.disabled=true; btn.textContent='Wysyłam...'; }
+    setContactStatus('Wysyłanie wiadomości...', 'pending');
+    persistState();
+    fetch(CONTACT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ target:target, state:packState(), link:location.href })
+    })
+      .then(function(r){
+        if(!r.ok) throw new Error('http');
+        return typeof r.json==='function' ? r.json().catch(function(){ return {}; }) : {};
+      })
+      .then(function(data){
+        var message = data && data.message ? data.message : 'Powiadomienie wysłane.';
+        setContactStatus(message, 'ok');
+        toast('Powiadomienie wysłane','ok');
+        if(btn){ btn.disabled=false; btn.textContent=originalText; }
+      })
+      .catch(function(){
+        setContactStatus('Nie udało się wysłać wiadomości. Spróbuj ponownie.', 'error');
+        toast('Błąd wysyłki');
+        if(btn){ btn.disabled=false; btn.textContent=originalText; }
+      });
+  }
   (function(){
     var params=new URLSearchParams(location.search);
     var sp=params.get('sp');
@@ -1825,14 +2008,30 @@
   $('#sp-client-card').addEventListener('click', openClientCard);
   $('#sp-print').addEventListener('click', function(){ window.print(); });
   $('#sp-geo').addEventListener('click', locateStart);
-  ['#sp-contact-couple-date','#sp-contact-couple-time','#sp-contact-couple-note','#sp-contact-photographer-date','#sp-contact-photographer-time','#sp-contact-photographer-note']
-    .forEach(function(sel){
-      var el=$(sel);
-      if(!el) return;
-      var handler=function(){ updateLink(); };
-      el.addEventListener('change', handler);
-      el.addEventListener('input', handler);
-    });
+  if(addCoupleBtn){ addCoupleBtn.addEventListener('click', function(){ addContactSlot('couple'); }); }
+  if(addPhotBtn){ addPhotBtn.addEventListener('click', function(){ addContactSlot('photographer'); }); }
+  if(coupleEmailEl){
+    var handleCoupleEmail=function(){ contactState.coupleEmail=coupleEmailEl.value.trim(); updateLink(); };
+    coupleEmailEl.addEventListener('input', handleCoupleEmail);
+    coupleEmailEl.addEventListener('change', handleCoupleEmail);
+  }
+  if(photEmailEl){
+    var handlePhotEmail=function(){ contactState.photographerEmail=photEmailEl.value.trim(); updateLink(); };
+    photEmailEl.addEventListener('input', handlePhotEmail);
+    photEmailEl.addEventListener('change', handlePhotEmail);
+  }
+  if(coupleNoteEl){
+    var handleCoupleNote=function(){ contactState.coupleNote=coupleNoteEl.value; updateLink(); };
+    coupleNoteEl.addEventListener('input', handleCoupleNote);
+    coupleNoteEl.addEventListener('change', handleCoupleNote);
+  }
+  if(photNoteEl){
+    var handlePhotNote=function(){ contactState.photographerNote=photNoteEl.value; updateLink(); };
+    photNoteEl.addEventListener('input', handlePhotNote);
+    photNoteEl.addEventListener('change', handlePhotNote);
+  }
+  if(sendPhotBtn){ sendPhotBtn.addEventListener('click', function(){ sendContactUpdate('photographer'); }); }
+  if(sendCoupleBtn){ sendCoupleBtn.addEventListener('click', function(){ sendContactUpdate('couple'); }); }
   var radarToggle=$('#sp-radar');
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
