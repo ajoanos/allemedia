@@ -5,6 +5,9 @@
 
 .sunplanner{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;line-height:1.45}
 .sunplanner-share{min-height:60vh}
+@supports (min-height: 60svh){
+  .sunplanner-share{min-height:60svh}
+}
 .sunplanner-share__inner{margin:0 auto;max-width:1200px;padding:2rem 1rem}
 .sunplanner-share__header{text-align:center;margin-bottom:2rem}
 .sunplanner-share__badge{display:inline-block;padding:.35rem .75rem;border-radius:999px;background:#fef3c7;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
