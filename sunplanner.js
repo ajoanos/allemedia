@@ -164,10 +164,6 @@
             '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
           '</div>'+
         '</div>'+
-        '<div id="sp-crowd-block" class="crowd-block">'+
-          '<h3>Popularne godziny</h3>'+
-          '<p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>'+
-        '</div>'+
       '</div>'+
     '</div>'+
     '<div class="card share-card">'+
@@ -297,24 +293,6 @@
         var label = normalizeLabel(dest.label||'');
         if(label.indexOf('morskie oko') !== -1) return true;
         return isWithinBox(dest.lat, dest.lng, MORSKIE_OKO_BOX);
-      },
-      crowd: {
-        description: 'Największy tłok na szlaku i przy schronisku przypada między 10:00 a 14:00. Najspokojniej jest przed świtem lub po zachodzie słońca.',
-        scaleNote: 'Skala 1–5 (5 = największy tłok na szlaku i przy schronisku).',
-        maxLevel: 5,
-        data: [
-          {label:'05:00', level:1, tip:'Świt – bardzo spokojnie'},
-          {label:'06:00', level:1, tip:'Pojedynczy turyści'},
-          {label:'07:00', level:2, tip:'Pierwsze busy z Palenicy'},
-          {label:'08:00', level:3, tip:'Ruch zaczyna rosnąć'},
-          {label:'09:00', level:4, tip:'Duży napływ turystów'},
-          {label:'10:00', level:5, tip:'Szczyt ruchu na podejściu i przy schronisku'},
-          {label:'11:00', level:5, tip:'Tłum w okolicy jeziora'},
-          {label:'13:00', level:4, tip:'Wciąż bardzo tłoczno'},
-          {label:'15:00', level:3, tip:'Powroty turystów'},
-          {label:'17:00', level:2, tip:'Stopniowo coraz luźniej'},
-          {label:'19:00', level:1, tip:'Po zachodzie robi się pusto'}
-        ]
       }
     },
     {
@@ -335,24 +313,6 @@
         allowed: false,
         statusText: 'Loty tylko za zgodą',
         text: 'Gubałówka znajduje się w strefie zabudowanej Zakopanego – lot wymaga zgody właściciela terenu i zgłoszenia w PAŻP. Latanie nad kolejką i tłumami jest zabronione.'
-      },
-      crowd: {
-        description: 'Deptak przy górnej stacji kolejki zapełnia się od późnego ranka. Najspokojniej jest o świcie i po zachodzie słońca.',
-        scaleNote: 'Skala 1–5 (5 = największy tłok przy górnej stacji).',
-        maxLevel: 5,
-        data: [
-          {label:'07:00', level:1, tip:'Przed otwarciem sklepów'},
-          {label:'08:00', level:2, tip:'Pierwsi turyści'},
-          {label:'09:00', level:3, tip:'Ruch rośnie'},
-          {label:'10:00', level:5, tip:'Pełne wagoniki kolejki'},
-          {label:'11:00', level:5, tip:'Największy tłum na deptaku'},
-          {label:'12:00', level:4, tip:'Stały wysoki ruch'},
-          {label:'13:00', level:4, tip:'Popularny czas na zdjęcia'},
-          {label:'14:00', level:5, tip:'Popołudniowy szczyt'},
-          {label:'16:00', level:4, tip:'Powroty do Zakopanego'},
-          {label:'18:00', level:2, tip:'Coraz luźniej'},
-          {label:'20:00', level:1, tip:'Po zachodzie robi się spokojnie'}
-        ]
       }
     }
   ];
@@ -375,10 +335,6 @@
     if(zone && zone.drone){ info.drone = Object.assign({}, zone.drone); }
     if(entry.wedding){ info.wedding = Object.assign({}, info.wedding||{}, entry.wedding); }
     if(entry.drone){ info.drone = Object.assign({}, info.drone||{}, entry.drone); }
-    if(entry.crowd){
-      info.crowd = Object.assign({}, entry.crowd);
-      if(entry.crowd.data){ info.crowd.data = entry.crowd.data.slice(); }
-    }
     if(entry.description){ info.description = entry.description; }
     return info;
   }
@@ -400,69 +356,19 @@
     return null;
   }
 
-  function buildCrowdChart(crowd){
-    var data = (crowd && Array.isArray(crowd.data)) ? crowd.data : [];
-    if(!data.length) return '';
-    var max = (crowd && typeof crowd.maxLevel === 'number' && !isNaN(crowd.maxLevel) && crowd.maxLevel>0) ? crowd.maxLevel : 0;
-    data.forEach(function(item){
-      var lvl = Number(item && item.level);
-      if(!isNaN(lvl) && lvl>max) max=lvl;
-    });
-    if(max<=0) max=1;
-    var aria = 'Popularność godzinowa: '+data.map(function(item){
-      var lbl=item && item.label ? item.label : '';
-      var lvlTxt=Number(item && item.level);
-      if(isNaN(lvlTxt)) lvlTxt=0;
-      return lbl+' – poziom '+lvlTxt;
-    }).join(', ');
-    var html='<div class="crowd-chart" aria-label="'+escapeHtml(aria)+'">';
-    data.forEach(function(item){
-      var lvl=Number(item && item.level);
-      if(!isFinite(lvl) || lvl<0) lvl=0;
-      if(lvl>max) lvl=max;
-      var displayLevel=Math.round(lvl);
-      var label=item && item.label ? item.label : '';
-      var tip=item && item.tip ? ' title="'+escapeHtml(item.tip)+'"' : '';
-      html+='<div class="crowd-chart__item" style="--level:'+lvl+';--max:'+max+'">'+
-        '<div class="crowd-chart__bar" data-level="'+escapeHtml(String(displayLevel))+'"'+tip+'></div>'+
-        '<span>'+escapeHtml(label)+'</span>'+
-      '</div>';
-    });
-    html+='</div>';
-    return html;
-  }
-
-  function updateCrowdHint(crowd){
-    var block=document.getElementById('sp-crowd-block');
-    if(!block) return;
-    if(!crowd || !Array.isArray(crowd.data) || !crowd.data.length){
-      block.innerHTML='<h3>Popularne godziny</h3><p class="muted">Dodaj cel podróży, aby sprawdzić natężenie ruchu.</p>';
-      return;
-    }
-    var html='<h3>Popularne godziny</h3>';
-    if(crowd.description){ html+='<p>'+escapeHtml(crowd.description)+'</p>'; }
-    html+=buildCrowdChart(crowd);
-    var scaleNote=crowd.scaleNote || 'Skala 1–5 (5 = największy tłok).';
-    html+='<p class="crowd-block__note">'+escapeHtml(scaleNote)+'</p>';
-    block.innerHTML=html;
-  }
-
   function updateLocationInsights(dest){
     var box=document.getElementById('sp-location-insights');
     if(!box){
-      updateCrowdHint(null);
       return;
     }
     dest = dest || points[points.length-1];
     if(!dest){
       box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>';
-      updateCrowdHint(null);
       return;
     }
     var insight = computeLocationInsight(dest);
     if(!insight){
       box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Brak danych dla tej lokalizacji. Sprawdź regulaminy zarządcy terenu.</p>';
-      updateCrowdHint(null);
       return;
     }
     var html='<h3>Zasady na miejscu</h3>';
@@ -490,7 +396,6 @@
       html+='<p class="muted">Brak danych o zasadach dla dronów.</p>';
     }
     box.innerHTML=html;
-    updateCrowdHint(insight.crowd);
   }
 
   var RADAR_FALLBACKS = [
