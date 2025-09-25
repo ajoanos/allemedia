@@ -321,14 +321,16 @@
       date.type='date';
       date.className='input contact-slot-input';
       date.value=slot.date||'';
-      date.addEventListener('input', function(e){ contactState[key][idx].date=e.target.value; });
-      date.addEventListener('change', function(){ updateLink(); });
+      var handleDateChange=function(e){ contactState[key][idx].date=e.target.value; updateLink(); };
+      date.addEventListener('input', handleDateChange);
+      date.addEventListener('change', handleDateChange);
       var time=document.createElement('input');
       time.type='time';
       time.className='input contact-slot-input';
       time.value=slot.time||'';
-      time.addEventListener('input', function(e){ contactState[key][idx].time=e.target.value; });
-      time.addEventListener('change', function(){ updateLink(); });
+      var handleTimeChange=function(e){ contactState[key][idx].time=e.target.value; updateLink(); };
+      time.addEventListener('input', handleTimeChange);
+      time.addEventListener('change', handleTimeChange);
       fields.appendChild(date);
       fields.appendChild(time);
 
