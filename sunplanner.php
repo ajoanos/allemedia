@@ -337,7 +337,11 @@ function sunplanner_contact_prepare_slots($slots)
     $prepared = [];
     if (is_array($slots)) {
         foreach ($slots as $slot) {
-            $prepared[] = sunplanner_contact_clean_slot($slot);
+            $clean = sunplanner_contact_clean_slot($slot);
+            if ($clean['date'] === '' && $clean['time'] === '') {
+                continue;
+            }
+            $prepared[] = $clean;
             if (count($prepared) >= 6) {
                 break;
             }
@@ -416,13 +420,19 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
     $couple_slots = sunplanner_contact_prepare_slots(isset($contact['coupleSlots']) ? $contact['coupleSlots'] : []);
     $phot_slots = sunplanner_contact_prepare_slots(isset($contact['photographerSlots']) ? $contact['photographerSlots'] : []);
 
+    $home = home_url();
+
     $link = isset($params['link']) ? esc_url_raw($params['link']) : '';
-    if ($link !== '') {
-        $home = home_url();
-        if (strpos($link, $home) !== 0) {
-            $link = '';
-        }
+    if ($link !== '' && strpos($link, $home) !== 0) {
+        $link = '';
     }
+
+    $short_link = isset($params['shortLink']) ? esc_url_raw($params['shortLink']) : '';
+    if ($short_link !== '' && strpos($short_link, $home) !== 0) {
+        $short_link = '';
+    }
+
+    $preview_link = $short_link !== '' ? $short_link : $link;
 
     $plan_date = isset($state['date']) ? sunplanner_contact_format_plan_date($state['date']) : '';
     $points = isset($state['pts']) && is_array($state['pts']) ? $state['pts'] : [];
@@ -456,8 +466,8 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
     if ($destination !== '') {
         $lines[] = sprintf(__('Cel sesji: %s', 'sunplanner'), $destination);
     }
-    if ($link) {
-        $lines[] = sprintf(__('Podgląd planu: %s', 'sunplanner'), $link);
+    if ($preview_link) {
+        $lines[] = sprintf(__('Podgląd planu: %s', 'sunplanner'), $preview_link);
     }
 
     $lines[] = '';
