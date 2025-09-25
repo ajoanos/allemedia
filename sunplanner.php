@@ -68,6 +68,7 @@ wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 'REST_URL' => esc_url_raw( rest_url('sunplanner/v1/share') ),
 'SITE_ORIGIN' => esc_url_raw( home_url('/') ),
 'RADAR_URL' => esc_url_raw( rest_url('sunplanner/v1/radar') ),
+'NOTIFY_URL' => esc_url_raw( rest_url('sunplanner/v1/notify') ),
 ]);
 });
 
@@ -292,6 +293,49 @@ add_action('rest_api_init', function () {
             $base = home_url(trailingslashit('sp/' . rawurlencode($id)));
             $url = add_query_arg(['sunplan' => $id], $base);
             return ['id' => $id, 'url' => $url];
+        }
+    ]);
+
+    register_rest_route('sunplanner/v1', '/notify', [
+        'methods' => 'POST',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'target' => ['required' => true, 'type' => 'string'],
+            'email' => ['required' => true, 'type' => 'string'],
+            'subject' => ['required' => false, 'type' => 'string'],
+            'message' => ['required' => true, 'type' => 'string'],
+        ],
+        'callback' => function (WP_REST_Request $req) {
+            $target = sanitize_key($req->get_param('target'));
+            if (!in_array($target, ['photographer', 'couple'], true)) {
+                return new WP_REST_Response(['error' => 'invalid_target'], 400);
+            }
+
+            $email = sanitize_email($req->get_param('email'));
+            if (!is_email($email)) {
+                return new WP_REST_Response(['error' => 'invalid_email'], 400);
+            }
+
+            $subject = $req->get_param('subject');
+            if (!is_string($subject) || $subject === '') {
+                $subject = __('SunPlanner – nowe informacje w planerze', 'sunplanner');
+            } else {
+                $subject = sanitize_text_field($subject);
+            }
+
+            $message = $req->get_param('message');
+            if (!is_string($message) || trim($message) === '') {
+                return new WP_REST_Response(['error' => 'empty_message'], 400);
+            }
+
+            $body = sanitize_textarea_field($message);
+            $headers = ['Content-Type: text/plain; charset=UTF-8'];
+
+            if (!wp_mail($email, $subject, $body, $headers)) {
+                return new WP_REST_Response(['error' => 'mail_failed'], 500);
+            }
+
+            return ['status' => 'ok'];
         }
     ]);
 });
