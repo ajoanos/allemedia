@@ -414,11 +414,6 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
 
     $couple_email = isset($contact['coupleEmail']) ? sanitize_email($contact['coupleEmail']) : '';
     $phot_email = isset($contact['photographerEmail']) ? sanitize_email($contact['photographerEmail']) : '';
-    $couple_note = isset($contact['coupleNote']) ? sanitize_textarea_field($contact['coupleNote']) : '';
-    $phot_note = isset($contact['photographerNote']) ? sanitize_textarea_field($contact['photographerNote']) : '';
-
-    $couple_slots = sunplanner_contact_prepare_slots(isset($contact['coupleSlots']) ? $contact['coupleSlots'] : []);
-    $phot_slots = sunplanner_contact_prepare_slots(isset($contact['photographerSlots']) ? $contact['photographerSlots'] : []);
 
     $home = home_url();
 
@@ -434,7 +429,6 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
 
     $preview_link = $short_link !== '' ? $short_link : $link;
 
-    $plan_date = isset($state['date']) ? sunplanner_contact_format_plan_date($state['date']) : '';
     $points = isset($state['pts']) && is_array($state['pts']) ? $state['pts'] : [];
     $destination = '';
     if (!empty($points)) {
@@ -460,9 +454,6 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
     if ($site_name) {
         $lines[] = sprintf(__('Plan pochodzi ze strony: %s', 'sunplanner'), $site_name);
     }
-    if ($plan_date) {
-        $lines[] = sprintf(__('Data w planerze: %s', 'sunplanner'), $plan_date);
-    }
     if ($destination !== '') {
         $lines[] = sprintf(__('Cel sesji: %s', 'sunplanner'), $destination);
     }
@@ -471,31 +462,7 @@ function sunplanner_handle_contact_request(WP_REST_Request $req)
     }
 
     $lines[] = '';
-    $lines[] = __('Propozycje młodej pary:', 'sunplanner');
-    if (!empty($couple_slots)) {
-        foreach ($couple_slots as $slot) {
-            $lines[] = sunplanner_contact_format_slot_line($slot);
-        }
-    } else {
-        $lines[] = '- —';
-    }
-
-    $lines[] = '';
-    $lines[] = __('Dostępność fotografa:', 'sunplanner');
-    if (!empty($phot_slots)) {
-        foreach ($phot_slots as $slot) {
-            $lines[] = sunplanner_contact_format_slot_line($slot);
-        }
-    } else {
-        $lines[] = '- —';
-    }
-
-    $lines[] = '';
-    $lines[] = __('Wiadomość młodej pary:', 'sunplanner');
-    $lines[] = $couple_note !== '' ? $couple_note : '—';
-    $lines[] = '';
-    $lines[] = __('Wiadomość fotografa:', 'sunplanner');
-    $lines[] = $phot_note !== '' ? $phot_note : '—';
+    $lines[] = __('Otrzymaliśmy nowy plan pleneru. Szczegóły znajdziesz w SunPlannerze.', 'sunplanner');
     $lines[] = '';
     $lines[] = __('Wiadomość wygenerowana automatycznie w SunPlanner.', 'sunplanner');
 
