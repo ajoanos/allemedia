@@ -123,6 +123,16 @@
 .sunshine-legend i.bar.sun-weak{background:#fef3c7}
 .sunshine-legend i.bar.sun-medium{background:#fcd34d}
 .sunshine-legend i.bar.sun-strong{background:#f59e0b}
+.contact-card{margin-top:1.2rem}
+.contact-card h3{margin-top:0}
+.contact-grid{display:grid;gap:1rem;margin-top:.9rem}
+.contact-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.6rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+.contact-section h4{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
+.contact-label{font-size:.85rem;font-weight:600;color:#475569}
+.contact-card .input{width:100%}
+.input.textarea{min-height:110px;resize:vertical}
+.contact-section textarea{font-family:inherit}
+@media(min-width:860px){.contact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .share-card{margin-top:1.2rem}
 .share-card h3{margin-top:0}
 @media(max-width:640px){

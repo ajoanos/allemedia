@@ -166,6 +166,30 @@
         '</div>'+
       '</div>'+
     '</div>'+
+    '<div class="card contact-card">'+
+      '<h3>Kontakt młoda para – fotograf</h3>'+
+      '<p class="muted">Wpiszcie preferowane terminy i wymieńcie się wiadomościami, aby szybciej ustalić szczegóły sesji.</p>'+
+      '<div class="contact-grid">'+
+        '<div class="contact-section">'+
+          '<h4>Propozycje młodej pary</h4>'+
+          '<label class="contact-label" for="sp-contact-couple-date">Preferowana data</label>'+
+          '<input id="sp-contact-couple-date" class="input" type="date">'+
+          '<label class="contact-label" for="sp-contact-couple-time">Preferowana godzina</label>'+
+          '<input id="sp-contact-couple-time" class="input" type="time">'+
+          '<label class="contact-label" for="sp-contact-couple-note">Wiadomość do fotografa</label>'+
+          '<textarea id="sp-contact-couple-note" class="input textarea" rows="3" placeholder="Opisz swoje oczekiwania lub pytania..."></textarea>'+
+        '</div>'+
+        '<div class="contact-section">'+
+          '<h4>Dostępność fotografa</h4>'+
+          '<label class="contact-label" for="sp-contact-photographer-date">Pasująca data</label>'+
+          '<input id="sp-contact-photographer-date" class="input" type="date">'+
+          '<label class="contact-label" for="sp-contact-photographer-time">Pasująca godzina</label>'+
+          '<input id="sp-contact-photographer-time" class="input" type="time">'+
+          '<label class="contact-label" for="sp-contact-photographer-note">Wiadomość do młodej pary</label>'+
+          '<textarea id="sp-contact-photographer-note" class="input textarea" rows="3" placeholder="Dodaj swoje uwagi lub propozycje..."></textarea>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
     '<div class="card share-card">'+
       '<h3>Udostępnij / Eksport</h3>'+
       '<div class="row share-row" style="align-items:flex-start">'+
@@ -435,12 +459,26 @@
   };
   function packState(){
     var radarEl=$('#sp-radar');
+    var coupleDateEl=$('#sp-contact-couple-date');
+    var coupleTimeEl=$('#sp-contact-couple-time');
+    var coupleNoteEl=$('#sp-contact-couple-note');
+    var photDateEl=$('#sp-contact-photographer-date');
+    var photTimeEl=$('#sp-contact-photographer-time');
+    var photNoteEl=$('#sp-contact-photographer-note');
     return {
       date:dEl.value,
       sr:$('#sp-slider-rise').value,
       ss:$('#sp-slider-set').value,
       rad: (radarEl && radarEl.checked)?1:0,
-      pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};})
+      pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
+      contact:{
+        coupleDate: coupleDateEl ? coupleDateEl.value : '',
+        coupleTime: coupleTimeEl ? coupleTimeEl.value : '',
+        coupleNote: coupleNoteEl ? coupleNoteEl.value.trim() : '',
+        photographerDate: photDateEl ? photDateEl.value : '',
+        photographerTime: photTimeEl ? photTimeEl.value : '',
+        photographerNote: photNoteEl ? photNoteEl.value.trim() : ''
+      }
     };
   }
   function unpackState(obj){
@@ -452,6 +490,14 @@
     if(Object.prototype.toString.call(obj.pts)==='[object Array]'){
       points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
     }
+    var contact = obj.contact || {};
+    var el;
+    if((el=$('#sp-contact-couple-date'))) el.value = contact.coupleDate || '';
+    if((el=$('#sp-contact-couple-time'))) el.value = contact.coupleTime || '';
+    if((el=$('#sp-contact-couple-note'))) el.value = contact.coupleNote || '';
+    if((el=$('#sp-contact-photographer-date'))) el.value = contact.photographerDate || '';
+    if((el=$('#sp-contact-photographer-time'))) el.value = contact.photographerTime || '';
+    if((el=$('#sp-contact-photographer-note'))) el.value = contact.photographerNote || '';
   }
   function persistState(){ if(!storageAvailable) return; try{ window.localStorage.setItem(STORAGE_KEY, b64url.enc(packState())); }catch(e){} }
   (function(){
@@ -1779,6 +1825,14 @@
   $('#sp-client-card').addEventListener('click', openClientCard);
   $('#sp-print').addEventListener('click', function(){ window.print(); });
   $('#sp-geo').addEventListener('click', locateStart);
+  ['#sp-contact-couple-date','#sp-contact-couple-time','#sp-contact-couple-note','#sp-contact-photographer-date','#sp-contact-photographer-time','#sp-contact-photographer-note']
+    .forEach(function(sel){
+      var el=$(sel);
+      if(!el) return;
+      var handler=function(){ updateLink(); };
+      el.addEventListener('change', handler);
+      el.addEventListener('input', handler);
+    });
   var radarToggle=$('#sp-radar');
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
