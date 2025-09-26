@@ -321,6 +321,7 @@
       date.type='date';
       date.className='input contact-slot-input';
       date.value=slot.date||'';
+      date.placeholder='2025-09-29';
       var handleDateChange=function(e){ contactState[key][idx].date=e.target.value; updateLink(); };
       date.addEventListener('input', handleDateChange);
       date.addEventListener('change', handleDateChange);
@@ -328,11 +329,26 @@
       time.type='time';
       time.className='input contact-slot-input';
       time.value=slot.time||'';
+      time.placeholder='18:30';
       var handleTimeChange=function(e){ contactState[key][idx].time=e.target.value; updateLink(); };
       time.addEventListener('input', handleTimeChange);
       time.addEventListener('change', handleTimeChange);
-      fields.appendChild(date);
-      fields.appendChild(time);
+      var dateWrap=document.createElement('label');
+      dateWrap.className='contact-slot-field';
+      var dateHint=document.createElement('span');
+      dateHint.className='contact-slot-hint';
+      dateHint.textContent='Data (np. 2025-09-29)';
+      dateWrap.appendChild(dateHint);
+      dateWrap.appendChild(date);
+      var timeWrap=document.createElement('label');
+      timeWrap.className='contact-slot-field';
+      var timeHint=document.createElement('span');
+      timeHint.className='contact-slot-hint';
+      timeHint.textContent='Godzina (np. 18:30)';
+      timeWrap.appendChild(timeHint);
+      timeWrap.appendChild(time);
+      fields.appendChild(dateWrap);
+      fields.appendChild(timeWrap);
 
       var actions=document.createElement('div');
       actions.className='contact-slot-actions';
@@ -1447,8 +1463,13 @@
     var top=days.filter(function(d){ return d.score>=45; }).slice(0,3);
     if(!top.length) top=days.slice(0,3);
     if(!top.length) return '';
-    var items=top.map(function(d){ return '<li><strong>'+d.label+'</strong> – '+d.desc+'</li>'; }).join('');
-    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu 10 dni</strong><ul>'+items+'</ul></div>';
+    var items=top.map(function(d){
+      return '<div class="session-summary__future-item">'
+        +'<span class="session-summary__future-day">'+d.label+'</span>'
+        +'<span class="session-summary__future-desc">'+d.desc+'</span>'
+        +'</div>';
+    }).join('');
+    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu 10 dni</strong><div class="session-summary__future-list">'+items+'</div></div>';
   }
   function renderSessionSummary(data,dateStr){
     if(!data){ sessionSummaryNoData(); return; }
