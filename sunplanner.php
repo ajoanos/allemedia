@@ -23,7 +23,7 @@ add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; }
 /** === Assets === */
 
 add_action('wp_enqueue_scripts', function () {
-$ver = '1.7.4';
+$ver = '1.7.5';
 wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [], $ver);
 wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
 
@@ -94,7 +94,7 @@ wp_enqueue_style('sunplanner-css');
 wp_enqueue_script('sunplanner-app');
     wp_enqueue_script('sunplanner-gmaps');
     ob_start(); ?>
-<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.4"></div>
+<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.5"></div>
 <?php return ob_get_clean();
 });
 
@@ -402,6 +402,8 @@ function sunplanner_contact_event_label($event)
             return __('Odrzucenie terminu', 'sunplanner');
         case 'slot:removed':
             return __('Usunięcie terminu', 'sunplanner');
+        case 'plan:shared':
+            return __('Udostępnienie planu', 'sunplanner');
         default:
             return '';
     }

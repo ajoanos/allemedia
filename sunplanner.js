@@ -1,5 +1,5 @@
 
-/* SunPlanner v1.7.3 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
+/* SunPlanner v1.7.5 - rozbudowany planer z planowaniem słońca, radarową warstwą mapy, autosave i eksportami */
 
 (function(){
   var CFG = window.SUNPLANNER_CFG || {};
@@ -371,6 +371,7 @@
       '<div class="row share-row" style="align-items:flex-start">'+
         '<div class="col" style="flex:1">'+
           '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
+            '<button id="sp-send-link" class="btn" type="button">Wyślij link do usługodawców</button>'+
             '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
             '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
             '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
@@ -2504,6 +2505,10 @@
     var txt=linkEl?linkEl.textContent:location.href;
     try{ navigator.clipboard.writeText(txt); toast('Skopiowano link','ok'); }
     catch(e){ toast('Link gotowy'); }
+  });
+  $('#sp-send-link').addEventListener('click', function(){
+    updateLink();
+    notifyContacts('plan:shared');
   });
   $('#sp-short').addEventListener('click', createShortLink);
   $('#sp-ics').addEventListener('click', exportCalendar);
