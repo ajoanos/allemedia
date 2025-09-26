@@ -404,6 +404,8 @@ function sunplanner_contact_event_label($event)
             return __('Usunięcie terminu', 'sunplanner');
         case 'plan:shared':
             return __('Udostępnienie planu', 'sunplanner');
+        case 'contact:reply':
+            return __('Odpowiedź do pary młodej', 'sunplanner');
         default:
             return '';
     }

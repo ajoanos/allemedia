@@ -94,17 +94,21 @@
     return state;
   }
   function notifyContacts(type, payload){
-    if(!CONTACT_URL || typeof fetch!=='function') return;
+    if(!CONTACT_URL || typeof fetch!=='function') return Promise.resolve(false);
     payload=payload||{};
+    var silent=!!payload.silent;
     var actor=(payload.actor && ROLE_KEYS.indexOf(payload.actor)!==-1) ? payload.actor : getActiveRole();
     var slotData=null;
     if(payload.slot){ slotData=cloneSlot(payload.slot); }
     var slotId=payload.slotId || (slotData && slotData.id) || '';
+    var overrideTargets=Array.isArray(payload.targets)?payload.targets.filter(function(role){ return ROLE_KEYS.indexOf(role) !== -1 && role!==actor; }):null;
     var targets=[];
-    if(actor==='couple'){ targets=['photographer','videographer']; }
+    if(overrideTargets && overrideTargets.length){
+      targets=overrideTargets;
+    } else if(actor==='couple'){ targets=['photographer','videographer']; }
     else if(actor==='photographer'){ targets=['couple','videographer']; }
     else if(actor==='videographer'){ targets=['couple','photographer']; }
-    if(!targets.length) return;
+    if(!targets.length) return Promise.resolve(false);
 
     var missing=[];
     var actualTargets=targets.filter(function(role){
@@ -118,7 +122,7 @@
       if(missing.length){
         toast('Uzupełnij adres e-mail: '+missing.map(roleLabel).join(', '));
       }
-      return;
+      return Promise.resolve(false);
     }
 
     var state=buildContactNotificationState();
@@ -145,16 +149,19 @@
         });
     });
 
-    Promise.all(requests).then(function(results){
+    return Promise.all(requests).then(function(results){
       var okCount=results.filter(function(r){ return r && r.ok; }).length;
-      if(okCount>0){
-        var msg='Wysłano powiadomienie';
-        if(missing.length){ msg+=' • brak adresu: '+missing.map(roleLabel).join(', '); }
-        toast(msg,'ok');
-      } else {
-        toast('Nie udało się wysłać powiadomienia');
+      if(!silent){
+        if(okCount>0){
+          var msg='Wysłano powiadomienie';
+          if(missing.length){ msg+=' • brak adresu: '+missing.map(roleLabel).join(', '); }
+          toast(msg,'ok');
+        } else {
+          toast('Nie udało się wysłać powiadomienia');
+        }
       }
-    }).catch(function(err){ try{ console.error('SunPlanner notify failure', err); }catch(e){}; });
+      return okCount>0;
+    }).catch(function(err){ try{ console.error('SunPlanner notify failure', err); }catch(e){}; return false; });
   }
 
   root.innerHTML =
@@ -299,11 +306,17 @@
           '<span class="contact-role-label">Fotograf</span>'+
           '<input id="sp-contact-photographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-photographer-email" class="input" type="email" placeholder="fotograf@example.com">'+
+          '<div class="contact-role-action">'+
+            '<button id="sp-contact-photographer-reply" class="btn secondary" type="button">Odpowiedz parze młodej</button>'+
+          '</div>'+
         '</div>'+
         '<div class="contact-role-row">'+
           '<span class="contact-role-label">Filmowiec</span>'+
           '<input id="sp-contact-videographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-videographer-email" class="input" type="email" placeholder="filmowiec@example.com">'+
+          '<div class="contact-role-action">'+
+            '<button id="sp-contact-videographer-reply" class="btn secondary" type="button">Odpowiedz parze młodej</button>'+
+          '</div>'+
         '</div>'+
       '</div>'+
       '<div class="contact-notes">'+
@@ -360,6 +373,7 @@
             '</label>'+
             '<div class="slot-field slot-field-actions">'+
               '<button id="sp-slot-add" class="btn" type="button">Dodaj termin</button>'+
+              '<button id="sp-slot-notify" class="btn secondary" type="button">Wyślij do usługodawców</button>'+
               '<div id="sp-slot-error" class="slot-form-error" role="alert" aria-live="assertive"></div>'+
             '</div>'+
           '</div>'+
@@ -452,6 +466,7 @@
     title: document.getElementById('sp-slot-title'),
     location: document.getElementById('sp-slot-location'),
     addBtn: document.getElementById('sp-slot-add'),
+    notifyBtn: document.getElementById('sp-slot-notify'),
     errorBox: document.getElementById('sp-slot-error')
   };
 
@@ -490,7 +505,8 @@
     var title=typeof raw.title==='string'?raw.title.trim():'';
     var location=typeof raw.location==='string'?raw.location.trim():'';
     var id=(typeof raw.id==='string' && raw.id)?raw.id:nextSlotId();
-    return { id:id, status:status, createdBy:createdBy, date:date, time:time, duration:duration, title:title, location:location };
+    var notified=(typeof raw.notified==='boolean')?raw.notified:(status!==SLOT_STATUSES.PROPOSED);
+    return { id:id, status:status, createdBy:createdBy, date:date, time:time, duration:duration, title:title, location:location, notified:notified };
   }
 
   function normalizeSlots(arr,fallbackAuthor){
@@ -833,12 +849,37 @@
     if(!date){ showSlotFormError('Uzupełnij datę terminu.', slotForm.date); return; }
     if(!time){ showSlotFormError('Dodaj godzinę terminu.', slotForm.time); return; }
     if(!(duration>0)){ showSlotFormError('Podaj czas trwania w minutach.', slotForm.duration); return; }
-    if(!title){ showSlotFormError('Dodaj tytuł terminu.', slotForm.title); return; }
     var slot=normalizeSlot({ date:date, time:time, duration:duration, title:title, location:location, createdBy:actor, status:SLOT_STATUSES.PROPOSED }, actor);
+    slot.notified=false;
     contactState.slots.push(slot);
-    notifyContacts('slot:proposed',{actor:actor,slot:cloneSlot(slot)});
     renderSlotList();
     updateLink();
+    toast('Termin zapisany. Wyślij go do usługodawców, gdy będzie gotowy.','ok');
+  }
+
+  function handleNotifyPendingSlots(){
+    var actor=getActiveRole();
+    var pending=contactState.slots.filter(function(slot){
+      return slot && slot.createdBy===actor && slot.status===SLOT_STATUSES.PROPOSED && !slot.notified;
+    });
+    if(!pending.length){ toast('Brak nowych terminów do wysłania.'); return; }
+    var sends=pending.map(function(slot){
+      return notifyContacts('slot:proposed',{actor:actor,slot:cloneSlot(slot),silent:true}).then(function(ok){
+        if(ok){
+          slot.notified=true;
+        } else {
+          slot.notified=false;
+        }
+        return ok;
+      });
+    });
+    Promise.all(sends).then(function(results){
+      var anyOk=results.some(function(v){ return !!v; });
+      if(anyOk){ toast('Wysłano propozycje terminów.','ok'); }
+      else { toast('Nie udało się wysłać terminów.'); }
+      renderSlotList();
+      updateLink();
+    });
   }
 
   function setContactState(partial){
@@ -2531,7 +2572,17 @@
       contactNotesEls[role].addEventListener('change', handleNote);
     }
   });
+  var contactReplyButtons={
+    photographer: document.getElementById('sp-contact-photographer-reply'),
+    videographer: document.getElementById('sp-contact-videographer-reply')
+  };
+  Object.keys(contactReplyButtons).forEach(function(role){
+    var btn=contactReplyButtons[role];
+    if(!btn) return;
+    btn.addEventListener('click', function(){ notifyContacts('contact:reply',{actor:role,targets:['couple']}); });
+  });
   if(slotForm.addBtn){ slotForm.addBtn.addEventListener('click', handleAddSlot); }
+  if(slotForm.notifyBtn){ slotForm.notifyBtn.addEventListener('click', handleNotifyPendingSlots); }
   ['date','time','duration','title'].forEach(function(key){
     var field=slotForm[key];
     if(!field) return;
