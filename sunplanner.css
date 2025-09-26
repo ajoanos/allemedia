@@ -19,6 +19,7 @@
 .rowd{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0}
 .col{display:flex;flex-direction:column}
 .input{flex:1;min-width:180px;padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:1rem}
+.input.input-error{border-color:#f87171;box-shadow:0 0 0 1px rgba(248,113,113,.35)}
 
 .btn{padding:.55rem .9rem;border-radius:.5rem;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;transition:all .18s ease;font-weight:600;box-shadow:0 2px 6px rgba(233,66,68,.18)}
 .btn:hover,.btn:focus-visible{transform:translateY(-1px);box-shadow:0 8px 18px rgba(233,66,68,.25)}
@@ -172,8 +173,9 @@
 .slot-field{display:flex;flex-direction:column;gap:.35rem}
 .slot-field-label{font-size:.85rem;font-weight:600;color:#475569}
 .slot-field-wide{grid-column:span 2}
-.slot-field-actions{display:flex;align-items:flex-end}
+.slot-field-actions{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:.35rem}
 .slot-field-actions .btn{width:100%}
+.slot-form-error{display:none;font-size:.85rem;font-weight:600;color:#b91c1c}
 @media(min-width:860px){.contact-notes-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){
   .contact-role-row{grid-template-columns:minmax(0,1fr)}

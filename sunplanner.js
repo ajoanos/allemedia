@@ -360,6 +360,7 @@
             '</label>'+
             '<div class="slot-field slot-field-actions">'+
               '<button id="sp-slot-add" class="btn" type="button">Dodaj termin</button>'+
+              '<div id="sp-slot-error" class="slot-form-error" role="alert" aria-live="assertive"></div>'+
             '</div>'+
           '</div>'+
         '</div>'+
@@ -449,7 +450,8 @@
     duration: document.getElementById('sp-slot-duration'),
     title: document.getElementById('sp-slot-title'),
     location: document.getElementById('sp-slot-location'),
-    addBtn: document.getElementById('sp-slot-add')
+    addBtn: document.getElementById('sp-slot-add'),
+    errorBox: document.getElementById('sp-slot-error')
   };
 
   // contact helpers & rendering
@@ -780,6 +782,45 @@
     updateLink();
   }
 
+  function clearSlotFieldError(field){
+    if(!field) return;
+    var hadError=field.classList && field.classList.contains('input-error');
+    field.classList.remove('input-error');
+    field.removeAttribute('aria-invalid');
+    if(hadError && slotForm.errorBox){
+      slotForm.errorBox.textContent='';
+      slotForm.errorBox.style.display='none';
+    }
+  }
+
+  function clearSlotFormErrors(){
+    ['date','time','duration','title'].forEach(function(key){
+      var field=slotForm[key];
+      if(field){
+        field.classList.remove('input-error');
+        field.removeAttribute('aria-invalid');
+      }
+    });
+    if(slotForm.errorBox){
+      slotForm.errorBox.textContent='';
+      slotForm.errorBox.style.display='none';
+    }
+  }
+
+  function showSlotFormError(message, field){
+    if(slotForm.errorBox){
+      slotForm.errorBox.textContent=message;
+      slotForm.errorBox.style.display='block';
+    }
+    if(field){
+      field.classList.add('input-error');
+      field.setAttribute('aria-invalid','true');
+      if(typeof field.focus==='function'){
+        field.focus();
+      }
+    }
+  }
+
   function handleAddSlot(){
     var actor=getActiveRole();
     var date=slotForm.date?slotForm.date.value:'';
@@ -787,10 +828,11 @@
     var duration=parseInt(slotForm.duration && slotForm.duration.value,10);
     var title=slotForm.title?slotForm.title.value.trim():'';
     var location=slotForm.location?slotForm.location.value.trim():'';
-    if(!date || !time || !(duration>0) || !title){
-      toast('Uzupełnij datę, godzinę, czas i tytuł terminu.');
-      return;
-    }
+    clearSlotFormErrors();
+    if(!date){ showSlotFormError('Uzupełnij datę terminu.', slotForm.date); return; }
+    if(!time){ showSlotFormError('Dodaj godzinę terminu.', slotForm.time); return; }
+    if(!(duration>0)){ showSlotFormError('Podaj czas trwania w minutach.', slotForm.duration); return; }
+    if(!title){ showSlotFormError('Dodaj tytuł terminu.', slotForm.title); return; }
     var slot=normalizeSlot({ date:date, time:time, duration:duration, title:title, location:location, createdBy:actor, status:SLOT_STATUSES.PROPOSED }, actor);
     contactState.slots.push(slot);
     notifyContacts('slot:proposed',{actor:actor,slot:cloneSlot(slot)});
@@ -2485,6 +2527,13 @@
     }
   });
   if(slotForm.addBtn){ slotForm.addBtn.addEventListener('click', handleAddSlot); }
+  ['date','time','duration','title'].forEach(function(key){
+    var field=slotForm[key];
+    if(!field) return;
+    var reset=function(){ clearSlotFieldError(field); };
+    field.addEventListener('input', reset);
+    field.addEventListener('change', reset);
+  });
   var radarToggle=$('#sp-radar');
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
