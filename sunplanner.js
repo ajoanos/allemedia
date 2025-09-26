@@ -39,7 +39,7 @@
 
   var ROLE_KEYS = ['couple','photographer','videographer'];
   var ROLE_LABELS = {
-    couple: 'Para',
+    couple: 'Młoda para',
     photographer: 'Fotograf',
     videographer: 'Filmowiec'
   };
@@ -68,10 +68,93 @@
   };
   var slotIdCounter = 0;
 
+  function roleLabel(role){ return ROLE_LABELS[role] || role; }
+  function getRoleEmail(role){
+    var info=contactState.roles[role];
+    return info && info.email ? info.email.trim() : '';
+  }
+  function buildContactNotificationState(){
+    var state=packState();
+    var contact=state.contact=state.contact||{};
+    contact.coupleEmail=getRoleEmail('couple');
+    contact.photographerEmail=getRoleEmail('photographer');
+    contact.videographerEmail=getRoleEmail('videographer');
+    contact.coupleNote=contactState.notes.couple||'';
+    contact.photographerNote=contactState.notes.photographer||'';
+    contact.videographerNote=contactState.notes.videographer||'';
+    var grouped={couple:[],photographer:[],videographer:[]};
+    contactState.slots.forEach(function(slot){
+      if(grouped[slot.createdBy]){
+        grouped[slot.createdBy].push(cloneSlot(slot));
+      }
+    });
+    contact.coupleSlots=grouped.couple;
+    contact.photographerSlots=grouped.photographer;
+    contact.videographerSlots=grouped.videographer;
+    return state;
+  }
   function notifyContacts(type, payload){
-    try {
-      console.log('[notifyContacts]', type, payload);
-    } catch(err){}
+    if(!CONTACT_URL || typeof fetch!=='function') return;
+    payload=payload||{};
+    var actor=(payload.actor && ROLE_KEYS.indexOf(payload.actor)!==-1) ? payload.actor : getActiveRole();
+    var slotData=null;
+    if(payload.slot){ slotData=cloneSlot(payload.slot); }
+    var slotId=payload.slotId || (slotData && slotData.id) || '';
+    var targets=[];
+    if(actor==='couple'){ targets=['photographer','videographer']; }
+    else if(actor==='photographer'){ targets=['couple','videographer']; }
+    else if(actor==='videographer'){ targets=['couple','photographer']; }
+    if(!targets.length) return;
+
+    var missing=[];
+    var actualTargets=targets.filter(function(role){
+      if(!getRoleEmail(role)){
+        missing.push(role);
+        return false;
+      }
+      return true;
+    });
+    if(!actualTargets.length){
+      if(missing.length){
+        toast('Uzupełnij adres e-mail: '+missing.map(roleLabel).join(', '));
+      }
+      return;
+    }
+
+    var state=buildContactNotificationState();
+    var link=(location && location.href) ? location.href.split('#')[0] : '';
+    var shortLink=shortLinkValue || '';
+    var bodyBase={
+      actor:actor,
+      event:type,
+      state:state,
+      link:link,
+      shortLink:shortLink,
+      slot:slotData,
+      slotId:slotId
+    };
+
+    var requests=actualTargets.map(function(target){
+      var body=Object.assign({target:target}, bodyBase);
+      return fetch(CONTACT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .then(function(resp){ if(!resp.ok) throw resp; return resp.json().catch(function(){ return {}; }); })
+        .then(function(){ return {target:target, ok:true}; })
+        .catch(function(err){
+          try{ console.error('SunPlanner notify error', err); }catch(e){}
+          return {target:target, ok:false};
+        });
+    });
+
+    Promise.all(requests).then(function(results){
+      var okCount=results.filter(function(r){ return r && r.ok; }).length;
+      if(okCount>0){
+        var msg='Wysłano powiadomienie';
+        if(missing.length){ msg+=' • brak adresu: '+missing.map(roleLabel).join(', '); }
+        toast(msg,'ok');
+      } else {
+        toast('Nie udało się wysłać powiadomienia');
+      }
+    }).catch(function(err){ try{ console.error('SunPlanner notify failure', err); }catch(e){}; });
   }
 
   root.innerHTML =
@@ -208,7 +291,7 @@
       '<h3>Kontakty i terminy</h3>'+
       '<div class="contact-roles">'+
         '<div class="contact-role-row">'+
-          '<span class="contact-role-label">Para</span>'+
+          '<span class="contact-role-label">Młoda para</span>'+
           '<input id="sp-contact-couple-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-couple-email" class="input" type="email" placeholder="para@example.com">'+
         '</div>'+
@@ -227,7 +310,7 @@
         '<h4>Notatki</h4>'+
         '<div class="contact-notes-grid">'+
           '<label class="contact-note">'+
-            '<span class="contact-note-label">Para</span>'+
+            '<span class="contact-note-label">Młoda para</span>'+
             '<textarea id="sp-note-couple" class="input textarea" rows="3" placeholder="Dodaj notatkę dla pary"></textarea>'+
           '</label>'+
           '<label class="contact-note">'+
@@ -624,12 +707,14 @@
         rejectBtn.textContent='Odrzuć';
         rejectBtn.addEventListener('click',function(){ handleRejectSlot(slot.id); });
         actions.appendChild(rejectBtn);
-        var removeBtn=document.createElement('button');
-        removeBtn.type='button';
-        removeBtn.className='btn ghost slot-action slot-action-remove';
-        removeBtn.textContent='Usuń';
-        removeBtn.addEventListener('click',function(){ handleRemoveSlot(slot.id); });
-        actions.appendChild(removeBtn);
+        if(slot.createdBy!=='couple'){
+          var removeBtn=document.createElement('button');
+          removeBtn.type='button';
+          removeBtn.className='btn ghost slot-action slot-action-remove';
+          removeBtn.textContent='Usuń';
+          removeBtn.addEventListener('click',function(){ handleRemoveSlot(slot.id); });
+          actions.appendChild(removeBtn);
+        }
       } else if(slot.status===SLOT_STATUSES.CONFIRMED){
         var exportBtn=document.createElement('button');
         exportBtn.type='button';
@@ -680,6 +765,7 @@
   function handleRemoveSlot(id){
     var slot=findSlotById(id);
     if(!slot) return;
+    if(slot.createdBy==='couple'){ toast('Nie można usunąć terminu młodej pary.'); return; }
     if(slot.status!==SLOT_STATUSES.PROPOSED){ toast('Nie można usunąć tego terminu.'); return; }
     var actor=getActiveRole();
     if(actor!==slot.createdBy){
