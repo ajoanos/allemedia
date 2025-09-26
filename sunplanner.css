@@ -142,6 +142,8 @@
 .contact-role-row{display:grid;grid-template-columns:140px repeat(2,minmax(0,1fr));align-items:center;gap:.75rem;padding:.85rem;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}
 .contact-role-label{font-weight:600;color:#0f172a}
 .contact-role-row .input{width:100%}
+.contact-role-action{grid-column:1/-1}
+.contact-role-action .btn{width:100%}
 .contact-notes{margin-top:1.2rem}
 .contact-notes-grid{display:grid;gap:.75rem}
 .contact-note{display:flex;flex-direction:column;gap:.45rem}
