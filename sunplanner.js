@@ -37,14 +37,42 @@
   var root = document.getElementById('sunplanner-app');
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
 
-  var contactState = {
-    coupleSlots: [],
-    photographerSlots: [],
-    coupleNote: '',
-    photographerNote: '',
-    coupleEmail: '',
-    photographerEmail: ''
+  var ROLE_KEYS = ['couple','photographer','videographer'];
+  var ROLE_LABELS = {
+    couple: 'Para',
+    photographer: 'Fotograf',
+    videographer: 'Filmowiec'
   };
+  var SLOT_STATUSES = {
+    PROPOSED: 'proposed',
+    CONFIRMED: 'confirmed',
+    REJECTED: 'rejected'
+  };
+  var STATUS_LABELS = {
+    proposed: 'Proponowany',
+    confirmed: 'Potwierdzony',
+    rejected: 'Odrzucony'
+  };
+  var contactState = {
+    roles: {
+      couple: { name: '', email: '' },
+      photographer: { name: '', email: '' },
+      videographer: { name: '', email: '' }
+    },
+    notes: {
+      couple: '',
+      photographer: '',
+      videographer: ''
+    },
+    slots: []
+  };
+  var slotIdCounter = 0;
+
+  function notifyContacts(type, payload){
+    try {
+      console.log('[notifyContacts]', type, payload);
+    } catch(err){}
+  }
 
   root.innerHTML =
   '<div class="sunplanner">'+
@@ -177,32 +205,81 @@
       '</div>'+
     '</div>'+
     '<div class="card contact-card">'+
-      '<h3>Kontakt młoda para – fotograf</h3>'+
-      '<p class="muted">Zaproponujcie kilka terminów po obu stronach, oznaczcie najlepsze i szybko poinformujcie się nawzajem o zmianach.</p>'+
-      '<div class="contact-grid">'+
-        '<div class="contact-section">'+
-          '<h4>Propozycje młodej pary</h4>'+
-          '<label class="contact-label" for="sp-contact-couple-email">Email młodej pary</label>'+
+      '<h3>Kontakty i terminy</h3>'+
+      '<div class="contact-roles">'+
+        '<div class="contact-role-row">'+
+          '<span class="contact-role-label">Para</span>'+
+          '<input id="sp-contact-couple-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-couple-email" class="input" type="email" placeholder="para@example.com">'+
-          '<div id="sp-contact-couple-slots" class="contact-slots"></div>'+
-          '<button id="sp-contact-add-couple" class="btn ghost" type="button">Dodaj termin</button>'+
-          '<label class="contact-label" for="sp-contact-couple-note">Wiadomość do fotografa</label>'+
-          '<textarea id="sp-contact-couple-note" class="input textarea" rows="3" placeholder="Opisz swoje oczekiwania lub pytania..."></textarea>'+
         '</div>'+
-        '<div class="contact-section">'+
-          '<h4>Dostępność fotografa</h4>'+
-          '<label class="contact-label" for="sp-contact-photographer-email">Email fotografa</label>'+
+        '<div class="contact-role-row">'+
+          '<span class="contact-role-label">Fotograf</span>'+
+          '<input id="sp-contact-photographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-photographer-email" class="input" type="email" placeholder="fotograf@example.com">'+
-          '<div id="sp-contact-photographer-slots" class="contact-slots"></div>'+
-          '<button id="sp-contact-add-photographer" class="btn ghost" type="button">Dodaj termin</button>'+
-          '<label class="contact-label" for="sp-contact-photographer-note">Wiadomość do młodej pary</label>'+
-          '<textarea id="sp-contact-photographer-note" class="input textarea" rows="3" placeholder="Dodaj swoje uwagi lub propozycje..."></textarea>'+
+        '</div>'+
+        '<div class="contact-role-row">'+
+          '<span class="contact-role-label">Filmowiec</span>'+
+          '<input id="sp-contact-videographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
+          '<input id="sp-contact-videographer-email" class="input" type="email" placeholder="filmowiec@example.com">'+
         '</div>'+
       '</div>'+
-      '<div class="contact-actions">'+
-        '<button id="sp-contact-send-photographer" class="btn" type="button">Wyślij informację do fotografa</button>'+
-        '<button id="sp-contact-send-couple" class="btn secondary" type="button">Wyślij powiadomienie do młodej pary</button>'+
-        '<p id="sp-contact-status" class="contact-status muted"></p>'+
+      '<div class="contact-notes">'+
+        '<h4>Notatki</h4>'+
+        '<div class="contact-notes-grid">'+
+          '<label class="contact-note">'+
+            '<span class="contact-note-label">Para</span>'+
+            '<textarea id="sp-note-couple" class="input textarea" rows="3" placeholder="Dodaj notatkę dla pary"></textarea>'+
+          '</label>'+
+          '<label class="contact-note">'+
+            '<span class="contact-note-label">Fotograf</span>'+
+            '<textarea id="sp-note-photographer" class="input textarea" rows="3" placeholder="Dodaj notatkę dla fotografa"></textarea>'+
+          '</label>'+
+          '<label class="contact-note">'+
+            '<span class="contact-note-label">Filmowiec</span>'+
+            '<textarea id="sp-note-videographer" class="input textarea" rows="3" placeholder="Dodaj notatkę dla filmowca"></textarea>'+
+          '</label>'+
+        '</div>'+
+      '</div>'+
+      '<div class="contact-schedule">'+
+        '<h4>Terminy</h4>'+
+        '<div id="sp-slot-list" class="slot-list"></div>'+
+        '<div class="slot-form">'+
+          '<div class="slot-form-row">'+
+            '<label class="slot-field">'+
+              '<span class="slot-field-label">Rola</span>'+
+              '<select id="sp-slot-role" class="input">'+
+                '<option value="couple">Para</option>'+
+                '<option value="photographer">Fotograf</option>'+
+                '<option value="videographer">Filmowiec</option>'+
+              '</select>'+
+            '</label>'+
+            '<label class="slot-field">'+
+              '<span class="slot-field-label">Data</span>'+
+              '<input id="sp-slot-date" class="input" type="date">'+
+            '</label>'+
+            '<label class="slot-field">'+
+              '<span class="slot-field-label">Godzina</span>'+
+              '<input id="sp-slot-time" class="input" type="time">'+
+            '</label>'+
+            '<label class="slot-field">'+
+              '<span class="slot-field-label">Czas (min)</span>'+
+              '<input id="sp-slot-duration" class="input" type="number" min="15" step="5" value="60" placeholder="60">'+
+            '</label>'+
+          '</div>'+
+          '<div class="slot-form-row">'+
+            '<label class="slot-field slot-field-wide">'+
+              '<span class="slot-field-label">Tytuł</span>'+
+              '<input id="sp-slot-title" class="input" type="text" placeholder="Spotkanie / sesja">'+
+            '</label>'+
+            '<label class="slot-field slot-field-wide">'+
+              '<span class="slot-field-label">Lokalizacja</span>'+
+              '<input id="sp-slot-location" class="input" type="text" placeholder="Adres lub opis miejsca">'+
+            '</label>'+
+            '<div class="slot-field slot-field-actions">'+
+              '<button id="sp-slot-add" class="btn" type="button">Dodaj termin</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
       '</div>'+
     '</div>'+
     '<div class="card share-card">'+
@@ -270,159 +347,448 @@
   function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
   function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
 
-  var coupleSlotsEl = document.getElementById('sp-contact-couple-slots');
-  var photSlotsEl = document.getElementById('sp-contact-photographer-slots');
-  var addCoupleBtn = document.getElementById('sp-contact-add-couple');
-  var addPhotBtn = document.getElementById('sp-contact-add-photographer');
-  var coupleEmailEl = document.getElementById('sp-contact-couple-email');
-  var photEmailEl = document.getElementById('sp-contact-photographer-email');
-  var coupleNoteEl = document.getElementById('sp-contact-couple-note');
-  var photNoteEl = document.getElementById('sp-contact-photographer-note');
-  var contactStatusEl = document.getElementById('sp-contact-status');
-  var sendPhotBtn = document.getElementById('sp-contact-send-photographer');
-  var sendCoupleBtn = document.getElementById('sp-contact-send-couple');
+  var contactInputs = {};
+  ROLE_KEYS.forEach(function(role){
+    contactInputs[role] = {
+      name: document.getElementById('sp-contact-' + role + '-name'),
+      email: document.getElementById('sp-contact-' + role + '-email')
+    };
+  });
+  var contactNotesEls = {};
+  ROLE_KEYS.forEach(function(role){
+    contactNotesEls[role] = document.getElementById('sp-note-' + role);
+  });
+  var slotListEl = document.getElementById('sp-slot-list');
+  var slotForm = {
+    role: document.getElementById('sp-slot-role'),
+    date: document.getElementById('sp-slot-date'),
+    time: document.getElementById('sp-slot-time'),
+    duration: document.getElementById('sp-slot-duration'),
+    title: document.getElementById('sp-slot-title'),
+    location: document.getElementById('sp-slot-location'),
+    addBtn: document.getElementById('sp-slot-add')
+  };
 
-  function cleanContactSlots(arr){
-    var clean=[];
-    if(Array.isArray(arr)){
-      for(var i=0;i<arr.length && clean.length<6;i++){
-        var slot=arr[i]||{};
-        var date=typeof slot.date==='string'?slot.date.slice(0,10):'';
-        var time=typeof slot.time==='string'?slot.time.slice(0,5):'';
-        clean.push({
-          date:date,
-          time:time,
-          favorite:!!slot.favorite
-        });
-      }
-    }
-    return clean;
+  // contact helpers & rendering
+  function pad2(num){ return (num<10?'0':'')+num; }
+
+  function nextSlotId(){ slotIdCounter+=1; return 'slot-'+Date.now()+'-'+slotIdCounter; }
+
+  function extractSlotCounter(id){
+    if(typeof id !== 'string'){ return 0; }
+    var match = id.match(/-(\d+)$/);
+    if(!match){ return 0; }
+    var parsed = parseInt(match[1], 10);
+    return isNaN(parsed) ? 0 : parsed;
   }
 
-  function renderContactSlots(type){
-    var key=type==='photographer'?'photographerSlots':'coupleSlots';
-    var wrap=type==='photographer'?photSlotsEl:coupleSlotsEl;
-    if(!wrap) return;
-    wrap.innerHTML='';
-    var slots=contactState[key];
-    if(!slots.length){
+  function refreshSlotIdCounter(){
+    var maxCounter = 0;
+    for(var i=0;i<contactState.slots.length;i++){
+      var current = contactState.slots[i];
+      if(!current || !current.id) continue;
+      var counter = extractSlotCounter(current.id);
+      if(counter > maxCounter){ maxCounter = counter; }
+    }
+    slotIdCounter = Math.max(maxCounter, contactState.slots.length);
+  }
+
+  function normalizeSlot(raw,fallbackAuthor){
+    raw=raw||{};
+    var status=(typeof raw.status==='string' && STATUS_LABELS.hasOwnProperty(raw.status))?raw.status:SLOT_STATUSES.PROPOSED;
+    var createdBy=ROLE_KEYS.indexOf(raw.createdBy)!==-1?raw.createdBy:(fallbackAuthor||'couple');
+    var date=typeof raw.date==='string'?raw.date.slice(0,10):'';
+    var time=typeof raw.time==='string'?raw.time.slice(0,5):'';
+    var duration=parseInt(raw.duration,10);
+    if(!(duration>0)) duration=60;
+    var title=typeof raw.title==='string'?raw.title.trim():'';
+    var location=typeof raw.location==='string'?raw.location.trim():'';
+    var id=(typeof raw.id==='string' && raw.id)?raw.id:nextSlotId();
+    return { id:id, status:status, createdBy:createdBy, date:date, time:time, duration:duration, title:title, location:location };
+  }
+
+  function normalizeSlots(arr,fallbackAuthor){
+    var list=[];
+    if(Array.isArray(arr)){ arr.forEach(function(item){ list.push(normalizeSlot(item,fallbackAuthor)); }); }
+    return list;
+  }
+
+  function cloneSlot(slot){
+    return {
+      id:slot.id,
+      status:slot.status,
+      createdBy:slot.createdBy,
+      date:slot.date,
+      time:slot.time,
+      duration:slot.duration,
+      title:slot.title,
+      location:slot.location
+    };
+  }
+
+  function formatSlotMeta(slot){
+    var parts=[];
+    if(slot.date){ parts.push(slot.date.split('-').reverse().join('.')); }
+    if(slot.time){ parts.push(slot.time); }
+    if(slot.duration){ parts.push(slot.duration+' min'); }
+    return parts.join(' • ');
+  }
+
+  function slotRange(slot){
+    if(!slot.date||!slot.time) return null;
+    var d=slot.date.split('-');
+    var t=slot.time.split(':');
+    if(d.length<3||t.length<2) return null;
+    var year=+d[0],month=+d[1],day=+d[2],hour=+t[0],minute=+t[1];
+    if([year,month,day,hour,minute].some(function(v){ return isNaN(v); })) return null;
+    var start=new Date(year,month-1,day,hour,minute,0,0);
+    var end=new Date(start.getTime());
+    var duration=slot.duration>0?slot.duration:60;
+    end.setMinutes(end.getMinutes()+duration);
+    return {start:start,end:end};
+  }
+
+  function slotHasConflict(slot){
+    if(slot.status===SLOT_STATUSES.CONFIRMED) return false;
+    var range=slotRange(slot);
+    if(!range) return false;
+    for(var i=0;i<contactState.slots.length;i++){
+      var other=contactState.slots[i];
+      if(!other || other.id===slot.id || other.status!==SLOT_STATUSES.CONFIRMED) continue;
+      var oRange=slotRange(other);
+      if(!oRange) continue;
+      if(range.start<oRange.end && range.end>oRange.start){ return true; }
+    }
+    return false;
+  }
+
+  function getActiveRole(){
+    var role=slotForm.role && slotForm.role.value;
+    return ROLE_KEYS.indexOf(role)!==-1?role:'couple';
+  }
+
+  function findSlotById(id){
+    for(var i=0;i<contactState.slots.length;i++){
+      var slot=contactState.slots[i];
+      if(slot && slot.id===id){ return slot; }
+    }
+    return null;
+  }
+
+  function addMinutesLocal(dateStr,timeStr,minutes){
+    if(!dateStr||!timeStr) return {date:dateStr||'',time:timeStr||''};
+    var d=dateStr.split('-');
+    var t=timeStr.split(':');
+    if(d.length<3||t.length<2) return {date:dateStr||'',time:timeStr||''};
+    var year=+d[0],month=+d[1],day=+d[2],hour=+t[0],minute=+t[1];
+    if([year,month,day,hour,minute].some(function(v){ return isNaN(v); })) return {date:dateStr||'',time:timeStr||''};
+    var total=hour*60+minute+(minutes||0);
+    var deltaDays=0;
+    while(total<0){ total+=1440; deltaDays-=1; }
+    while(total>=1440){ total-=1440; deltaDays+=1; }
+    if(deltaDays!==0){
+      var shifted=new Date(year,month-1,day+deltaDays);
+      year=shifted.getFullYear();
+      month=shifted.getMonth()+1;
+      day=shifted.getDate();
+    }
+    var endHour=Math.floor(total/60);
+    var endMinute=total%60;
+    return {date:String(year).padStart(4,'0')+'-'+pad2(month)+'-'+pad2(day), time:pad2(endHour)+':'+pad2(endMinute)};
+  }
+
+  function buildICSDateString(dateStr,timeStr){
+    if(!dateStr) return '';
+    var dateDigits=dateStr.replace(/-/g,'');
+    if(dateDigits.length!==8) return '';
+    var timeDigits=(timeStr||'').replace(/:/g,'');
+    if(timeDigits.length<4){ timeDigits=(timeDigits||'').padEnd(4,'0'); }
+    timeDigits=timeDigits.slice(0,4);
+    while(timeDigits.length<4){ timeDigits+='0'; }
+    timeDigits+='00';
+    return dateDigits+'T'+timeDigits;
+  }
+
+  function escapeICS(value){
+    return (value||'').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+  }
+
+  function downloadTextFile(content,filename){
+    var safeName=(filename||'termin').replace(/[^a-z0-9\-_.]+/gi,'-');
+    if(!safeName){ safeName='termin'; }
+    if(!/\.ics$/i.test(safeName)){ safeName+='.ics'; }
+    var blob=new Blob([content],{type:'text/calendar;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download=safeName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },0);
+  }
+
+  function exportSlotToICS(slot){
+    if(!slot || slot.status!==SLOT_STATUSES.CONFIRMED){ toast('Eksport dostępny jest wyłącznie dla potwierdzonych terminów.'); return; }
+    if(!slot.date || !slot.time){ toast('Uzupełnij datę i godzinę, aby wyeksportować termin.'); return; }
+    var endLocal=addMinutesLocal(slot.date,slot.time,slot.duration);
+    var dtStart=buildICSDateString(slot.date,slot.time);
+    var dtEnd=buildICSDateString(endLocal.date,endLocal.time);
+    if(!dtStart || !dtEnd){ toast('Nie można wygenerować pliku ICS dla niepełnych danych.'); return; }
+    var now=new Date();
+    var stamp=buildICSDateString(now.getFullYear()+'-'+pad2(now.getMonth()+1)+'-'+pad2(now.getDate()), pad2(now.getHours())+':'+pad2(now.getMinutes()));
+    if(!stamp) stamp=dtStart;
+    var summary=slot.title||'Spotkanie';
+    var location=slot.location||'';
+    var ics=[
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SunPlanner//Planner//PL',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      'UID:'+(slot.id||('slot-'+Date.now()))+'@sunplanner',
+      'DTSTAMP:'+stamp,
+      'DTSTART;TZID=Europe/Warsaw:'+dtStart,
+      'DTEND;TZID=Europe/Warsaw:'+dtEnd,
+      'SUMMARY:'+escapeICS(summary),
+      'LOCATION:'+escapeICS(location),
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\n');
+    downloadTextFile(ics,(summary||'termin')+'.ics');
+  }
+
+  function renderSlotList(){
+    if(!slotListEl) return;
+    slotListEl.innerHTML='';
+    if(!contactState.slots.length){
       var empty=document.createElement('div');
-      empty.className='contact-slot-empty muted';
-      empty.textContent='Dodaj termin, aby zapisać propozycję.';
-      wrap.appendChild(empty);
+      empty.className='slot-empty muted';
+      empty.textContent='Brak terminów. Dodaj pierwszy termin poniżej.';
+      slotListEl.appendChild(empty);
       return;
     }
-    slots.forEach(function(slot,idx){
-      var row=document.createElement('div');
-      row.className='contact-slot'+(slot.favorite?' contact-slot--selected':'');
-      var fields=document.createElement('div');
-      fields.className='contact-slot-row';
-      var date=document.createElement('input');
-      date.type='date';
-      date.className='input contact-slot-input';
-      date.value=slot.date||'';
-      date.placeholder='2025-09-29';
-      var handleDateChange=function(e){ contactState[key][idx].date=e.target.value; updateLink(); };
-      date.addEventListener('input', handleDateChange);
-      date.addEventListener('change', handleDateChange);
-      var time=document.createElement('input');
-      time.type='time';
-      time.className='input contact-slot-input';
-      time.value=slot.time||'';
-      time.placeholder='18:30';
-      var handleTimeChange=function(e){ contactState[key][idx].time=e.target.value; updateLink(); };
-      time.addEventListener('input', handleTimeChange);
-      time.addEventListener('change', handleTimeChange);
-      var dateWrap=document.createElement('label');
-      dateWrap.className='contact-slot-field';
-      var dateHint=document.createElement('span');
-      dateHint.className='contact-slot-hint';
-      dateHint.textContent='Data (np. 2025-09-29)';
-      dateWrap.appendChild(dateHint);
-      dateWrap.appendChild(date);
-      var timeWrap=document.createElement('label');
-      timeWrap.className='contact-slot-field';
-      var timeHint=document.createElement('span');
-      timeHint.className='contact-slot-hint';
-      timeHint.textContent='Godzina (np. 18:30)';
-      timeWrap.appendChild(timeHint);
-      timeWrap.appendChild(time);
-      fields.appendChild(dateWrap);
-      fields.appendChild(timeWrap);
-
-      var actions=document.createElement('div');
-      actions.className='contact-slot-actions';
-      var favBtn=document.createElement('button');
-      favBtn.type='button';
-      favBtn.className='btn ghost contact-slot-fav';
+    var sorted=contactState.slots.slice().sort(function(a,b){
+      var aKey=(a.date||'')+'T'+(a.time||'');
+      var bKey=(b.date||'')+'T'+(b.time||'');
+      if(aKey===bKey) return 0;
+      return aKey<bKey?-1:1;
+    });
+    sorted.forEach(function(slot){
+      var conflict=slotHasConflict(slot);
+      var item=document.createElement('div');
+      item.className='slot-item slot-status-'+slot.status+(conflict?' slot-item--conflict':'');
+      var header=document.createElement('div');
+      header.className='slot-item-header';
+      var titleEl=document.createElement('div');
+      titleEl.className='slot-item-title';
+      titleEl.textContent=slot.title||'Bez tytułu';
+      header.appendChild(titleEl);
       var badge=document.createElement('span');
-      badge.className='contact-slot-badge';
-      badge.textContent='Najlepszy termin';
-      if(!slot.favorite) badge.style.display='none';
-      favBtn.textContent=slot.favorite?'Usuń oznaczenie':'Oznacz jako najlepszy';
-      favBtn.addEventListener('click', function(){
-        var current=contactState[key][idx];
-        current.favorite=!current.favorite;
-        favBtn.textContent=current.favorite?'Usuń oznaczenie':'Oznacz jako najlepszy';
-        row.classList.toggle('contact-slot--selected', current.favorite);
-        badge.style.display=current.favorite?'inline-flex':'none';
-        updateLink();
-      });
-      var removeBtn=document.createElement('button');
-      removeBtn.type='button';
-      removeBtn.className='btn ghost contact-slot-remove';
-      removeBtn.textContent='Usuń termin';
-      removeBtn.addEventListener('click', function(){
-        contactState[key].splice(idx,1);
-        renderContactSlots(type);
-        updateLink();
-      });
-      actions.appendChild(favBtn);
-      actions.appendChild(removeBtn);
-
-      row.appendChild(fields);
-      row.appendChild(actions);
-      row.appendChild(badge);
-      wrap.appendChild(row);
+      badge.className='slot-status-badge';
+      badge.textContent=STATUS_LABELS[slot.status]||slot.status;
+      header.appendChild(badge);
+      item.appendChild(header);
+      var meta=document.createElement('div');
+      meta.className='slot-item-meta';
+      meta.textContent=formatSlotMeta(slot);
+      item.appendChild(meta);
+      if(slot.location){
+        var loc=document.createElement('div');
+        loc.className='slot-item-location';
+        loc.textContent=slot.location;
+        item.appendChild(loc);
+      }
+      var author=document.createElement('div');
+      author.className='slot-item-author muted';
+      author.textContent='Zaproponował: '+(ROLE_LABELS[slot.createdBy]||slot.createdBy);
+      item.appendChild(author);
+      if(conflict){
+        var conflictBox=document.createElement('div');
+        conflictBox.className='slot-item-conflict';
+        conflictBox.textContent='Konflikt z potwierdzonym terminem.';
+        item.appendChild(conflictBox);
+      }
+      var actions=document.createElement('div');
+      actions.className='slot-actions';
+      if(slot.status===SLOT_STATUSES.PROPOSED){
+        var acceptBtn=document.createElement('button');
+        acceptBtn.type='button';
+        acceptBtn.className='btn slot-action slot-action-accept';
+        acceptBtn.textContent='Akceptuj';
+        if(conflict){ acceptBtn.disabled=true; acceptBtn.title='Konflikt z potwierdzonym terminem.'; }
+        acceptBtn.addEventListener('click',function(){ handleConfirmSlot(slot.id); });
+        actions.appendChild(acceptBtn);
+        var rejectBtn=document.createElement('button');
+        rejectBtn.type='button';
+        rejectBtn.className='btn secondary slot-action slot-action-reject';
+        rejectBtn.textContent='Odrzuć';
+        rejectBtn.addEventListener('click',function(){ handleRejectSlot(slot.id); });
+        actions.appendChild(rejectBtn);
+        var removeBtn=document.createElement('button');
+        removeBtn.type='button';
+        removeBtn.className='btn ghost slot-action slot-action-remove';
+        removeBtn.textContent='Usuń';
+        removeBtn.addEventListener('click',function(){ handleRemoveSlot(slot.id); });
+        actions.appendChild(removeBtn);
+      } else if(slot.status===SLOT_STATUSES.CONFIRMED){
+        var exportBtn=document.createElement('button');
+        exportBtn.type='button';
+        exportBtn.className='btn ghost slot-action slot-action-export';
+        exportBtn.textContent='Eksportuj ICS';
+        exportBtn.addEventListener('click',function(){ exportSlotToICS(slot); });
+        actions.appendChild(exportBtn);
+      }
+      if(actions.childNodes.length){ item.appendChild(actions); }
+      slotListEl.appendChild(item);
     });
   }
 
-  function setContactInputs(){
-    if(coupleEmailEl) coupleEmailEl.value=contactState.coupleEmail||'';
-    if(photEmailEl) photEmailEl.value=contactState.photographerEmail||'';
-    if(coupleNoteEl) coupleNoteEl.value=contactState.coupleNote||'';
-    if(photNoteEl) photNoteEl.value=contactState.photographerNote||'';
-    renderContactSlots('couple');
-    renderContactSlots('photographer');
+  function renderContactState(){
+    ROLE_KEYS.forEach(function(role){
+      var fields=contactInputs[role]||{};
+      if(fields.name && fields.name.value!==contactState.roles[role].name){ fields.name.value=contactState.roles[role].name; }
+      if(fields.email && fields.email.value!==contactState.roles[role].email){ fields.email.value=contactState.roles[role].email; }
+      if(contactNotesEls[role] && contactNotesEls[role].value!==contactState.notes[role]){ contactNotesEls[role].value=contactState.notes[role]; }
+    });
+    renderSlotList();
+  }
+
+  function handleConfirmSlot(id){
+    var actor=getActiveRole();
+    if(actor!=='couple'){ toast('Akceptować może tylko para.'); return; }
+    var slot=findSlotById(id);
+    if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
+    if(!slot.date || !slot.time){ toast('Uzupełnij datę i godzinę, aby zaakceptować termin.'); return; }
+    if(slotHasConflict(slot)){ toast('Termin koliduje z potwierdzonym slotem.'); return; }
+    slot.status=SLOT_STATUSES.CONFIRMED;
+    notifyContacts('slot:confirmed',{actor:actor,slot:cloneSlot(slot)});
+    renderSlotList();
+    updateLink();
+  }
+
+  function handleRejectSlot(id){
+    var actor=getActiveRole();
+    if(actor!=='couple'){ toast('Odrzucać może tylko para.'); return; }
+    var slot=findSlotById(id);
+    if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
+    slot.status=SLOT_STATUSES.REJECTED;
+    notifyContacts('slot:rejected',{actor:actor,slot:cloneSlot(slot)});
+    renderSlotList();
+    updateLink();
+  }
+
+  function handleRemoveSlot(id){
+    var slot=findSlotById(id);
+    if(!slot) return;
+    if(slot.status!==SLOT_STATUSES.PROPOSED){ toast('Nie można usunąć tego terminu.'); return; }
+    var actor=getActiveRole();
+    if(actor!==slot.createdBy){
+      toast('Termin może usunąć tylko '+(ROLE_LABELS[slot.createdBy]||slot.createdBy).toLowerCase()+'.');
+      return;
+    }
+    for(var i=0;i<contactState.slots.length;i++){
+      if(contactState.slots[i] && contactState.slots[i].id===id){ contactState.slots.splice(i,1); break; }
+    }
+    notifyContacts('slot:removed',{actor:actor,slotId:id});
+    renderSlotList();
+    updateLink();
+  }
+
+  function handleAddSlot(){
+    var actor=getActiveRole();
+    var date=slotForm.date?slotForm.date.value:'';
+    var time=slotForm.time?slotForm.time.value:'';
+    var duration=parseInt(slotForm.duration && slotForm.duration.value,10);
+    var title=slotForm.title?slotForm.title.value.trim():'';
+    var location=slotForm.location?slotForm.location.value.trim():'';
+    if(!date || !time || !(duration>0) || !title){
+      toast('Uzupełnij datę, godzinę, czas i tytuł terminu.');
+      return;
+    }
+    var slot=normalizeSlot({ date:date, time:time, duration:duration, title:title, location:location, createdBy:actor, status:SLOT_STATUSES.PROPOSED }, actor);
+    contactState.slots.push(slot);
+    notifyContacts('slot:proposed',{actor:actor,slot:cloneSlot(slot)});
+    renderSlotList();
+    updateLink();
   }
 
   function setContactState(partial){
     partial=partial||{};
-    contactState.coupleEmail=typeof partial.coupleEmail==='string'?partial.coupleEmail.trim():'';
-    contactState.photographerEmail=typeof partial.photographerEmail==='string'?partial.photographerEmail.trim():'';
-    contactState.coupleNote=typeof partial.coupleNote==='string'?partial.coupleNote:'';
-    contactState.photographerNote=typeof partial.photographerNote==='string'?partial.photographerNote:'';
-    contactState.coupleSlots=cleanContactSlots(partial.coupleSlots);
-    contactState.photographerSlots=cleanContactSlots(partial.photographerSlots);
-    setContactInputs();
+    var roles=partial.roles||{};
+    ROLE_KEYS.forEach(function(role){
+      var data=roles[role]||{};
+      var stateRole=contactState.roles[role];
+      stateRole.name=typeof data.name==='string'?data.name.trim():'';
+      stateRole.email=typeof data.email==='string'?data.email.trim():'';
+    });
+    if(!partial.roles){
+      if(typeof partial.coupleEmail==='string'){ contactState.roles.couple.email=partial.coupleEmail.trim(); }
+      if(typeof partial.photographerEmail==='string'){ contactState.roles.photographer.email=partial.photographerEmail.trim(); }
+      if(typeof partial.videographerEmail==='string'){ contactState.roles.videographer.email=partial.videographerEmail.trim(); }
+    }
+    var notes=partial.notes||{};
+    ROLE_KEYS.forEach(function(role){
+      if(typeof notes[role]==='string'){ contactState.notes[role]=notes[role]; }
+      else { contactState.notes[role]=''; }
+    });
+    if(!partial.notes){
+      if(typeof partial.coupleNote==='string'){ contactState.notes.couple=partial.coupleNote; }
+      if(typeof partial.photographerNote==='string'){ contactState.notes.photographer=partial.photographerNote; }
+      if(typeof partial.videographerNote==='string'){ contactState.notes.videographer=partial.videographerNote; }
+    }
+    var slots=[];
+    if(Array.isArray(partial.slots)){
+      slots=normalizeSlots(partial.slots);
+    } else {
+      if(Array.isArray(partial.coupleSlots)){
+        partial.coupleSlots.forEach(function(raw){
+          slots.push(normalizeSlot({
+            id:raw&&raw.id,
+            date:raw&&raw.date,
+            time:raw&&raw.time,
+            duration:raw&&raw.duration,
+            title:raw&&raw.title,
+            location:raw&&raw.location,
+            status:raw&&raw.status,
+            createdBy:'couple'
+          },'couple'));
+        });
+      }
+      if(Array.isArray(partial.photographerSlots)){
+        partial.photographerSlots.forEach(function(raw){
+          slots.push(normalizeSlot({
+            id:raw&&raw.id,
+            date:raw&&raw.date,
+            time:raw&&raw.time,
+            duration:raw&&raw.duration,
+            title:raw&&raw.title,
+            location:raw&&raw.location,
+            status:raw&&raw.status,
+            createdBy:'photographer'
+          },'photographer'));
+        });
+      }
+      if(Array.isArray(partial.videographerSlots)){
+        partial.videographerSlots.forEach(function(raw){
+          slots.push(normalizeSlot({
+            id:raw&&raw.id,
+            date:raw&&raw.date,
+            time:raw&&raw.time,
+            duration:raw&&raw.duration,
+            title:raw&&raw.title,
+            location:raw&&raw.location,
+            status:raw&&raw.status,
+            createdBy:'videographer'
+          },'videographer'));
+        });
+      }
+    }
+    contactState.slots=slots;
+    refreshSlotIdCounter();
+    renderContactState();
   }
 
-  function addContactSlot(type){
-    var key=type==='photographer'?'photographerSlots':'coupleSlots';
-    if(contactState[key].length>=6){ toast('Dodaj maksymalnie 6 terminów'); return; }
-    contactState[key].push({date:'',time:'',favorite:false});
-    renderContactSlots(type);
-    updateLink();
-  }
-
-  function setContactStatus(message,type){
-    if(!contactStatusEl) return;
-    contactStatusEl.textContent=message||'';
-    contactStatusEl.classList.remove('is-ok','is-error','is-pending');
-    if(type){ contactStatusEl.classList.add('is-'+type); }
-  }
-
-  setContactInputs();
+  renderContactState();
 
   // stan
   var map, geocoder, dirService, placesAutocomplete, dragMarker;
@@ -600,7 +966,9 @@
 
   var restoredFromShare = false;
   var STORAGE_KEY = 'sunplanner-state';
+  var STORAGE_KEY_NEW = 'plannerDraft_v2';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
+  var persistTimer = null;
   var routeColors = ['#e94244','#1e3a8a','#6b7280'];
   var pendingRadar = false;
 
@@ -632,19 +1000,20 @@
       date:dEl.value,
       sr:$('#sp-slider-rise').value,
       ss:$('#sp-slider-set').value,
-      rad: (radarEl && radarEl.checked)?1:0,
+      rad:(radarEl && radarEl.checked)?1:0,
       pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
       contact:{
-        coupleEmail: contactState.coupleEmail || '',
-        photographerEmail: contactState.photographerEmail || '',
-        coupleNote: contactState.coupleNote || '',
-        photographerNote: contactState.photographerNote || '',
-        coupleSlots: cleanContactSlots(contactState.coupleSlots).map(function(slot){
-          return { date: slot.date || '', time: slot.time || '', favorite: !!slot.favorite };
-        }),
-        photographerSlots: cleanContactSlots(contactState.photographerSlots).map(function(slot){
-          return { date: slot.date || '', time: slot.time || '', favorite: !!slot.favorite };
-        })
+        roles:{
+          couple:{ name:contactState.roles.couple.name||'', email:contactState.roles.couple.email||'' },
+          photographer:{ name:contactState.roles.photographer.name||'', email:contactState.roles.photographer.email||'' },
+          videographer:{ name:contactState.roles.videographer.name||'', email:contactState.roles.videographer.email||'' }
+        },
+        notes:{
+          couple:contactState.notes.couple||'',
+          photographer:contactState.notes.photographer||'',
+          videographer:contactState.notes.videographer||''
+        },
+        slots:contactState.slots.map(function(slot){ return cloneSlot(slot); })
       }
     };
   }
@@ -659,52 +1028,29 @@
     }
     var contact = obj.contact || {};
     setContactState({
+      roles: contact.roles || {},
+      notes: contact.notes || {},
+      slots: Array.isArray(contact.slots)?contact.slots:[],
       coupleEmail: contact.coupleEmail || '',
       photographerEmail: contact.photographerEmail || '',
+      videographerEmail: contact.videographerEmail || '',
       coupleNote: contact.coupleNote || '',
       photographerNote: contact.photographerNote || '',
+      videographerNote: contact.videographerNote || '',
       coupleSlots: Array.isArray(contact.coupleSlots)?contact.coupleSlots:[],
-      photographerSlots: Array.isArray(contact.photographerSlots)?contact.photographerSlots:[]
+      photographerSlots: Array.isArray(contact.photographerSlots)?contact.photographerSlots:[],
+      videographerSlots: Array.isArray(contact.videographerSlots)?contact.videographerSlots:[]
     });
   }
-  function persistState(){ if(!storageAvailable) return; try{ window.localStorage.setItem(STORAGE_KEY, b64url.enc(packState())); }catch(e){} }
-  function sendContactUpdate(target){
-    if(!CONTACT_URL){ toast('Wysyłka powiadomień jest chwilowo niedostępna'); return; }
-    var sendTo = target==='photographer' ? (contactState.photographerEmail||'') : (contactState.coupleEmail||'');
-    if(!sendTo){
-      toast(target==='photographer'?'Podaj adres e-mail fotografa.':'Podaj adres e-mail młodej pary.');
-      return;
-    }
-    var btn = target==='photographer' ? sendPhotBtn : sendCoupleBtn;
-    var originalText = btn ? btn.textContent : '';
-    if(btn){ btn.disabled=true; btn.textContent='Wysyłam...'; }
-    setContactStatus('Wysyłanie wiadomości...', 'pending');
-    persistState();
-    fetch(CONTACT_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        target:target,
-        state:packState(),
-        link:location.href,
-        shortLink: shortLinkValue || ''
-      })
-    })
-      .then(function(r){
-        if(!r.ok) throw new Error('http');
-        return typeof r.json==='function' ? r.json().catch(function(){ return {}; }) : {};
-      })
-      .then(function(data){
-        var message = data && data.message ? data.message : 'Powiadomienie wysłane.';
-        setContactStatus(message, 'ok');
-        toast('Powiadomienie wysłane','ok');
-        if(btn){ btn.disabled=false; btn.textContent=originalText; }
-      })
-      .catch(function(){
-        setContactStatus('Nie udało się wysłać wiadomości. Spróbuj ponownie.', 'error');
-        toast('Błąd wysyłki');
-        if(btn){ btn.disabled=false; btn.textContent=originalText; }
-      });
+  function persistState(){
+    if(persistTimer){ clearTimeout(persistTimer); }
+    persistTimer=setTimeout(function(){
+      persistTimer=null;
+      if(!storageAvailable) return;
+      var packed=b64url.enc(packState());
+      try{ window.localStorage.setItem(STORAGE_KEY, packed); }catch(e){}
+      try{ window.localStorage.setItem(STORAGE_KEY_NEW, packed); }catch(e){}
+    },500);
   }
   (function(){
     var params=new URLSearchParams(location.search);
@@ -717,7 +1063,7 @@
       catch(err){ console.warn('Share decode',err); }
     } else if(storageAvailable){
       try{
-        var saved=window.localStorage.getItem(STORAGE_KEY);
+        var saved=window.localStorage.getItem(STORAGE_KEY_NEW) || window.localStorage.getItem(STORAGE_KEY);
         if(saved){ unpackState(b64url.dec(saved)); }
       }catch(e){ }
     }
@@ -2036,30 +2382,23 @@
   $('#sp-client-card').addEventListener('click', openClientCard);
   $('#sp-print').addEventListener('click', function(){ window.print(); });
   $('#sp-geo').addEventListener('click', locateStart);
-  if(addCoupleBtn){ addCoupleBtn.addEventListener('click', function(){ addContactSlot('couple'); }); }
-  if(addPhotBtn){ addPhotBtn.addEventListener('click', function(){ addContactSlot('photographer'); }); }
-  if(coupleEmailEl){
-    var handleCoupleEmail=function(){ contactState.coupleEmail=coupleEmailEl.value.trim(); updateLink(); };
-    coupleEmailEl.addEventListener('input', handleCoupleEmail);
-    coupleEmailEl.addEventListener('change', handleCoupleEmail);
-  }
-  if(photEmailEl){
-    var handlePhotEmail=function(){ contactState.photographerEmail=photEmailEl.value.trim(); updateLink(); };
-    photEmailEl.addEventListener('input', handlePhotEmail);
-    photEmailEl.addEventListener('change', handlePhotEmail);
-  }
-  if(coupleNoteEl){
-    var handleCoupleNote=function(){ contactState.coupleNote=coupleNoteEl.value; updateLink(); };
-    coupleNoteEl.addEventListener('input', handleCoupleNote);
-    coupleNoteEl.addEventListener('change', handleCoupleNote);
-  }
-  if(photNoteEl){
-    var handlePhotNote=function(){ contactState.photographerNote=photNoteEl.value; updateLink(); };
-    photNoteEl.addEventListener('input', handlePhotNote);
-    photNoteEl.addEventListener('change', handlePhotNote);
-  }
-  if(sendPhotBtn){ sendPhotBtn.addEventListener('click', function(){ sendContactUpdate('photographer'); }); }
-  if(sendCoupleBtn){ sendCoupleBtn.addEventListener('click', function(){ sendContactUpdate('couple'); }); }
+  ROLE_KEYS.forEach(function(role){
+    var fields=contactInputs[role]||{};
+    if(fields.name){
+      fields.name.addEventListener('input', function(e){ contactState.roles[role].name=e.target.value; updateLink(); });
+    }
+    if(fields.email){
+      var handleEmail=function(e){ contactState.roles[role].email=e.target.value.trim(); updateLink(); };
+      fields.email.addEventListener('input', handleEmail);
+      fields.email.addEventListener('change', handleEmail);
+    }
+    if(contactNotesEls[role]){
+      var handleNote=function(e){ contactState.notes[role]=e.target.value; updateLink(); };
+      contactNotesEls[role].addEventListener('input', handleNote);
+      contactNotesEls[role].addEventListener('change', handleNote);
+    }
+  });
+  if(slotForm.addBtn){ slotForm.addBtn.addEventListener('click', handleAddSlot); }
   var radarToggle=$('#sp-radar');
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
