@@ -373,10 +373,12 @@
             '</label>'+
             '<div class="slot-field slot-field-actions">'+
               '<button id="sp-slot-add" class="btn" type="button">Dodaj termin</button>'+
-              '<button id="sp-slot-notify" class="btn secondary" type="button">Wyślij do usługodawców</button>'+
               '<div id="sp-slot-error" class="slot-form-error" role="alert" aria-live="assertive"></div>'+
             '</div>'+
           '</div>'+
+        '</div>'+
+        '<div class="slot-notify-all">'+
+          '<button id="sp-slot-notify" class="btn secondary" type="button">Powiadom wszystkich o propozycji sesji</button>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -385,7 +387,6 @@
       '<div class="row share-row" style="align-items:flex-start">'+
         '<div class="col" style="flex:1">'+
           '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
-            '<button id="sp-send-link" class="btn" type="button">Wyślij link do usługodawców</button>'+
             '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
             '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
             '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
@@ -854,7 +855,7 @@
     contactState.slots.push(slot);
     renderSlotList();
     updateLink();
-    toast('Termin zapisany. Wyślij go do usługodawców, gdy będzie gotowy.','ok');
+    toast('Termin zapisany. Powiadom wszystkich o propozycji sesji, gdy będzie gotowy.','ok');
   }
 
   function handleNotifyPendingSlots(){
@@ -2546,10 +2547,6 @@
     var txt=linkEl?linkEl.textContent:location.href;
     try{ navigator.clipboard.writeText(txt); toast('Skopiowano link','ok'); }
     catch(e){ toast('Link gotowy'); }
-  });
-  $('#sp-send-link').addEventListener('click', function(){
-    updateLink();
-    notifyContacts('plan:shared');
   });
   $('#sp-short').addEventListener('click', createShortLink);
   $('#sp-ics').addEventListener('click', exportCalendar);
