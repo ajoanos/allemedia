@@ -97,10 +97,21 @@
     contact.videographerSlots=grouped.videographer;
     return state;
   }
-  function buildPlannerUrlFromEncoded(encoded){
+  function appendRoleParam(url, role){
+    if(!url){ return url; }
+    if(ROLE_KEYS.indexOf(role) === -1){ return url; }
+    var joiner = url.indexOf('?') === -1 ? '?' : '&';
+    return url + joiner + 'role=' + encodeURIComponent(role);
+  }
+
+  function buildPlannerUrlFromEncoded(encoded, options){
     var base = BASE_URL;
     var joiner = base.indexOf('?') === -1 ? '?' : '&';
-    return base + joiner + 'sp=' + encoded;
+    var url = base + joiner + 'sp=' + encoded;
+    if(options && options.role){
+      url = appendRoleParam(url, options.role);
+    }
+    return url;
   }
 
   function notifyContacts(type, payload){
@@ -138,20 +149,21 @@
 
     var state=buildContactNotificationState();
     var encodedState=b64url.enc(state);
-    var link=buildPlannerUrlFromEncoded(encodedState);
-    var shortLink=(shortLinkValue && shortLinkState===encodedState)?shortLinkValue:'';
+    var shortLinkBase=(shortLinkValue && shortLinkState===encodedState)?shortLinkValue:'';
     var bodyBase={
       actor:actor,
       event:type,
       state:state,
-      link:link,
-      shortLink:shortLink,
       slot:slotData,
       slotId:slotId
     };
 
     var requests=actualTargets.map(function(target){
+      var targetLink=buildPlannerUrlFromEncoded(encodedState,{role:target});
+      var targetShortLink=appendRoleParam(shortLinkBase, target);
       var body=Object.assign({target:target}, bodyBase);
+      body.link = targetLink;
+      body.shortLink = targetShortLink;
       return fetch(CONTACT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
         .then(function(resp){ if(!resp.ok) throw resp; return resp.json().catch(function(){ return {}; }); })
         .then(function(){ return {target:target, ok:true}; })
@@ -618,6 +630,8 @@
     var approvals=slot.approvals||{};
     return APPROVAL_ROLES.filter(function(role){ return approvals[role]!==true; });
   }
+
+  var urlRoleParam = null;
 
   function getActiveRole(){
     var role=slotForm.role && slotForm.role.value;
@@ -1341,6 +1355,10 @@
   }
   (function(){
     var params=new URLSearchParams(location.search);
+    var roleParam=params.get('role');
+    if(roleParam && ROLE_KEYS.indexOf(roleParam)!==-1){
+      urlRoleParam=roleParam;
+    }
     var sp=params.get('sp');
     if(sp){
       try{ unpackState(b64url.dec(sp)); restoredFromShare=true; }
@@ -1355,6 +1373,10 @@
       }catch(e){ }
     }
   })();
+  if(urlRoleParam && slotForm.role){
+    slotForm.role.value=urlRoleParam;
+    renderSlotList();
+  }
   updateLocationInsights();
 
   // SunCalc lite (fallback)
@@ -2743,6 +2765,15 @@
     if(!btn) return;
     btn.addEventListener('click', function(){ notifyContacts('contact:reply',{actor:role,targets:['couple']}); });
   });
+  if(slotForm.role){
+    slotForm.role.addEventListener('change', function(e){
+      var val=e.target.value;
+      if(ROLE_KEYS.indexOf(val)!==-1){ urlRoleParam=val; }
+      else { urlRoleParam=null; }
+      renderSlotList();
+      updateLink();
+    });
+  }
   if(slotForm.addBtn){ slotForm.addBtn.addEventListener('click', handleAddSlot); }
   if(slotForm.notifyBtn){ slotForm.notifyBtn.addEventListener('click', handleNotifyPendingSlots); }
   ['date','time','duration','title'].forEach(function(key){
@@ -2768,7 +2799,7 @@
   // link
   function updateLink(){
     var encodedState = b64url.enc(packState());
-    var url = buildPlannerUrlFromEncoded(encodedState);
+    var url = buildPlannerUrlFromEncoded(encodedState, urlRoleParam ? {role:urlRoleParam} : null);
     history.replaceState(null,'',url);
     var linkEl=$('#sp-link'); if(linkEl) linkEl.textContent = url;
     if(shortLinkValue && shortLinkState !== encodedState){
