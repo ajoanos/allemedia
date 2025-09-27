@@ -96,6 +96,12 @@
     contact.videographerSlots=grouped.videographer;
     return state;
   }
+  function buildPlannerUrlFromEncoded(encoded){
+    var base = BASE_URL;
+    var joiner = base.indexOf('?') === -1 ? '?' : '&';
+    return base + joiner + 'sp=' + encoded;
+  }
+
   function notifyContacts(type, payload){
     if(!CONTACT_URL || typeof fetch!=='function') return Promise.resolve(false);
     payload=payload||{};
@@ -129,8 +135,9 @@
     }
 
     var state=buildContactNotificationState();
-    var link=(location && location.href) ? location.href.split('#')[0] : '';
-    var shortLink=shortLinkValue || '';
+    var encodedState=b64url.enc(state);
+    var link=buildPlannerUrlFromEncoded(encodedState);
+    var shortLink=(shortLinkValue && shortLinkState===encodedState)?shortLinkValue:'';
     var bodyBase={
       actor:actor,
       event:type,
@@ -974,6 +981,7 @@
   var sunDirectionLines = [];
   var forecastCache = {};
   var shortLinkValue = null;
+  var shortLinkState = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
   var radarLayer = null, radarTemplate = null, radarFetchedAt = 0;
 
@@ -2310,28 +2318,30 @@
     radarEl.checked = !!pendingRadar;
     if(pendingRadar) toggleRadar(true);
   }
-  function setShortLink(url){
-    shortLinkValue=url;
+  function setShortLink(url, encodedState){
+    shortLinkValue=url||null;
+    shortLinkState=shortLinkValue? (encodedState||null) : null;
     var box=$('#sp-short-status');
     if(box){
       box.innerHTML='';
-      if(url){
+      if(shortLinkValue){
         var span=document.createElement('strong'); span.textContent='Krótki link: ';
-        var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.textContent=url;
+        var a=document.createElement('a'); a.href=shortLinkValue; a.target='_blank'; a.rel='noopener'; a.textContent=shortLinkValue;
         box.appendChild(span); box.appendChild(a);
       }
     }
-    if(url){
-      try{ navigator.clipboard.writeText(url); toast('Krótki link skopiowany','ok'); }
+    if(shortLinkValue){
+      try{ navigator.clipboard.writeText(shortLinkValue); toast('Krótki link skopiowany','ok'); }
       catch(e){ toast('Krótki link gotowy','ok'); }
     }
   }
   function createShortLink(){
     if(!REST_URL){ toast('Funkcja skróconego linku niedostępna'); return; }
     var box=$('#sp-short-status'); if(box){ box.textContent='Generuję link...'; }
-    fetch(REST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sp:b64url.enc(packState())})})
+    var encodedState=b64url.enc(packState());
+    fetch(REST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sp:encodedState})})
       .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
-      .then(function(data){ if(data && data.url){ setShortLink(data.url); } else { if(box) box.textContent='Nie udało się wygenerować linku.'; } })
+      .then(function(data){ if(data && data.url){ setShortLink(data.url, encodedState); } else { if(box) box.textContent='Nie udało się wygenerować linku.'; } })
       .catch(function(){ if(box) box.textContent='Nie udało się wygenerować linku.'; });
   }
   function formatICS(date){
@@ -2654,13 +2664,13 @@
 
   // link
   function updateLink(){
-    var base = BASE_URL;
-    var joiner = base.indexOf('?') === -1 ? '?' : '&';
-    var url = base + joiner + 'sp=' + b64url.enc(packState());
+    var encodedState = b64url.enc(packState());
+    var url = buildPlannerUrlFromEncoded(encodedState);
     history.replaceState(null,'',url);
     var linkEl=$('#sp-link'); if(linkEl) linkEl.textContent = url;
-    if(shortLinkValue){
+    if(shortLinkValue && shortLinkState !== encodedState){
       shortLinkValue=null;
+      shortLinkState=null;
       var box=$('#sp-short-status'); if(box) box.textContent='Plan zmieniony. Wygeneruj nowy krótki link.';
     }
     persistState();
