@@ -53,19 +53,22 @@
     confirmed: 'Potwierdzony',
     rejected: 'Odrzucony'
   };
-  var contactState = {
-    roles: {
-      couple: { name: '', email: '' },
-      photographer: { name: '', email: '' },
-      videographer: { name: '', email: '' }
-    },
-    notes: {
-      couple: '',
-      photographer: '',
-      videographer: ''
-    },
-    slots: []
-  };
+  function createEmptyContactState(){
+    return {
+      roles: {
+        couple: { name: '', email: '' },
+        photographer: { name: '', email: '' },
+        videographer: { name: '', email: '' }
+      },
+      notes: {
+        couple: '',
+        photographer: '',
+        videographer: ''
+      },
+      slots: []
+    };
+  }
+  var contactState = createEmptyContactState();
   var slotIdCounter = 0;
 
   function roleLabel(role){ return ROLE_LABELS[role] || role; }
@@ -1140,6 +1143,7 @@
   var STORAGE_KEY_NEW = 'plannerDraft_v2';
   var storageAvailable = (function(){ try{return !!window.localStorage; }catch(e){ return false; } })();
   var persistTimer = null;
+  var skipNextPersist = false;
   var routeColors = ['#e94244','#1e3a8a','#6b7280'];
   var pendingRadar = false;
 
@@ -1217,6 +1221,7 @@
     if(persistTimer){ clearTimeout(persistTimer); }
     persistTimer=setTimeout(function(){
       persistTimer=null;
+      if(skipNextPersist){ skipNextPersist=false; return; }
       if(!storageAvailable) return;
       var packed=b64url.enc(packState());
       try{ window.localStorage.setItem(STORAGE_KEY, packed); }catch(e){}
@@ -2521,6 +2526,57 @@
     google.maps.event.addListenerOnce(map,'idle',function(){ google.maps.event.trigger(map,'resize'); });
   }
 
+  function resetPlannerState(){
+    if(persistTimer){ clearTimeout(persistTimer); persistTimer=null; }
+
+    contactState = createEmptyContactState();
+    slotIdCounter = 0;
+    points = [];
+    currentRoutes = [];
+    activeRouteIndex = 0;
+    driveMin = 0;
+    pendingRadar = false;
+
+    if(dragMarker && typeof dragMarker.setVisible==='function'){ dragMarker.setVisible(false); }
+
+    var placeInput=$('#sp-place');
+    if(placeInput){ placeInput.value=''; }
+
+    var todayStr=today.toISOString().split('T')[0];
+    dEl.value = todayStr;
+
+    clearSlotFormErrors();
+    if(slotForm.role){ slotForm.role.value='couple'; }
+    if(slotForm.date){ slotForm.date.value=''; }
+    if(slotForm.time){ slotForm.time.value=''; }
+    if(slotForm.duration){
+      slotForm.duration.value = slotForm.duration.defaultValue || slotForm.duration.getAttribute('value') || '60';
+    }
+    if(slotForm.title){ slotForm.title.value=''; }
+    if(slotForm.location){ slotForm.location.value=''; }
+
+    renderContactState();
+    renderList();
+    clearRenderers();
+    renderRouteOptions();
+
+    setText('sp-t-time','—');
+    setText('sp-t-dist','—');
+    setText('sp-loc','—');
+
+    if(storageAvailable){
+      try{ window.localStorage.removeItem(STORAGE_KEY); }catch(e){}
+      try{ window.localStorage.removeItem(STORAGE_KEY_NEW); }catch(e){}
+    }
+
+    skipNextPersist = true;
+    updateDerived();
+    loadGallery();
+    updateSunWeather();
+    toggleRadar(false);
+    applyPendingRadar();
+  }
+
   // UI
   $('#sp-add').addEventListener('click', function(){
     var val=$('#sp-place').value.trim();
@@ -2536,11 +2592,7 @@
       toast('Wpisz nazwę miejsca lub kliknij na mapie, aby dodać punkt.');
     }
   });
-  $('#sp-clear').addEventListener('click', function(){
-    points=[]; renderList(); clearRenderers(); currentRoutes=[]; activeRouteIndex=0; renderRouteOptions();
-    setText('sp-t-time','—'); setText('sp-t-dist','—'); setText('sp-loc','—');
-    loadGallery(); updateSunWeather(); updateLink();
-  });
+  $('#sp-clear').addEventListener('click', resetPlannerState);
   $('#sp-copy').addEventListener('click', function(){
     updateLink();
     var linkEl=$('#sp-link');
