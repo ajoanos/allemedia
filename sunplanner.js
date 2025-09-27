@@ -38,6 +38,7 @@
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
 
   var ROLE_KEYS = ['couple','photographer','videographer'];
+  var APPROVAL_ROLES = ROLE_KEYS.filter(function(role){ return role !== 'couple'; });
   var ROLE_LABELS = {
     couple: 'Młoda para',
     photographer: 'Fotograf',
@@ -107,10 +108,11 @@
     payload=payload||{};
     var silent=!!payload.silent;
     var actor=(payload.actor && ROLE_KEYS.indexOf(payload.actor)!==-1) ? payload.actor : getActiveRole();
+    var includeActor=!!payload.includeActor;
     var slotData=null;
     if(payload.slot){ slotData=cloneSlot(payload.slot); }
     var slotId=payload.slotId || (slotData && slotData.id) || '';
-    var overrideTargets=Array.isArray(payload.targets)?payload.targets.filter(function(role){ return ROLE_KEYS.indexOf(role) !== -1 && role!==actor; }):null;
+    var overrideTargets=Array.isArray(payload.targets)?payload.targets.filter(function(role){ return ROLE_KEYS.indexOf(role) !== -1 && (includeActor || role!==actor); }):null;
     var targets=[];
     if(overrideTargets && overrideTargets.length){
       targets=overrideTargets;
@@ -389,6 +391,7 @@
         '</div>'+
         '<div class="slot-notify-all">'+
           '<button id="sp-slot-notify" class="btn secondary" type="button">Powiadom wszystkich o propozycji sesji</button>'+
+          '<div id="sp-slot-notify-status" class="slot-notify-status" style="display:none"></div>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -415,6 +418,22 @@
   function $(s){ return document.querySelector(s); }
   function toast(m,type){ var t=$("#sp-toast"); t.textContent=m; t.style.display='block'; t.style.background=(type==='ok'?'#dcfce7':'#fee2e2'); t.style.color=(type==='ok'?'#14532d':'#991b1b'); clearTimeout(toast._t); toast._t=setTimeout(function(){t.style.display='none';}, 4200); }
   function fmt(d){ return d instanceof Date && !isNaN(d) ? d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}) : '—'; }
+  function setSlotNotifyStatus(message,type){
+    var el=slotForm.notifyStatus;
+    if(!el) return;
+    var baseClass='slot-notify-status';
+    el.className=baseClass;
+    if(!message){
+      el.textContent='';
+      el.style.display='none';
+      return;
+    }
+    if(type==='ok'){ el.classList.add('slot-notify-status--ok'); }
+    else if(type==='error'){ el.classList.add('slot-notify-status--error'); }
+    else { el.classList.add('slot-notify-status--info'); }
+    el.textContent=message;
+    el.style.display='block';
+  }
   function escapeHtml(str){
     return String(str==null?'':str).replace(/[&<>"']/g,function(ch){
       switch(ch){
@@ -478,8 +497,10 @@
     location: document.getElementById('sp-slot-location'),
     addBtn: document.getElementById('sp-slot-add'),
     notifyBtn: document.getElementById('sp-slot-notify'),
-    errorBox: document.getElementById('sp-slot-error')
+    errorBox: document.getElementById('sp-slot-error'),
+    notifyStatus: document.getElementById('sp-slot-notify-status')
   };
+  setSlotNotifyStatus('', '');
 
   // contact helpers & rendering
   function pad2(num){ return (num<10?'0':'')+num; }
@@ -517,7 +538,19 @@
     var location=typeof raw.location==='string'?raw.location.trim():'';
     var id=(typeof raw.id==='string' && raw.id)?raw.id:nextSlotId();
     var notified=(typeof raw.notified==='boolean')?raw.notified:(status!==SLOT_STATUSES.PROPOSED);
-    return { id:id, status:status, createdBy:createdBy, date:date, time:time, duration:duration, title:title, location:location, notified:notified };
+    var approvalsRaw=(raw.approvals && typeof raw.approvals==='object')?raw.approvals:{};
+    var approvals={};
+    APPROVAL_ROLES.forEach(function(role){
+      var value=approvalsRaw[role];
+      approvals[role]=(value===true || value==='true');
+    });
+    if(status===SLOT_STATUSES.CONFIRMED){
+      APPROVAL_ROLES.forEach(function(role){ approvals[role]=true; });
+    }
+    if(APPROVAL_ROLES.indexOf(createdBy)!==-1 && approvals[createdBy]!==true){
+      approvals[createdBy]=true;
+    }
+    return { id:id, status:status, createdBy:createdBy, date:date, time:time, duration:duration, title:title, location:location, notified:notified, approvals:approvals };
   }
 
   function normalizeSlots(arr,fallbackAuthor){
@@ -535,7 +568,12 @@
       time:slot.time,
       duration:slot.duration,
       title:slot.title,
-      location:slot.location
+      location:slot.location,
+      approvals:(function(){
+        var approvals={};
+        APPROVAL_ROLES.forEach(function(role){ approvals[role]=(slot.approvals&&slot.approvals[role]===true); });
+        return approvals;
+      })()
     };
   }
 
@@ -573,6 +611,12 @@
       if(range.start<oRange.end && range.end>oRange.start){ return true; }
     }
     return false;
+  }
+
+  function pendingApprovalRoles(slot){
+    if(!slot) return [];
+    var approvals=slot.approvals||{};
+    return APPROVAL_ROLES.filter(function(role){ return approvals[role]!==true; });
   }
 
   function getActiveRole(){
@@ -686,6 +730,7 @@
       if(aKey===bKey) return 0;
       return aKey<bKey?-1:1;
     });
+    var activeRole=getActiveRole();
     sorted.forEach(function(slot){
       var conflict=slotHasConflict(slot);
       var item=document.createElement('div');
@@ -715,6 +760,18 @@
       author.className='slot-item-author muted';
       author.textContent='Zaproponował: '+(ROLE_LABELS[slot.createdBy]||slot.createdBy);
       item.appendChild(author);
+      var approvals=slot.approvals||{};
+      var approvalsBox=document.createElement('div');
+      approvalsBox.className='slot-approvals';
+      APPROVAL_ROLES.forEach(function(role){
+        var confirmed=approvals[role]===true || slot.status===SLOT_STATUSES.CONFIRMED;
+        var chip=document.createElement('span');
+        chip.className='slot-approval '+(confirmed?'slot-approval--confirmed':'slot-approval--pending');
+        chip.textContent=(ROLE_LABELS[role]||role)+': '+(confirmed?'potwierdził termin':'oczekuje na potwierdzenie');
+        approvalsBox.appendChild(chip);
+      });
+      if(approvalsBox.childNodes.length){ item.appendChild(approvalsBox); }
+      var pendingRoles=pendingApprovalRoles(slot);
       if(conflict){
         var conflictBox=document.createElement('div');
         conflictBox.className='slot-item-conflict';
@@ -724,20 +781,32 @@
       var actions=document.createElement('div');
       actions.className='slot-actions';
       if(slot.status===SLOT_STATUSES.PROPOSED){
-        var acceptBtn=document.createElement('button');
-        acceptBtn.type='button';
-        acceptBtn.className='btn slot-action slot-action-accept';
-        acceptBtn.textContent='Akceptuj';
-        if(conflict){ acceptBtn.disabled=true; acceptBtn.title='Konflikt z potwierdzonym terminem.'; }
-        acceptBtn.addEventListener('click',function(){ handleConfirmSlot(slot.id); });
-        actions.appendChild(acceptBtn);
-        var rejectBtn=document.createElement('button');
-        rejectBtn.type='button';
-        rejectBtn.className='btn secondary slot-action slot-action-reject';
-        rejectBtn.textContent='Odrzuć';
-        rejectBtn.addEventListener('click',function(){ handleRejectSlot(slot.id); });
-        actions.appendChild(rejectBtn);
-        if(slot.createdBy!=='couple'){
+        if(activeRole==='couple' && pendingRoles.length===0){
+          var finalizeBtn=document.createElement('button');
+          finalizeBtn.type='button';
+          finalizeBtn.className='btn slot-action slot-action-accept';
+          finalizeBtn.textContent='Zatwierdź termin';
+          if(conflict){ finalizeBtn.disabled=true; finalizeBtn.title='Konflikt z potwierdzonym terminem.'; }
+          finalizeBtn.addEventListener('click',function(){ handleConfirmSlot(slot.id); });
+          actions.appendChild(finalizeBtn);
+        }
+        if(activeRole==='couple'){
+          var rejectBtn=document.createElement('button');
+          rejectBtn.type='button';
+          rejectBtn.className='btn secondary slot-action slot-action-reject';
+          rejectBtn.textContent='Odrzuć';
+          rejectBtn.addEventListener('click',function(){ handleRejectSlot(slot.id); });
+          actions.appendChild(rejectBtn);
+        }
+        if(APPROVAL_ROLES.indexOf(activeRole)!==-1 && approvals[activeRole]!==true){
+          var approveBtn=document.createElement('button');
+          approveBtn.type='button';
+          approveBtn.className='btn slot-action slot-action-approve';
+          approveBtn.textContent=(activeRole==='photographer'?'Fotograf':'Filmowiec')+' potwierdza';
+          approveBtn.addEventListener('click',function(){ handleRoleApproveSlot(slot.id); });
+          actions.appendChild(approveBtn);
+        }
+        if(slot.createdBy!=='couple' && activeRole===slot.createdBy){
           var removeBtn=document.createElement('button');
           removeBtn.type='button';
           removeBtn.className='btn ghost slot-action slot-action-remove';
@@ -768,6 +837,22 @@
     renderSlotList();
   }
 
+  function handleRoleApproveSlot(id){
+    var actor=getActiveRole();
+    if(APPROVAL_ROLES.indexOf(actor)===-1){ toast('Potwierdzić mogą fotograf i filmowiec.'); return; }
+    var slot=findSlotById(id);
+    if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
+    slot.approvals=slot.approvals||{};
+    if(slot.approvals[actor]===true){ toast('Termin został już potwierdzony.','ok'); return; }
+    slot.approvals[actor]=true;
+    notifyContacts('slot:approved',{actor:actor,slot:cloneSlot(slot),targets:['couple'],silent:true}).then(function(sent){
+      if(sent){ toast('Powiadomiono młodą parę o potwierdzeniu.','ok'); }
+      else { toast('Nie udało się wysłać wiadomości do pary.'); }
+    });
+    renderSlotList();
+    updateLink();
+  }
+
   function handleConfirmSlot(id){
     var actor=getActiveRole();
     if(actor!=='couple'){ toast('Akceptować może tylko para.'); return; }
@@ -775,8 +860,12 @@
     if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
     if(!slot.date || !slot.time){ toast('Uzupełnij datę i godzinę, aby zaakceptować termin.'); return; }
     if(slotHasConflict(slot)){ toast('Termin koliduje z potwierdzonym slotem.'); return; }
+    var waiting=pendingApprovalRoles(slot);
+    if(waiting.length){ toast('Poczekaj na potwierdzenia: '+waiting.map(roleLabel).join(', ')+'.'); return; }
+    slot.approvals=slot.approvals||{};
+    APPROVAL_ROLES.forEach(function(role){ slot.approvals[role]=true; });
     slot.status=SLOT_STATUSES.CONFIRMED;
-    notifyContacts('slot:confirmed',{actor:actor,slot:cloneSlot(slot)});
+    notifyContacts('slot:confirmed',{actor:actor,slot:cloneSlot(slot),targets:['couple','photographer','videographer'],includeActor:true});
     renderSlotList();
     updateLink();
   }
@@ -873,7 +962,11 @@
     var pending=contactState.slots.filter(function(slot){
       return slot && slot.createdBy===actor && slot.status===SLOT_STATUSES.PROPOSED && !slot.notified;
     });
-    if(!pending.length){ toast('Brak nowych terminów do wysłania.'); return; }
+    if(!pending.length){
+      toast('Brak nowych terminów do wysłania.');
+      setSlotNotifyStatus('Brak nowych terminów do wysłania.', 'info');
+      return;
+    }
     var sends=pending.map(function(slot){
       return notifyContacts('slot:proposed',{actor:actor,slot:cloneSlot(slot),silent:true}).then(function(ok){
         if(ok){
@@ -885,9 +978,19 @@
       });
     });
     Promise.all(sends).then(function(results){
-      var anyOk=results.some(function(v){ return !!v; });
-      if(anyOk){ toast('Wysłano propozycje terminów.','ok'); }
-      else { toast('Nie udało się wysłać terminów.'); }
+      var successCount=results.filter(function(v){ return !!v; }).length;
+      if(successCount===pending.length){
+        var now=new Date();
+        var stamp=now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+        setSlotNotifyStatus('Powiadomienie wysłane o '+stamp+'.','ok');
+        toast('Wysłano propozycje terminów.','ok');
+      } else if(successCount>0){
+        setSlotNotifyStatus('Część powiadomień została wysłana – sprawdź adresy e-mail.', 'info');
+        toast('Nie wszystkie powiadomienia udało się wysłać.');
+      } else {
+        setSlotNotifyStatus('Nie udało się wysłać powiadomień.', 'error');
+        toast('Nie udało się wysłać terminów.');
+      }
       renderSlotList();
       updateLink();
     });
