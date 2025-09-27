@@ -159,6 +159,10 @@
 .slot-item-meta{font-size:.88rem;color:#334155}
 .slot-item-location{font-size:.85rem;color:#1f2937;font-weight:500}
 .slot-item-author{font-size:.78rem;color:#475569}
+.slot-approvals{display:flex;flex-wrap:wrap;gap:.4rem;font-size:.78rem}
+.slot-approval{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:999px;font-weight:600}
+.slot-approval--pending{background:#e2e8f0;color:#475569}
+.slot-approval--confirmed{background:#dcfce7;color:#166534}
 .slot-item-conflict{font-size:.78rem;font-weight:600;color:#b91c1c}
 .slot-item--conflict{border-style:dashed}
 .slot-actions{display:flex;flex-wrap:wrap;gap:.55rem}
@@ -179,6 +183,10 @@
 .slot-field-actions .btn{width:100%}
 .slot-notify-all{margin-top:.4rem}
 .slot-notify-all .btn{width:100%}
+.slot-notify-status{margin-top:.5rem;font-size:.82rem;font-weight:600}
+.slot-notify-status--ok{color:#166534}
+.slot-notify-status--error{color:#b91c1c}
+.slot-notify-status--info{color:#475569}
 .slot-form-error{display:none;font-size:.85rem;font-weight:600;color:#b91c1c}
 @media(min-width:860px){.contact-notes-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){
