@@ -77,6 +77,17 @@
     var info=contactState.roles[role];
     return info && info.email ? info.email.trim() : '';
   }
+  function roleRequiresApproval(role){
+    if(APPROVAL_ROLES.indexOf(role)===-1) return false;
+    var info=contactState.roles[role]||{};
+    if(typeof info.name==='string' && info.name.trim()){ return true; }
+    if(typeof info.email==='string' && info.email.trim()){ return true; }
+    for(var i=0;i<contactState.slots.length;i++){
+      var slot=contactState.slots[i];
+      if(slot && slot.createdBy===role){ return true; }
+    }
+    return false;
+  }
   function buildContactNotificationState(){
     var state=packState();
     var contact=state.contact=state.contact||{};
@@ -130,12 +141,19 @@
     } else if(actor==='couple'){ targets=['photographer','videographer']; }
     else if(actor==='photographer'){ targets=['couple','videographer']; }
     else if(actor==='videographer'){ targets=['couple','photographer']; }
+    if(includeActor && targets.indexOf(actor)===-1){ targets.push(actor); }
+    targets=targets.filter(function(role){
+      if(role===actor && includeActor){ return true; }
+      if(APPROVAL_ROLES.indexOf(role)===-1){ return true; }
+      return roleRequiresApproval(role);
+    });
     if(!targets.length) return Promise.resolve(false);
 
     var missing=[];
     var actualTargets=targets.filter(function(role){
       if(!getRoleEmail(role)){
-        missing.push(role);
+        var shouldWarn=(role===actor && includeActor) || role==='couple' || roleRequiresApproval(role);
+        if(shouldWarn){ missing.push(role); }
         return false;
       }
       return true;
@@ -639,7 +657,10 @@
   function pendingApprovalRoles(slot){
     if(!slot) return [];
     var approvals=slot.approvals||{};
-    return APPROVAL_ROLES.filter(function(role){ return approvals[role]!==true; });
+    return APPROVAL_ROLES.filter(function(role){
+      if(!roleRequiresApproval(role)) return false;
+      return approvals[role]!==true;
+    });
   }
 
   var urlRoleParam = null;
@@ -789,6 +810,7 @@
       var approvalsBox=document.createElement('div');
       approvalsBox.className='slot-approvals';
       APPROVAL_ROLES.forEach(function(role){
+        if(!roleRequiresApproval(role) && approvals[role]!==true) return;
         var confirmed=approvals[role]===true || slot.status===SLOT_STATUSES.CONFIRMED;
         var chip=document.createElement('span');
         chip.className='slot-approval '+(confirmed?'slot-approval--confirmed':'slot-approval--pending');
@@ -823,7 +845,7 @@
           rejectBtn.addEventListener('click',function(){ handleRejectSlot(slot.id); });
           actions.appendChild(rejectBtn);
         }
-        if(APPROVAL_ROLES.indexOf(activeRole)!==-1 && approvals[activeRole]!==true){
+        if(APPROVAL_ROLES.indexOf(activeRole)!==-1 && roleRequiresApproval(activeRole) && approvals[activeRole]!==true){
           var approveBtn=document.createElement('button');
           approveBtn.type='button';
           approveBtn.className='btn slot-action slot-action-approve';
