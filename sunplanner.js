@@ -378,13 +378,13 @@
               '<input id="sp-slot-date" class="input" type="date">'+
             '</label>'+
             '<label class="slot-field">'+
-              '<span class="slot-field-label">Godzina</span>'+
+              '<span class="slot-field-label">Godzina (opcjonalnie)</span>'+
               '<input id="sp-slot-time" class="input" type="time">'+
-            '</label>'+
+          '</label>'+
             '<label class="slot-field">'+
-              '<span class="slot-field-label">Czas (min)</span>'+
-              '<input id="sp-slot-duration" class="input" type="number" min="15" step="5" value="60" placeholder="60">'+
-            '</label>'+
+              '<span class="slot-field-label">Czas (h)</span>'+
+              '<input id="sp-slot-duration" class="input" type="number" min="0.25" step="0.25" value="1" placeholder="1">'+
+          '</label>'+
           '</div>'+
           '<div class="slot-form-row">'+
             '<label class="slot-field slot-field-wide">'+
@@ -589,11 +589,22 @@
     };
   }
 
+  function formatDurationHours(minutes){
+    if(!(minutes>0)) return '';
+    var hours=Math.round((minutes/60)*100)/100;
+    var str=hours.toString();
+    if(str.indexOf('.')!==-1){ str=str.replace('.', ','); }
+    return str+' h';
+  }
+
   function formatSlotMeta(slot){
     var parts=[];
     if(slot.date){ parts.push(slot.date.split('-').reverse().join('.')); }
     if(slot.time){ parts.push(slot.time); }
-    if(slot.duration){ parts.push(slot.duration+' min'); }
+    if(slot.duration){
+      var formattedDuration=formatDurationHours(slot.duration);
+      if(formattedDuration){ parts.push(formattedDuration); }
+    }
     return parts.join(' • ');
   }
 
@@ -956,13 +967,14 @@
     var actor=getActiveRole();
     var date=slotForm.date?slotForm.date.value:'';
     var time=slotForm.time?slotForm.time.value:'';
-    var duration=parseInt(slotForm.duration && slotForm.duration.value,10);
+    var durationRaw=slotForm.duration && typeof slotForm.duration.value==='string'?slotForm.duration.value.trim():'';
+    var durationHours=parseFloat(durationRaw && durationRaw.replace(',','.'));
+    var duration=Math.round((durationHours||0)*60);
     var title=slotForm.title?slotForm.title.value.trim():'';
     var location=slotForm.location?slotForm.location.value.trim():'';
     clearSlotFormErrors();
     if(!date){ showSlotFormError('Uzupełnij datę terminu.', slotForm.date); return; }
-    if(!time){ showSlotFormError('Dodaj godzinę terminu.', slotForm.time); return; }
-    if(!(duration>0)){ showSlotFormError('Podaj czas trwania w minutach.', slotForm.duration); return; }
+    if(!(duration>0)){ showSlotFormError('Podaj czas trwania w godzinach.', slotForm.duration); return; }
     var slot=normalizeSlot({ date:date, time:time, duration:duration, title:title, location:location, createdBy:actor, status:SLOT_STATUSES.PROPOSED }, actor);
     slot.notified=false;
     contactState.slots.push(slot);
@@ -2685,7 +2697,7 @@
     if(slotForm.date){ slotForm.date.value=''; }
     if(slotForm.time){ slotForm.time.value=''; }
     if(slotForm.duration){
-      slotForm.duration.value = slotForm.duration.defaultValue || slotForm.duration.getAttribute('value') || '60';
+      slotForm.duration.value = slotForm.duration.defaultValue || slotForm.duration.getAttribute('value') || '1';
     }
     if(slotForm.title){ slotForm.title.value=''; }
     if(slotForm.location){ slotForm.location.value=''; }
