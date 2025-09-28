@@ -899,7 +899,7 @@
     if(actor!=='couple'){ toast('Akceptować może tylko para.'); return; }
     var slot=findSlotById(id);
     if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
-    if(!slot.date || !slot.time){ toast('Uzupełnij datę i godzinę, aby zaakceptować termin.'); return; }
+    if(!slot.date){ toast('Uzupełnij datę, aby zaakceptować termin.'); return; }
     if(slotHasConflict(slot)){ toast('Termin koliduje z potwierdzonym slotem.'); return; }
     var waiting=pendingApprovalRoles(slot);
     if(waiting.length){ toast('Poczekaj na potwierdzenia: '+waiting.map(roleLabel).join(', ')+'.'); return; }
