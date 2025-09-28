@@ -348,17 +348,11 @@
           '<span class="contact-role-label">Fotograf</span>'+
           '<input id="sp-contact-photographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-photographer-email" class="input" type="email" placeholder="fotograf@example.com">'+
-          '<div class="contact-role-action">'+
-            '<button id="sp-contact-photographer-reply" class="btn secondary" type="button">Odpowiedz parze młodej</button>'+
-          '</div>'+
         '</div>'+
         '<div class="contact-role-row">'+
           '<span class="contact-role-label">Filmowiec</span>'+
           '<input id="sp-contact-videographer-name" class="input" type="text" placeholder="Imię i nazwisko">'+
           '<input id="sp-contact-videographer-email" class="input" type="email" placeholder="filmowiec@example.com">'+
-          '<div class="contact-role-action">'+
-            '<button id="sp-contact-videographer-reply" class="btn secondary" type="button">Odpowiedz parze młodej</button>'+
-          '</div>'+
         '</div>'+
       '</div>'+
       '<div class="contact-notes">'+
@@ -892,9 +886,9 @@
     slot.approvals=slot.approvals||{};
     if(slot.approvals[actor]===true){ toast('Termin został już potwierdzony.','ok'); return; }
     slot.approvals[actor]=true;
-    notifyContacts('slot:approved',{actor:actor,slot:cloneSlot(slot),targets:['couple'],silent:true}).then(function(sent){
-      if(sent){ toast('Powiadomiono młodą parę o potwierdzeniu.','ok'); }
-      else { toast('Nie udało się wysłać wiadomości do pary.'); }
+    notifyContacts('slot:approved',{actor:actor,slot:cloneSlot(slot),silent:true}).then(function(sent){
+      if(sent){ toast('Powiadomiono pozostałe osoby o potwierdzeniu.','ok'); }
+      else { toast('Nie udało się wysłać powiadomienia.'); }
     });
     renderSlotList();
     updateLink();
@@ -2789,15 +2783,6 @@
       contactNotesEls[role].addEventListener('input', handleNote);
       contactNotesEls[role].addEventListener('change', handleNote);
     }
-  });
-  var contactReplyButtons={
-    photographer: document.getElementById('sp-contact-photographer-reply'),
-    videographer: document.getElementById('sp-contact-videographer-reply')
-  };
-  Object.keys(contactReplyButtons).forEach(function(role){
-    var btn=contactReplyButtons[role];
-    if(!btn) return;
-    btn.addEventListener('click', function(){ notifyContacts('contact:reply',{actor:role,targets:['couple']}); });
   });
   if(slotForm.role){
     slotForm.role.addEventListener('change', function(e){
