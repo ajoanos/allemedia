@@ -322,10 +322,9 @@
           '<div class="ten-day-forecast card inner">'+
             '<div class="chart-header">'+
               '<h3>Prognoza pogody – 10 dni</h3>'+
-              '<p class="chart-description">Temperatura maksymalna i minimalna oraz suma opadów w kolejnych dniach.</p>'+
             '</div>'+
             '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="10-dniowa prognoza temperatury i opadów"></canvas>'+
-            '<div class="ten-day-legend">'+
+            '<div class="ten-day-legend chart-legend">'+
               '<span><i class="line max"></i>Maks. temp.</span>'+
               '<span><i class="line min"></i>Min. temp.</span>'+
               '<span><i class="bar rain"></i>Opady (mm)</span>'+
@@ -338,7 +337,7 @@
               '<p class="chart-description">Temperatura powietrza oraz prognozowane natężenie opadów dla wybranej lokalizacji.</p>'+
             '</div>'+
             '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
-            '<div class="weather-legend">'+
+            '<div class="weather-legend chart-legend">'+
 
               '<span><i class="line"></i>Temperatura (°C)</span>'+
               '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
@@ -352,7 +351,7 @@
                 '<p class="chart-description">Szacowana liczba minut ze słońcem w każdej godzinie.</p>'+
               '</div>'+
               '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
-              '<div class="weather-legend sunshine-legend">'+
+              '<div class="weather-legend sunshine-legend chart-legend">'+
                 '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
                 '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
                 '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
@@ -595,6 +594,9 @@
   function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
   function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
   function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
+  function sessionSummaryLimit(){
+    setSessionSummary('<strong>Prognoza poza zakresem</strong><span class="session-summary__lead">'+forecastLimitMessage()+'</span>');
+  }
 
   var contactInputs = {};
   ROLE_KEYS.forEach(function(role){
@@ -1396,7 +1398,24 @@
   var pendingRadar = false;
 
   // data
-  var today=new Date(), max=new Date(today); max.setDate(max.getDate()+16);
+  var FORECAST_HORIZON_DAYS = 9;
+  var FORECAST_WINDOW_DAYS = 9;
+  function startOfDay(date){
+    if(!(date instanceof Date) || isNaN(date)) return null;
+    var copy=new Date(date);
+    copy.setHours(0,0,0,0);
+    return copy;
+  }
+  function daysAhead(date){
+    var base=startOfDay(date);
+    var todayBase=startOfDay(new Date());
+    if(!base || !todayBase) return null;
+    return Math.round((base.getTime()-todayBase.getTime())/86400000);
+  }
+  function forecastLimitMessage(){
+    return 'Prognoza dostępna maksymalnie '+FORECAST_HORIZON_DAYS+' dni do przodu.';
+  }
+  var today=new Date(), max=new Date(today); max.setDate(max.getDate()+FORECAST_HORIZON_DAYS);
   var dEl = $('#sp-date');
   dEl.min=today.toISOString().split('T')[0]; dEl.max=max.toISOString().split('T')[0];
   dEl.value = dEl.value || today.toISOString().split('T')[0];
@@ -1803,7 +1822,7 @@
     ctx.clearRect(0,0,width,height);
     return {ctx:ctx,width:width,height:height};
   }
-  function renderHourlyChart(hourly,dateStr,loading){
+  function renderHourlyChart(hourly,dateStr,loading,message){
     var canvas=document.getElementById('sp-hourly');
     if(!canvas) return;
     var prep=prepareCanvas(canvas); if(!prep) return;
@@ -1819,6 +1838,7 @@
     var chartHeight=height*0.55;
     var barArea=height*0.28;
     if(loading){ ctx.fillText('Ładowanie prognozy...',leftPad,height/2); return; }
+    if(message){ ctx.fillText(message,leftPad,height/2); return; }
     if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych pogodowych.',leftPad,height/2); return; }
     var points=[];
     for(var i=0;i<hourly.time.length;i++){
@@ -1930,7 +1950,7 @@
     ctx.fillText(Math.round(minTemp)+'°C',leftPad+4,bottom-6);
 
   }
-  function renderSunshineChart(hourly,dateStr,loading){
+  function renderSunshineChart(hourly,dateStr,loading,message){
     var canvas=document.getElementById('sp-sunshine');
     if(!canvas) return;
     var prep=prepareCanvas(canvas); if(!prep) return;
@@ -1946,6 +1966,7 @@
     var chartHeight=Math.max(40,height-56);
     var top=bottom-chartHeight;
     if(loading){ ctx.fillText('Ładowanie danych o słońcu...',leftPad,height/2); return; }
+    if(message){ ctx.fillText(message,leftPad,height/2); return; }
     if(!hourly || !hourly.time || !hourly.time.length){ ctx.fillText('Brak danych o nasłonecznieniu.',leftPad,height/2); return; }
     var points=[];
     for(var i=0;i<hourly.time.length;i++){
@@ -2062,7 +2083,7 @@
       ctx.fillText(lbl,textX,height-6);
     });
   }
-  function renderTenDayChart(daily, selectedDate, loading){
+  function renderTenDayChart(daily, selectedDate, loading, message){
     var canvas=document.getElementById('sp-ten-day');
     if(!canvas) return;
     var prep=prepareCanvas(canvas); if(!prep) return;
@@ -2077,6 +2098,7 @@
     var bottomPad=36;
     var bottom=height-bottomPad;
     if(loading){ ctx.fillText('Ładowanie prognozy 10-dniowej...', leftPad, height/2); return; }
+    if(message){ ctx.fillText(message, leftPad, height/2); return; }
     if(!daily || !Array.isArray(daily.time) || !daily.time.length){
       var msg;
       if(!selectedDate){ msg='Dodaj lokalizację i datę, aby zobaczyć prognozę 10 dni.'; }
@@ -2546,7 +2568,7 @@
         var baseDate=dateFromInput(dateStr);
         if(baseDate instanceof Date && !isNaN(baseDate)){
           var endDate=new Date(baseDate);
-          endDate.setUTCDate(endDate.getUTCDate()+9);
+          endDate.setUTCDate(endDate.getUTCDate()+FORECAST_WINDOW_DAYS);
           endRange=endDate.toISOString().slice(0,10);
         }
         var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
@@ -2589,6 +2611,16 @@
     fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
 
     clearWeatherPanels();
+    var ahead=daysAhead(base);
+    if(ahead!=null && ahead>FORECAST_HORIZON_DAYS){
+      var limitMsg=forecastLimitMessage();
+      renderHourlyChart(null,dStr,false,limitMsg);
+      renderSunshineChart(null,dStr,false,limitMsg);
+      renderTenDayChart(null,dStr,false,limitMsg);
+      sessionSummaryLimit();
+      return;
+    }
+
     renderHourlyChart(null,dStr,true);
     renderSunshineChart(null,dStr,true);
     renderTenDayChart(null,dStr,true);
