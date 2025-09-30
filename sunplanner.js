@@ -2199,12 +2199,26 @@
     var ctx=prep.ctx, width=prep.width, height=prep.height;
     ctx.fillStyle='#f8fafc';
     ctx.fillRect(0,0,width,height);
-    ctx.font='12px system-ui, sans-serif';
+    var compact=width<=420;
+    var ultraCompact=width<=360;
+    ctx.font=(ultraCompact?'11px':'12px')+' system-ui, sans-serif';
     ctx.fillStyle='#64748b';
     var leftPad=54;
     var rightPad=48;
     var topPad=28;
     var bottomPad=36;
+    if(compact){
+      leftPad=44;
+      rightPad=36;
+      topPad=26;
+      bottomPad=34;
+    }
+    if(ultraCompact){
+      leftPad=34;
+      rightPad=28;
+      topPad=24;
+      bottomPad=30;
+    }
     var bottom=height-bottomPad;
     var useVerticalRainLabels = shouldUseVerticalValueLabels(width);
     if(loading){ ctx.fillText('Ładowanie prognozy '+FORECAST_DAY_COUNT+'-dniowej...', leftPad, height/2); return; }
@@ -2253,7 +2267,7 @@
     var chartWidth=Math.max(10,width-leftPad-rightPad);
     var step=chartWidth/points.length;
     var highlight=(typeof selectedDate==='string' && selectedDate) ? selectedDate : '';
-    var gap=14;
+    var gap=ultraCompact?8:(compact?10:14);
     var precipHeight=Math.max(48,height*0.28);
     var tempBottom=bottom-precipHeight-gap;
     if(tempBottom<topPad+40){ tempBottom=topPad+Math.max(40,height*0.45); }
@@ -2335,6 +2349,7 @@
     drawTempLine(maxPath,'#ef4444');
     drawTempLine(minPath,'#2563eb');
     var rainScale=rainMax>0?rainMax:1;
+    var rainLabelFont=(ultraCompact?'9px':'10px')+' system-ui, sans-serif';
     points.forEach(function(p){
       var barHeight=(p.rain/rainScale)*precipHeight;
       if(barHeight<=0) return;
@@ -2348,7 +2363,7 @@
         labelValue=labelValue.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
         var rainLabel=labelValue+' mm';
         ctx.fillStyle='#1d4ed8';
-        ctx.font='10px system-ui, sans-serif';
+        ctx.font=rainLabelFont;
         if(useVerticalRainLabels){
           var textLength=ctx.measureText(rainLabel).width;
           var centerY=bottom-barHeight-8;
@@ -2356,7 +2371,7 @@
           var maxCenter=bottom-10;
           if(centerY<minCenter) centerY=minCenter;
           if(centerY>maxCenter) centerY=maxCenter;
-          drawVerticalText(ctx,rainLabel,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#1d4ed8'});
+          drawVerticalText(ctx,rainLabel,x,centerY,{font:rainLabelFont,fillStyle:'#1d4ed8'});
         } else {
           ctx.save();
           ctx.translate(x, bottom-barHeight-6);
@@ -2367,13 +2382,13 @@
       }
     });
     ctx.fillStyle='#0f172a';
-    ctx.font='11px system-ui, sans-serif';
+    ctx.font=(ultraCompact?'10px':'11px')+' system-ui, sans-serif';
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
     ctx.fillText(Math.round(tempMax)+'°C', leftPad, topPad-10);
     ctx.fillText(Math.round(tempMin)+'°C', leftPad, tempBottom+16);
     ctx.fillStyle='#1d4ed8';
-    ctx.font='10px system-ui, sans-serif';
+    ctx.font=rainLabelFont;
     ctx.textAlign='right';
     if(rainMax>0){
       var maxLabel=rainMax>=1?rainMax.toFixed(1):rainMax.toFixed(2);
@@ -2383,7 +2398,7 @@
       ctx.fillText('bez opadów', leftPad+chartWidth, precipTop-8);
     }
     ctx.fillStyle='#334155';
-    ctx.font='11px system-ui, sans-serif';
+    ctx.font=(ultraCompact?'10px':'11px')+' system-ui, sans-serif';
     ctx.textAlign='center';
     ctx.textBaseline='top';
     points.forEach(function(p){
