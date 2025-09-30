@@ -65,6 +65,8 @@ wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
 'UNSPLASH_KEY' => 'OpKQ3jt1C2MKJW3v2U8jkhH0gWwBWj2w5BhoTxfa0tY',
 'TZ' => wp_timezone_string(),
 'SHARED_SP' => $shared_sp,
+'SHARE_ID' => $spid,
+'SHARE_URL' => $spid ? esc_url_raw(home_url(trailingslashit('sp/' . rawurlencode($spid)))) : '',
 'REST_URL' => esc_url_raw( rest_url('sunplanner/v1/share') ),
 'CONTACT_URL' => esc_url_raw( rest_url('sunplanner/v1/contact') ),
 'SITE_ORIGIN' => esc_url_raw( home_url('/') ),
@@ -259,11 +261,43 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
         'args' => [
             'sp' => ['required' => true, 'type' => 'string'],
+            'id' => ['required' => false, 'type' => 'string'],
         ],
         'callback' => function (WP_REST_Request $req) {
             $sp = $req->get_param('sp');
             if (!is_string($sp) || $sp === '') {
                 return new WP_REST_Response(['error' => 'empty'], 400);
+            }
+
+            $requested_id = $req->get_param('id');
+            if (is_string($requested_id)) {
+                $requested_id = substr(sanitize_key($requested_id), 0, 12);
+            } else {
+                $requested_id = '';
+            }
+
+            $prepare_response = function (string $share_id) use ($sp) {
+                $opt_key = 'sunplanner_share_' . $share_id;
+                $updated = update_option($opt_key, $sp, 'no');
+                if (!$updated && false === get_option($opt_key, false)) {
+                    return false;
+                }
+
+                $base = home_url(trailingslashit('sp/' . rawurlencode($share_id)));
+                $url = add_query_arg(['sunplan' => $share_id], $base);
+
+                return [
+                    'id' => $share_id,
+                    'url' => $url,
+                    'updated' => true,
+                ];
+            };
+
+            if ($requested_id !== '') {
+                $updated = $prepare_response($requested_id);
+                if ($updated !== false) {
+                    return $updated;
+                }
             }
 
             $id = '';
@@ -292,7 +326,7 @@ add_action('rest_api_init', function () {
 
             $base = home_url(trailingslashit('sp/' . rawurlencode($id)));
             $url = add_query_arg(['sunplan' => $id], $base);
-            return ['id' => $id, 'url' => $url];
+            return ['id' => $id, 'url' => $url, 'created' => true];
         }
     ]);
 });

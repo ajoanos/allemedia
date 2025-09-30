@@ -11,6 +11,8 @@
   var CONTACT_URL  = CFG.CONTACT_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
   var RADAR_URL    = CFG.RADAR_URL || '';
+  var SHARE_ID     = CFG.SHARE_ID || '';
+  var SHARE_URL    = CFG.SHARE_URL || '';
   var BASE_URL = (function(){
     function stripQueryAndHash(url){ return url.replace(/[?#].*$/, ''); }
     var locOrigin = location.origin || (location.protocol + '//' + location.host);
@@ -33,6 +35,53 @@
 
     return siteBase || defaultBase;
   })();
+
+  function normalizeShareBase(url){
+    if(!url) return '';
+    try {
+      var parsed = new URL(url, location.origin || undefined);
+      parsed.search = '';
+      parsed.hash = '';
+      return parsed.toString();
+    } catch (e) {
+      try { return url.replace(/[?#].*$/, ''); }
+      catch(err){ return url; }
+    }
+  }
+
+  var shareId = (typeof SHARE_ID === 'string' && SHARE_ID) ? SHARE_ID : null;
+  var shareBaseUrl = shareId ? normalizeShareBase(SHARE_URL || BASE_URL) : '';
+  var shareSyncTimeout = null;
+  var shareSyncQueued = null;
+  var shareSyncLastEncoded = shareId && typeof CFG.SHARED_SP === 'string' && CFG.SHARED_SP ? CFG.SHARED_SP : null;
+
+  function pushShareState(encodedState){
+    if(!shareId || !REST_URL || typeof fetch !== 'function') return;
+    if(typeof encodedState !== 'string' || encodedState === '') return;
+    if(encodedState === shareSyncLastEncoded) return;
+    shareSyncLastEncoded = encodedState;
+    fetch(REST_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: shareId, sp: encodedState })
+    })
+      .then(function(resp){ if(!resp.ok) throw resp; return resp.json().catch(function(){ return null; }); })
+      .then(function(data){ if(data && data.url){ shareBaseUrl = normalizeShareBase(data.url); } })
+      .catch(function(){ shareSyncLastEncoded = null; });
+  }
+
+  function scheduleShareSync(encodedState){
+    if(!shareId || !REST_URL || typeof fetch !== 'function') return;
+    if(typeof encodedState !== 'string' || encodedState === '') return;
+    shareSyncQueued = encodedState;
+    if(shareSyncTimeout){ return; }
+    shareSyncTimeout = setTimeout(function(){
+      shareSyncTimeout = null;
+      var toSend = shareSyncQueued;
+      shareSyncQueued = null;
+      pushShareState(toSend);
+    }, 900);
+  }
 
   var root = document.getElementById('sunplanner-app');
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
@@ -116,9 +165,15 @@
   }
 
   function buildPlannerUrlFromEncoded(encoded, options){
-    var base = BASE_URL;
+    var base = shareId ? (shareBaseUrl || BASE_URL) : BASE_URL;
     var joiner = base.indexOf('?') === -1 ? '?' : '&';
-    var url = base + joiner + 'sp=' + encoded;
+    var url;
+    if(shareId){
+      scheduleShareSync(encoded);
+      url = base + joiner + 'sunplan=' + encodeURIComponent(shareId);
+    } else {
+      url = base + joiner + 'sp=' + encoded;
+    }
     if(options && options.role){
       url = appendRoleParam(url, options.role);
     }
@@ -167,7 +222,14 @@
 
     var state=buildContactNotificationState();
     var encodedState=b64url.enc(state);
-    var shortLinkBase=(shortLinkValue && shortLinkState===encodedState)?shortLinkValue:'';
+    var shortLinkBase='';
+    if(shortLinkValue){
+      if(shareId){
+        shortLinkBase=shortLinkValue;
+      } else if(shortLinkState===encodedState){
+        shortLinkBase=shortLinkValue;
+      }
+    }
     var bodyBase={
       actor:actor,
       event:type,
@@ -899,7 +961,6 @@
     if(actor!=='couple'){ toast('Akceptować może tylko para.'); return; }
     var slot=findSlotById(id);
     if(!slot || slot.status!==SLOT_STATUSES.PROPOSED) return;
-    if(!slot.date){ toast('Uzupełnij datę, aby zaakceptować termin.'); return; }
     if(slotHasConflict(slot)){ toast('Termin koliduje z potwierdzonym slotem.'); return; }
     var waiting=pendingApprovalRoles(slot);
     if(waiting.length){ toast('Poczekaj na potwierdzenia: '+waiting.map(roleLabel).join(', ')+'.'); return; }
@@ -2471,9 +2532,16 @@
     radarEl.checked = !!pendingRadar;
     if(pendingRadar) toggleRadar(true);
   }
-  function setShortLink(url, encodedState){
+  function setShortLink(url, encodedState, id){
     shortLinkValue=url||null;
     shortLinkState=shortLinkValue? (encodedState||null) : null;
+    if(id){
+      shareId=id;
+      shareBaseUrl=normalizeShareBase(url||shareBaseUrl||BASE_URL);
+      if(typeof encodedState==='string' && encodedState){
+        shareSyncLastEncoded=encodedState;
+      }
+    }
     var box=$('#sp-short-status');
     if(box){
       box.innerHTML='';
@@ -2487,14 +2555,19 @@
       try{ navigator.clipboard.writeText(shortLinkValue); toast('Krótki link skopiowany','ok'); }
       catch(e){ toast('Krótki link gotowy','ok'); }
     }
+    if(id){
+      updateLink();
+    }
   }
   function createShortLink(){
     if(!REST_URL){ toast('Funkcja skróconego linku niedostępna'); return; }
     var box=$('#sp-short-status'); if(box){ box.textContent='Generuję link...'; }
     var encodedState=b64url.enc(packState());
-    fetch(REST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sp:encodedState})})
+    var payload={sp:encodedState};
+    if(shareId){ payload.id=shareId; }
+    fetch(REST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
-      .then(function(data){ if(data && data.url){ setShortLink(data.url, encodedState); } else { if(box) box.textContent='Nie udało się wygenerować linku.'; } })
+      .then(function(data){ if(data && data.url){ setShortLink(data.url, encodedState, data.id); } else { if(box) box.textContent='Nie udało się wygenerować linku.'; } })
       .catch(function(){ if(box) box.textContent='Nie udało się wygenerować linku.'; });
   }
   function formatICS(date){
@@ -2821,10 +2894,14 @@
     var url = buildPlannerUrlFromEncoded(encodedState, urlRoleParam ? {role:urlRoleParam} : null);
     history.replaceState(null,'',url);
     var linkEl=$('#sp-link'); if(linkEl) linkEl.textContent = url;
-    if(shortLinkValue && shortLinkState !== encodedState){
-      shortLinkValue=null;
-      shortLinkState=null;
-      var box=$('#sp-short-status'); if(box) box.textContent='Plan zmieniony. Wygeneruj nowy krótki link.';
+    if(shortLinkValue){
+      if(shareId){
+        shortLinkState=encodedState;
+      } else if(shortLinkState !== encodedState){
+        shortLinkValue=null;
+        shortLinkState=null;
+        var box=$('#sp-short-status'); if(box) box.textContent='Plan zmieniony. Wygeneruj nowy krótki link.';
+      }
     }
     persistState();
   }
