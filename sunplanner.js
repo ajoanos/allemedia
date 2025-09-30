@@ -294,18 +294,28 @@
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
-    '<div class="card">'+
-      '<h3>Plan dnia – przebieg zdjęć</h3>'+
-      '<div id="sp-session-summary" class="session-summary">'+
-        '<strong>Wybierz lokalizację i datę</strong>'+
-        '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
-      '</div>'+
-        '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
-        '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
-        '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
-        '<div class="rowd"><span>Dystans</span><strong id="sp-t-dist">—</strong></div>'+
+      '<div class="card">'+
+        '<h3>Plan dnia – przebieg zdjęć</h3>'+
+        '<div id="sp-session-summary" class="session-summary">'+
+          '<strong>Wybierz lokalizację i datę</strong>'+
+          '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
+        '</div>'+
+          '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
+          '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
+          '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
+          '<div class="rowd"><span>Dystans</span><strong id="sp-t-dist">—</strong></div>'+
 
-        '<div class="golden-block">'+
+          '<div class="ten-day-forecast card inner">'+
+            '<h4>10-dniowa prognoza: temperatura i opady</h4>'+
+            '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="10-dniowa prognoza temperatury i opadów"></canvas>'+
+            '<div class="ten-day-legend">'+
+              '<span><i class="line max"></i>Maks. temp.</span>'+
+              '<span><i class="line min"></i>Min. temp.</span>'+
+              '<span><i class="bar rain"></i>Opady (mm)</span>'+
+            '</div>'+
+          '</div>'+
+
+          '<div class="golden-block">'+
           '<div class="grid2 glow-grid">'+
             '<div class="card inner">'+
               '<h3>Świt <small id="sp-rise-date" class="muted"></small></h3>'+
@@ -367,37 +377,38 @@
 
         '</div>'+
 
-        '<div class="card" style="margin-top:1rem;padding:.75rem">'+
-          '<h3>Galeria inspiracji – zdjęcia</h3>'+
-          '<div id="sp-gallery"></div>'+
-        '</div>'+
-        '<div id="sp-location-insights" class="location-insights">'+
-          '<h3>Zasady na miejscu</h3>'+
-          '<p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>'+
-        '</div>'+
-      '</div>'+
-      '<div class="card">'+
-        '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
-        '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
-        '<div class="weather-legend">'+
+          '<div class="card inner plan-day-hourly">'+
+            '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
+            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+            '<div class="weather-legend">'+
 
-          '<span><i class="line"></i>Temperatura (°C)</span>'+
-          '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
-          '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
-          '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+              '<span><i class="line"></i>Temperatura (°C)</span>'+
+              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
 
-        '</div>'+
-        '<div class="sunshine-block">'+
-          '<h3>Godziny ze słońcem</h3>'+
-          '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
-          '<div class="weather-legend sunshine-legend">'+
-            '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
-            '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
-            '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+            '</div>'+
+            '<div class="sunshine-block">'+
+              '<h3>Godziny ze słońcem</h3>'+
+              '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
+              '<div class="weather-legend sunshine-legend">'+
+                '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
+                '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
+                '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+
+          '<div class="card inner plan-day-gallery">'+
+            '<h3>Galeria inspiracji – zdjęcia</h3>'+
+            '<div id="sp-gallery"></div>'+
+          '</div>'+
+          '<div id="sp-location-insights" class="location-insights">'+
+            '<h3>Zasady na miejscu</h3>'+
+            '<p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>'+
           '</div>'+
         '</div>'+
       '</div>'+
-    '</div>'+
     '<div class="card contact-card">'+
       '<h3>Kontakty i terminy</h3>'+
       '<div class="contact-roles">'+
@@ -2028,6 +2039,193 @@
       ctx.fillText(lbl,textX,height-6);
     });
   }
+  function renderTenDayChart(daily, selectedDate, loading){
+    var canvas=document.getElementById('sp-ten-day');
+    if(!canvas) return;
+    var prep=prepareCanvas(canvas); if(!prep) return;
+    var ctx=prep.ctx, width=prep.width, height=prep.height;
+    ctx.fillStyle='#f8fafc';
+    ctx.fillRect(0,0,width,height);
+    ctx.font='12px system-ui, sans-serif';
+    ctx.fillStyle='#64748b';
+    var leftPad=54;
+    var rightPad=48;
+    var topPad=28;
+    var bottomPad=36;
+    var bottom=height-bottomPad;
+    if(loading){ ctx.fillText('Ładowanie prognozy 10-dniowej...', leftPad, height/2); return; }
+    if(!daily || !Array.isArray(daily.time) || !daily.time.length){
+      var msg;
+      if(!selectedDate){ msg='Dodaj lokalizację i datę, aby zobaczyć prognozę 10 dni.'; }
+      else if(!daily){ msg='Nie udało się pobrać prognozy 10-dniowej.'; }
+      else { msg='Brak danych prognozy dziennej.'; }
+      ctx.fillText(msg, leftPad, height/2);
+      return;
+    }
+    var count=Math.min(10,daily.time.length);
+    var points=[];
+    for(var i=0;i<count;i++){
+      var iso=daily.time[i];
+      if(!iso) continue;
+      var date=new Date(iso+'T12:00:00');
+      if(!(date instanceof Date) || isNaN(date)) continue;
+      var tmax=(daily.temperature_2m_max && typeof daily.temperature_2m_max[i] === 'number') ? daily.temperature_2m_max[i] : null;
+      var tmin=(daily.temperature_2m_min && typeof daily.temperature_2m_min[i] === 'number') ? daily.temperature_2m_min[i] : null;
+      var rain=(daily.precipitation_sum && typeof daily.precipitation_sum[i] === 'number') ? Math.max(0,daily.precipitation_sum[i]) : 0;
+      points.push({iso:iso,date:date,tmax:tmax,tmin:tmin,rain:rain});
+    }
+    if(!points.length){
+      ctx.fillText('Brak kompletnych danych prognozy.', leftPad, height/2);
+      return;
+    }
+    var tempMin=Infinity,tempMax=-Infinity,rainMax=0;
+    points.forEach(function(p){
+      if(typeof p.tmax==='number' && !isNaN(p.tmax)){
+        if(p.tmax>tempMax) tempMax=p.tmax;
+        if(tempMin===Infinity) tempMin=p.tmax;
+      }
+      if(typeof p.tmin==='number' && !isNaN(p.tmin)){
+        if(p.tmin<tempMin) tempMin=p.tmin;
+        if(tempMax===-Infinity) tempMax=p.tmin;
+      }
+      if(typeof p.rain==='number' && !isNaN(p.rain) && p.rain>rainMax) rainMax=p.rain;
+    });
+    if(tempMin===Infinity){ tempMin=0; tempMax=0; }
+    if(tempMax-tempMin<6){ var expand=(6-(tempMax-tempMin))/2; tempMin-=expand; tempMax+=expand; }
+    var tempRange=(tempMax-tempMin)||1;
+    var chartWidth=Math.max(10,width-leftPad-rightPad);
+    var step=chartWidth/points.length;
+    var highlight=(typeof selectedDate==='string' && selectedDate) ? selectedDate : '';
+    var gap=14;
+    var precipHeight=Math.max(48,height*0.28);
+    var tempBottom=bottom-precipHeight-gap;
+    if(tempBottom<topPad+40){ tempBottom=topPad+Math.max(40,height*0.45); }
+    var tempHeight=tempBottom-topPad;
+    var precipTop=bottom-precipHeight;
+    if(highlight){
+      ctx.fillStyle='rgba(59,130,246,0.12)';
+      points.forEach(function(p,idx){
+        if(p.iso===highlight){
+          var x=leftPad+step*idx+step/2;
+          var half=step*0.5;
+          ctx.fillRect(x-half+2, topPad-12, step-4, bottom-topPad+16);
+        }
+      });
+    }
+    ctx.strokeStyle='rgba(148,163,184,0.3)';
+    ctx.setLineDash([4,6]);
+    for(var grid=0;grid<=3;grid++){
+      var y=tempBottom-(grid/3)*tempHeight;
+      ctx.beginPath();
+      ctx.moveTo(leftPad,y);
+      ctx.lineTo(leftPad+chartWidth,y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(148,163,184,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(leftPad, bottom);
+    ctx.lineTo(leftPad+chartWidth, bottom);
+    ctx.stroke();
+    function tempY(val){
+      return tempBottom-((val-tempMin)/tempRange)*tempHeight;
+    }
+    var maxPath=[], minPath=[];
+    points.forEach(function(p,idx){
+      var x=leftPad+step*idx+step/2;
+      p._x=x;
+      if(typeof p.tmax==='number' && !isNaN(p.tmax)){
+        var yMax=tempY(p.tmax);
+        p._yMax=yMax;
+        maxPath.push({x:x,y:yMax});
+      } else {
+        p._yMax=null;
+      }
+      if(typeof p.tmin==='number' && !isNaN(p.tmin)){
+        var yMin=tempY(p.tmin);
+        p._yMin=yMin;
+        minPath.push({x:x,y:yMin});
+      } else {
+        p._yMin=null;
+      }
+    });
+    if(maxPath.length && minPath.length){
+      ctx.beginPath();
+      maxPath.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      for(var j=minPath.length-1;j>=0;j--){
+        var pt=minPath[j];
+        ctx.lineTo(pt.x,pt.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle='rgba(239,68,68,0.08)';
+      ctx.fill();
+    }
+    function drawTempLine(path,color){
+      if(!path.length) return;
+      ctx.strokeStyle=color;
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      path.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      ctx.stroke();
+      ctx.lineWidth=1;
+      ctx.fillStyle=color;
+      path.forEach(function(pt){
+        ctx.beginPath();
+        ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
+        ctx.fill();
+      });
+    }
+    drawTempLine(maxPath,'#ef4444');
+    drawTempLine(minPath,'#2563eb');
+    var rainScale=rainMax>0?rainMax:1;
+    points.forEach(function(p){
+      var barHeight=(p.rain/rainScale)*precipHeight;
+      if(barHeight<=0) return;
+      var x=p._x;
+      var barWidth=Math.max(12, step*0.55);
+      if(barWidth>step-6) barWidth=step-6;
+      ctx.fillStyle='rgba(37,99,235,0.3)';
+      ctx.fillRect(x-barWidth/2, bottom-barHeight, barWidth, barHeight);
+      if(p.rain>=0.1){
+        var label=p.rain>=1?p.rain.toFixed(1):p.rain.toFixed(2);
+        label=label.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+        ctx.save();
+        ctx.translate(x, bottom-barHeight-6);
+        ctx.fillStyle='#1d4ed8';
+        ctx.font='10px system-ui, sans-serif';
+        ctx.textAlign='center';
+        ctx.fillText(label+' mm',0,0);
+        ctx.restore();
+      }
+    });
+    ctx.fillStyle='#0f172a';
+    ctx.font='11px system-ui, sans-serif';
+    ctx.textAlign='left';
+    ctx.textBaseline='alphabetic';
+    ctx.fillText(Math.round(tempMax)+'°C', leftPad, topPad-10);
+    ctx.fillText(Math.round(tempMin)+'°C', leftPad, tempBottom+16);
+    ctx.fillStyle='#1d4ed8';
+    ctx.font='10px system-ui, sans-serif';
+    ctx.textAlign='right';
+    if(rainMax>0){
+      var maxLabel=rainMax>=1?rainMax.toFixed(1):rainMax.toFixed(2);
+      maxLabel=maxLabel.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+      ctx.fillText('max '+maxLabel+' mm', leftPad+chartWidth, precipTop-8);
+    } else {
+      ctx.fillText('bez opadów', leftPad+chartWidth, precipTop-8);
+    }
+    ctx.fillStyle='#334155';
+    ctx.font='11px system-ui, sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='top';
+    points.forEach(function(p){
+      var label=p.date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric'});
+      label=label.replace('.','');
+      ctx.fillText(label, p._x, bottom+4);
+    });
+    ctx.textAlign='left';
+    ctx.textBaseline='alphabetic';
+  }
   function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
   function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
   function evaluateHourScore(temp,cloud,prec){
@@ -2346,6 +2544,7 @@
       clearWeatherPanels();
       renderHourlyChart(null,null,false);
       renderSunshineChart(null,null,false);
+      renderTenDayChart(null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
 
@@ -2369,11 +2568,12 @@
     clearWeatherPanels();
     renderHourlyChart(null,dStr,true);
     renderSunshineChart(null,dStr,true);
+    renderTenDayChart(null,dStr,true);
     sessionSummaryLoading();
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); return; }
+        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); renderTenDayChart(null,dStr,false); sessionSummaryNoData(); return; }
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -2390,9 +2590,10 @@
         }
         renderHourlyChart(data.hourly, dStr, false);
         renderSunshineChart(data.hourly, dStr, false);
+        renderTenDayChart(data.daily, dStr, false);
         renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); });
+      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); renderTenDayChart(null,dStr,false); sessionSummaryNoData(); });
   }
 
   function assignRadarTemplate(template){
