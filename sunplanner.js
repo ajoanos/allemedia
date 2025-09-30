@@ -1396,7 +1396,7 @@
   var pendingRadar = false;
 
   // data
-  var FORECAST_DAY_COUNT = 14;
+  var FORECAST_DAY_COUNT = 7;
   var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
   var FORECAST_HORIZON_DAYS = FORECAST_DAY_COUNT;
   function startOfDay(date){
@@ -2555,9 +2555,25 @@
     addLine(sunrise,'#fbbf24');
     addLine(sunset,'#fb923c');
   }
-  function forecastKey(lat,lng,dateStr){ return lat.toFixed(3)+','+lng.toFixed(3)+'|'+dateStr; }
+  function forecastKey(lat,lng,dateStr,startStr){
+    var latKey = (typeof lat === 'number') ? lat.toFixed(3) : String(lat||'');
+    var lngKey = (typeof lng === 'number') ? lng.toFixed(3) : String(lng||'');
+    return latKey+','+lngKey+'|'+(dateStr||'')+'|'+(startStr||'');
+  }
   function getForecast(lat,lng,dateStr){
-    var key=forecastKey(lat,lng,dateStr);
+    var endRange=dateStr;
+    var baseDate=dateFromInput(dateStr);
+    if(baseDate instanceof Date && !isNaN(baseDate)){
+      var endDate=new Date(baseDate);
+      endDate.setUTCDate(endDate.getUTCDate()+FORECAST_WINDOW_DAYS);
+      endRange=endDate.toISOString().slice(0,10);
+    }
+    var startRange=dateStr;
+    var todayIso=(new Date()).toISOString().slice(0,10);
+    if(!startRange){ startRange=endRange; }
+    if(startRange && todayIso && startRange>todayIso){ startRange=todayIso; }
+    if(startRange && endRange && startRange>endRange){ startRange=endRange; }
+    var key=forecastKey(lat,lng,dateStr,startRange);
     var entry=forecastCache[key];
     var now=Date.now();
     if(entry && entry.data && now-entry.time<30*60*1000){ return Promise.resolve(entry.data); }
@@ -2566,15 +2582,8 @@
     entry.promise=new Promise(function(resolve,reject){
       clearTimeout(entry.timer);
       entry.timer=setTimeout(function(){
-        var endRange=dateStr;
-        var baseDate=dateFromInput(dateStr);
-        if(baseDate instanceof Date && !isNaN(baseDate)){
-          var endDate=new Date(baseDate);
-          endDate.setUTCDate(endDate.getUTCDate()+FORECAST_WINDOW_DAYS);
-          endRange=endDate.toISOString().slice(0,10);
-        }
         var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
-        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation,sunshine_duration&timezone='+encodeURIComponent(TZ)+'&start_date='+dateStr+'&end_date='+endRange)
+        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation,sunshine_duration&timezone='+encodeURIComponent(TZ)+'&start_date='+startRange+'&end_date='+endRange)
           .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
           .then(function(data){ entry.data=data; entry.time=Date.now(); delete entry.promise; resolve(data); })
           .catch(function(err){ delete forecastCache[key]; reject(err); });
