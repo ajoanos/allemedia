@@ -2203,19 +2203,19 @@
     var ultraCompact=width<=360;
     ctx.font=(ultraCompact?'11px':'12px')+' system-ui, sans-serif';
     ctx.fillStyle='#64748b';
-    var leftPad=54;
-    var rightPad=48;
+    var leftPad=52;
+    var rightPad=46;
     var topPad=28;
     var bottomPad=36;
     if(compact){
-      leftPad=44;
-      rightPad=36;
+      leftPad=38;
+      rightPad=32;
       topPad=26;
-      bottomPad=34;
+      bottomPad=32;
     }
     if(ultraCompact){
-      leftPad=34;
-      rightPad=28;
+      leftPad=30;
+      rightPad=26;
       topPad=24;
       bottomPad=30;
     }
@@ -2362,7 +2362,8 @@
         var labelValue=p.rain>=1?p.rain.toFixed(1):p.rain.toFixed(2);
         labelValue=labelValue.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
         var rainLabel=labelValue+' mm';
-        ctx.fillStyle='#1d4ed8';
+        var labelColor=p.rain>=2?'#e0f2fe':'#1d4ed8';
+        ctx.fillStyle=labelColor;
         ctx.font=rainLabelFont;
         if(useVerticalRainLabels){
           var textLength=ctx.measureText(rainLabel).width;
@@ -2371,7 +2372,7 @@
           var maxCenter=bottom-10;
           if(centerY<minCenter) centerY=minCenter;
           if(centerY>maxCenter) centerY=maxCenter;
-          drawVerticalText(ctx,rainLabel,x,centerY,{font:rainLabelFont,fillStyle:'#1d4ed8'});
+          drawVerticalText(ctx,rainLabel,x,centerY,{font:rainLabelFont,fillStyle:labelColor});
         } else {
           ctx.save();
           ctx.translate(x, bottom-barHeight-6);
