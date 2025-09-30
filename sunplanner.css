@@ -132,7 +132,9 @@
 .weather-legend i.bar.medium{background:#60a5fa}
 .weather-legend i.bar.heavy{background:#1e3a8a}
 .sunshine-block{margin-top:1.2rem}
-.sunshine-block h3{margin:0 0 .6rem;font-size:1rem;font-weight:600;color:#b45309}
+.sunshine-block .chart-header{gap:.25rem}
+.sunshine-block .chart-header h3{font-size:1rem;color:#b45309}
+.sunshine-block .chart-header .chart-description{font-size:.85rem}
 .sunshine-canvas{height:160px;min-height:160px;background:#fffbeb;border:1px solid #fcd34d}
 .sunshine-legend{margin-top:.55rem;color:#b45309}
 .sunshine-legend span{color:#b45309;font-weight:500}
@@ -142,7 +144,6 @@
 .sunshine-legend i.bar.sun-strong{background:#f59e0b}
 .ten-day-forecast{margin-top:1.2rem;padding:1rem;display:flex;flex-direction:column;gap:.75rem}
 .card.ten-day-forecast{background:#f8fafc;border:1px solid #e2e8f0}
-.ten-day-forecast h4{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
 .ten-day-canvas{width:100%;height:210px;min-height:210px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
 .ten-day-legend{display:flex;flex-wrap:wrap;gap:.75rem;font-size:.85rem;color:#475569}
 .ten-day-legend span{display:inline-flex;align-items:center;gap:.4rem}
@@ -152,7 +153,10 @@
 .ten-day-legend i.bar{width:16px;height:14px}
 .ten-day-legend i.bar.rain{background:rgba(37,99,235,.35)}
 .plan-day-hourly{margin-top:1.2rem}
-.plan-day-hourly h3{margin-top:0}
+
+.chart-header{display:flex;flex-direction:column;gap:.35rem}
+.chart-header h3{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
+.chart-description{margin:0;font-size:.9rem;color:#475569;line-height:1.45}
 .plan-day-gallery{margin-top:1.2rem}
 .plan-day-gallery h3{margin-top:0}
 .contact-card{margin-top:1.2rem}

@@ -320,12 +320,43 @@
         '</div>'+
 
           '<div class="ten-day-forecast card inner">'+
-            '<h4>10-dniowa prognoza: temperatura i opady</h4>'+
+            '<div class="chart-header">'+
+              '<h3>Prognoza pogody – 10 dni</h3>'+
+              '<p class="chart-description">Temperatura maksymalna i minimalna oraz suma opadów w kolejnych dniach.</p>'+
+            '</div>'+
             '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="10-dniowa prognoza temperatury i opadów"></canvas>'+
             '<div class="ten-day-legend">'+
               '<span><i class="line max"></i>Maks. temp.</span>'+
               '<span><i class="line min"></i>Min. temp.</span>'+
               '<span><i class="bar rain"></i>Opady (mm)</span>'+
+            '</div>'+
+          '</div>'+
+
+          '<div class="card inner plan-day-hourly">'+
+            '<div class="chart-header">'+
+              '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
+              '<p class="chart-description">Temperatura powietrza oraz prognozowane natężenie opadów dla wybranej lokalizacji.</p>'+
+            '</div>'+
+            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+            '<div class="weather-legend">'+
+
+              '<span><i class="line"></i>Temperatura (°C)</span>'+
+              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+
+            '</div>'+
+            '<div class="sunshine-block">'+
+              '<div class="chart-header">'+
+                '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
+                '<p class="chart-description">Szacowana liczba minut ze słońcem w każdej godzinie.</p>'+
+              '</div>'+
+              '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
+              '<div class="weather-legend sunshine-legend">'+
+                '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
+                '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
+                '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+              '</div>'+
             '</div>'+
           '</div>'+
 
@@ -390,28 +421,6 @@
           '</div>'+
 
         '</div>'+
-
-          '<div class="card inner plan-day-hourly">'+
-            '<h3>Mini-wykres godzinowy – prognoza pogody</h3>'+
-            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
-            '<div class="weather-legend">'+
-
-              '<span><i class="line"></i>Temperatura (°C)</span>'+
-              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
-              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
-              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
-
-            '</div>'+
-            '<div class="sunshine-block">'+
-              '<h3>Godziny ze słońcem</h3>'+
-              '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
-              '<div class="weather-legend sunshine-legend">'+
-                '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
-                '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
-                '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
-              '</div>'+
-            '</div>'+
-          '</div>'+
 
           '<div class="card inner plan-day-gallery">'+
             '<h3>Galeria inspiracji – zdjęcia</h3>'+
