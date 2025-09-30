@@ -86,6 +86,10 @@
   var root = document.getElementById('sunplanner-app');
   if(!root){ console.warn('SunPlanner: brak #sunplanner-app'); return; }
 
+  var weatherState = {
+    daily16: []
+  };
+
   var ROLE_KEYS = ['couple','photographer','videographer'];
   var APPROVAL_ROLES = ROLE_KEYS.filter(function(role){ return role !== 'couple'; });
   var ROLE_LABELS = {
@@ -344,6 +348,13 @@
               '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
 
             '</div>'+
+            '<div id="sp-daily16" class="sunshine-block">'+
+              '<h3>Prognoza dzienna (do 16 dni)</h3>'+
+              '<div id="sp-daily16-strip" class="row" style="flex-wrap:wrap"></div>'+
+              '<p class="muted" style="margin-top:.25rem">'+
+                'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
+              '</p>'+
+            '</div>'+
             '<div class="sunshine-block">'+
               '<div class="chart-header">'+
                 '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
@@ -530,6 +541,7 @@
     '</div>'+
   '</div>';
   sessionSummaryDefault();
+  renderDaily16BadgeStrip(weatherState.daily16);
 
   // helpers
   function $(s){ return document.querySelector(s); }
@@ -585,6 +597,67 @@
     var lat2=Math.asin(Math.sin(lat1)*Math.cos(dr)+Math.cos(lat1)*Math.sin(dr)*Math.cos(br));
     var lng2=lng1+Math.atan2(Math.sin(br)*Math.sin(dr)*Math.cos(lat1),Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
     return {lat:lat2*180/Math.PI,lng:lng2*180/Math.PI};
+  }
+
+  // === Open-Meteo Daily (16 dni) ===
+  async function fetchOpenMeteoDaily16(lat, lon, tz) {
+    var tzParam = encodeURIComponent(tz || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw'));
+    // Dobierz pola daily — minimalny zestaw + wschód/zachód:
+    var daily = [
+      'weathercode',
+      'temperature_2m_max',
+      'temperature_2m_min',
+      'precipitation_sum',
+      'precipitation_probability_max',
+      'sunrise',
+      'sunset',
+      'wind_speed_10m_max'
+    ].join(',');
+
+    var url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&daily=${daily}` +
+      `&forecast_days=16` +
+      `&timezone=${tzParam}`;
+
+    var r = await fetch(url);
+    if (!r.ok) throw new Error('Open-Meteo HTTP ' + r.status);
+    var j = await r.json();
+
+    if (!j || !j.daily || !Array.isArray(j.daily.time)) return [];
+
+    // Mapowanie -> ujednolicony kształt
+    var out = j.daily.time.map((d, i) => ({
+      dateISO: j.daily.time[i],                       // 'YYYY-MM-DD'
+      tMin: num(j.daily.temperature_2m_min?.[i]),
+      tMax: num(j.daily.temperature_2m_max?.[i]),
+      pop:  num(j.daily.precipitation_probability_max?.[i]), // %
+      rain: num(j.daily.precipitation_sum?.[i]),      // mm
+      code: j.daily.weathercode?.[i] ?? null,         // WMO weather code
+      sunrise: j.daily.sunrise?.[i] || null,
+      sunset:  j.daily.sunset?.[i]  || null,
+      windMax: num(j.daily.wind_speed_10m_max?.[i]),  // km/h (Open-Meteo zwraca m/s lub km/h zależnie od param., ale tu informacyjnie)
+      tentative: i >= 10                               // dni 11–16 jako orientacyjne
+    }));
+
+    return out;
+
+    function num(v){ var n = Number(v); return Number.isFinite(n) ? n : null; }
+  }
+
+  async function loadDailyForecast16(lat, lon) {
+    try {
+      sessionSummaryLoading && sessionSummaryLoading(); // jeśli istnieje, pokaż "Analizuję..."
+      var tz = TZ || 'Europe/Warsaw';
+      var data = await fetchOpenMeteoDaily16(lat, lon, tz);
+      weatherState.daily16 = data;
+      renderDaily16BadgeStrip(data);
+    } catch (e) {
+      try { console.error(e); } catch(_) {}
+      weatherState.daily16 = [];
+      if (typeof sessionSummaryNoData === 'function') sessionSummaryNoData();
+      toast('Brak danych prognozy (Open-Meteo).');
+    }
   }
 
   function summaryElement(){ return document.getElementById('sp-session-summary'); }
@@ -2270,6 +2343,45 @@
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
   }
+  function renderDaily16BadgeStrip(days) {
+    var host = document.getElementById('sp-daily16-strip');
+    if (!host) return;
+    host.innerHTML = '';
+
+    if (!Array.isArray(days) || !days.length) {
+      host.innerHTML = '<div class="muted">Brak prognozy.</div>';
+      return;
+    }
+
+    days.forEach(function(d, i){
+      var el = document.createElement('div');
+      el.style.border = '1px solid #e5e7eb';
+      el.style.borderRadius = '8px';
+      el.style.padding = '.5rem .6rem';
+      el.style.margin = '.25rem';
+      el.style.minWidth = '140px';
+      el.style.background = d.tentative ? '#f9fafb' : '#fff';
+      el.style.boxShadow = '0 1px 3px rgba(15,23,42,.06)';
+
+      var dateLabel = (function(){
+        // 'YYYY-MM-DD' -> 'DD.MM'
+        var s = (d.dateISO || '').split('-');
+        return (s.length === 3) ? (s[2] + '.' + s[1]) : (d.dateISO || '—');
+      })();
+
+      el.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">' +
+          '<strong>' + dateLabel + '</strong>' +
+          (d.tentative ? '<span class="badge">Prognoza orientacyjna</span>' : '') +
+        '</div>' +
+        '<div class="rowd"><span>Max</span><strong>' + (d.tMax!=null ? d.tMax : '—') + '°</strong></div>' +
+        '<div class="rowd"><span>Min</span><strong>' + (d.tMin!=null ? d.tMin : '—') + '°</strong></div>' +
+        '<div class="rowd"><span>Opady</span><strong>' + (d.rain!=null ? d.rain : '—') + ' mm</strong></div>' +
+        '<div class="rowd"><span>Prawd. opadów</span><strong>' + (d.pop!=null ? d.pop : '—') + '%</strong></div>';
+
+      host.appendChild(el);
+    });
+  }
   function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
   function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
   function evaluateHourScore(temp,cloud,prec){
@@ -2603,10 +2715,16 @@
       renderTenDayChart(null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
+      weatherState.daily16 = [];
+      renderDaily16BadgeStrip([]);
 
       sessionSummaryDefault();
 
       return;
+    }
+
+    if (typeof dest.lat === 'number' && typeof dest.lng === 'number') {
+      loadDailyForecast16(dest.lat, dest.lng);
     }
 
     var base=dateFromInput(dStr);
