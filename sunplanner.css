@@ -152,6 +152,13 @@
 .ten-day-legend i.bar.rain{background:rgba(37,99,235,.35)}
 .plan-day-hourly{margin-top:1.2rem}
 
+@media(max-width:600px){
+  .ten-day-forecast .chart-header{align-items:center}
+  .ten-day-forecast .chart-header,
+  .ten-day-forecast .chart-header h3{width:100%}
+  .ten-day-forecast .chart-header h3{text-align:center}
+}
+
 .chart-header{display:flex;flex-direction:column;gap:.35rem}
 .chart-header h3{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
 .chart-description{margin:0;font-size:.9rem;color:#475569;line-height:1.45}

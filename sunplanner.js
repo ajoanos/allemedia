@@ -90,6 +90,10 @@
     daily16: []
   };
 
+  var FORECAST_DAY_COUNT = 7;
+  var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
+  var FORECAST_HORIZON_DAYS = FORECAST_DAY_COUNT;
+
   var ROLE_KEYS = ['couple','photographer','videographer'];
   var APPROVAL_ROLES = ROLE_KEYS.filter(function(role){ return role !== 'couple'; });
   var ROLE_LABELS = {
@@ -325,7 +329,7 @@
 
           '<div class="ten-day-forecast card inner">'+
             '<div class="chart-header">'+
-              '<h3>Prognoza pogody – '+FORECAST_DAY_COUNT+' dni</h3>'+
+              '<h3>Prognoza pogody</h3>'+
             '</div>'+
             '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="'+FORECAST_DAY_COUNT+'-dniowa prognoza temperatury i opadów"></canvas>'+
             '<div class="ten-day-legend chart-legend">'+
@@ -1468,10 +1472,6 @@
   var routeColors = ['#e94244','#1e3a8a','#6b7280'];
   var pendingRadar = false;
 
-  // data
-  var FORECAST_DAY_COUNT = 7;
-  var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
-  var FORECAST_HORIZON_DAYS = FORECAST_DAY_COUNT;
   function startOfDay(date){
     if(!(date instanceof Date) || isNaN(date)) return null;
     var copy=new Date(date);
@@ -1894,6 +1894,21 @@
     ctx.clearRect(0,0,width,height);
     return {ctx:ctx,width:width,height:height};
   }
+  function shouldUseVerticalValueLabels(width){
+    return width<=520;
+  }
+  function drawVerticalText(ctx, text, x, y, options){
+    options = options || {};
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI/2);
+    if(options.font){ ctx.font = options.font; }
+    if(options.fillStyle){ ctx.fillStyle = options.fillStyle; }
+    ctx.textAlign = options.textAlign || 'center';
+    ctx.textBaseline = options.textBaseline || 'middle';
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
   function renderHourlyChart(hourly,dateStr,loading,message){
     var canvas=document.getElementById('sp-hourly');
     if(!canvas) return;
@@ -1932,6 +1947,7 @@
     if(maxTemp-minTemp<4){ var adj=(4-(maxTemp-minTemp))/2; minTemp-=adj; maxTemp+=adj; }
     var range=(maxTemp-minTemp)||1;
     var axisTop=bottom-barArea;
+    var useVerticalPrecipLabels = shouldUseVerticalValueLabels(width);
     function formatPrec(val){
       var num=Math.max(0,Number(val||0));
       var decimals=num>=1?1:2;
@@ -1998,12 +2014,22 @@
         ctx.fillStyle=fill;
         ctx.fillRect(x-6,bottom-barHeight,12,barHeight);
         if(p.prec>=0.1){
-          var label=formatPrec(p.prec)+' mm';
-          var maxLabelX=Math.max(leftPad,rightEdge-36);
-          var textX=Math.min(maxLabelX,Math.max(leftPad,x-16));
+          var labelText=formatPrec(p.prec)+' mm';
           ctx.fillStyle='#1e3a8a';
           ctx.font='10px system-ui, sans-serif';
-          ctx.fillText(label,textX,bottom-barHeight-6);
+          if(useVerticalPrecipLabels){
+            var textLength=ctx.measureText(labelText).width;
+            var centerY=bottom-barHeight-8;
+            var minCenter=axisTop+(textLength/2)+4;
+            var maxCenter=bottom-10;
+            if(centerY<minCenter) centerY=minCenter;
+            if(centerY>maxCenter) centerY=maxCenter;
+            drawVerticalText(ctx,labelText,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#1e3a8a'});
+          } else {
+            var maxLabelX=Math.max(leftPad,rightEdge-36);
+            var textX=Math.min(maxLabelX,Math.max(leftPad,x-16));
+            ctx.fillText(labelText,textX,bottom-barHeight-6);
+          }
         }
       });
     }
@@ -2036,6 +2062,7 @@
     var chartWidth=Math.max(10,width-leftPad-rightPad);
     var bottom=height-28;
     var chartHeight=Math.max(40,height-56);
+    var useVerticalSunLabels = shouldUseVerticalValueLabels(width);
     var top=bottom-chartHeight;
     if(loading){ ctx.fillText('Ładowanie danych o słońcu...',leftPad,height/2); return; }
     if(message){ ctx.fillText(message,leftPad,height/2); return; }
@@ -2134,9 +2161,19 @@
         var label=Math.round(minutes)+' min';
         ctx.fillStyle='#92400e';
         ctx.font='10px system-ui, sans-serif';
-        var textWidth=ctx.measureText(label).width;
-        var textX=Math.max(leftPad, Math.min(rightEdge-textWidth, x-textWidth/2));
-        ctx.fillText(label,textX,bottom-barHeight-6);
+        if(useVerticalSunLabels){
+          var textLength=ctx.measureText(label).width;
+          var centerY=bottom-barHeight-8;
+          var minCenter=top+(textLength/2)+6;
+          var maxCenter=bottom-10;
+          if(centerY<minCenter) centerY=minCenter;
+          if(centerY>maxCenter) centerY=maxCenter;
+          drawVerticalText(ctx,label,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#92400e'});
+        } else {
+          var textWidth=ctx.measureText(label).width;
+          var textX=Math.max(leftPad, Math.min(rightEdge-textWidth, x-textWidth/2));
+          ctx.fillText(label,textX,bottom-barHeight-6);
+        }
       } else if(minutes<1){
         ctx.fillStyle='rgba(148,163,184,0.6)';
         ctx.beginPath();
@@ -2169,6 +2206,7 @@
     var topPad=28;
     var bottomPad=36;
     var bottom=height-bottomPad;
+    var useVerticalRainLabels = shouldUseVerticalValueLabels(width);
     if(loading){ ctx.fillText('Ładowanie prognozy '+FORECAST_DAY_COUNT+'-dniowej...', leftPad, height/2); return; }
     if(message){ ctx.fillText(message, leftPad, height/2); return; }
     if(!daily || !Array.isArray(daily.time) || !daily.time.length){
@@ -2306,15 +2344,26 @@
       ctx.fillStyle='rgba(37,99,235,0.3)';
       ctx.fillRect(x-barWidth/2, bottom-barHeight, barWidth, barHeight);
       if(p.rain>=0.1){
-        var label=p.rain>=1?p.rain.toFixed(1):p.rain.toFixed(2);
-        label=label.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
-        ctx.save();
-        ctx.translate(x, bottom-barHeight-6);
+        var labelValue=p.rain>=1?p.rain.toFixed(1):p.rain.toFixed(2);
+        labelValue=labelValue.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+        var rainLabel=labelValue+' mm';
         ctx.fillStyle='#1d4ed8';
         ctx.font='10px system-ui, sans-serif';
-        ctx.textAlign='center';
-        ctx.fillText(label+' mm',0,0);
-        ctx.restore();
+        if(useVerticalRainLabels){
+          var textLength=ctx.measureText(rainLabel).width;
+          var centerY=bottom-barHeight-8;
+          var minCenter=precipTop+(textLength/2)+4;
+          var maxCenter=bottom-10;
+          if(centerY<minCenter) centerY=minCenter;
+          if(centerY>maxCenter) centerY=maxCenter;
+          drawVerticalText(ctx,rainLabel,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#1d4ed8'});
+        } else {
+          ctx.save();
+          ctx.translate(x, bottom-barHeight-6);
+          ctx.textAlign='center';
+          ctx.fillText(rainLabel,0,0);
+          ctx.restore();
+        }
       }
     });
     ctx.fillStyle='#0f172a';
