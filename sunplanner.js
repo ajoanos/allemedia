@@ -296,14 +296,28 @@
     '<div class="cards">'+
       '<div class="card">'+
         '<h3>Plan dnia – przebieg zdjęć</h3>'+
+        '<div class="session-meta" aria-label="Kluczowe informacje o planie dnia">'+
+          '<div class="session-meta__item">'+
+            '<span class="session-meta__label">Cel podróży</span>'+
+            '<strong id="sp-loc" class="session-meta__value">—</strong>'+
+          '</div>'+
+          '<div class="session-meta__item">'+
+            '<span class="session-meta__label">Data realizacji</span>'+
+            '<strong id="sp-date-label" class="session-meta__value">—</strong>'+
+          '</div>'+
+          '<div class="session-meta__item">'+
+            '<span class="session-meta__label">Czas jazdy</span>'+
+            '<strong id="sp-t-time" class="session-meta__value">—</strong>'+
+          '</div>'+
+          '<div class="session-meta__item">'+
+            '<span class="session-meta__label">Dystans trasy</span>'+
+            '<strong id="sp-t-dist" class="session-meta__value">—</strong>'+
+          '</div>'+
+        '</div>'+
         '<div id="sp-session-summary" class="session-summary">'+
           '<strong>Wybierz lokalizację i datę</strong>'+
           '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
         '</div>'+
-          '<div class="rowd"><span>Cel (ostatni punkt)</span><strong id="sp-loc">—</strong></div>'+
-          '<div class="rowd"><span>Data</span><strong id="sp-date-label">—</strong></div>'+
-          '<div class="rowd"><span>Czas jazdy</span><strong id="sp-t-time">—</strong></div>'+
-          '<div class="rowd"><span>Dystans</span><strong id="sp-t-dist">—</strong></div>'+
 
           '<div class="ten-day-forecast card inner">'+
             '<h4>10-dniowa prognoza: temperatura i opady</h4>'+
