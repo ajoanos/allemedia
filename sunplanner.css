@@ -159,6 +159,11 @@
   .ten-day-forecast .chart-header h3{text-align:center}
 }
 
+@media(max-width:640px){
+  .ten-day-forecast.card.inner{padding-left:.5rem;padding-right:.5rem}
+  .ten-day-forecast.card.inner .ten-day-canvas{margin-left:-.25rem;margin-right:-.25rem;width:calc(100% + .5rem)}
+}
+
 .chart-header{display:flex;flex-direction:column;gap:.35rem}
 .chart-header h3{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
 .chart-description{margin:0;font-size:.9rem;color:#475569;line-height:1.45}
