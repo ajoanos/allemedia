@@ -321,9 +321,9 @@
 
           '<div class="ten-day-forecast card inner">'+
             '<div class="chart-header">'+
-              '<h3>Prognoza pogody – 10 dni</h3>'+
+              '<h3>Prognoza pogody – '+FORECAST_DAY_COUNT+' dni</h3>'+
             '</div>'+
-            '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="10-dniowa prognoza temperatury i opadów"></canvas>'+
+            '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="'+FORECAST_DAY_COUNT+'-dniowa prognoza temperatury i opadów"></canvas>'+
             '<div class="ten-day-legend chart-legend">'+
               '<span><i class="line max"></i>Maks. temp.</span>'+
               '<span><i class="line min"></i>Min. temp.</span>'+
@@ -1396,8 +1396,9 @@
   var pendingRadar = false;
 
   // data
-  var FORECAST_HORIZON_DAYS = 9;
-  var FORECAST_WINDOW_DAYS = 9;
+  var FORECAST_DAY_COUNT = 14;
+  var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
+  var FORECAST_HORIZON_DAYS = FORECAST_DAY_COUNT;
   function startOfDay(date){
     if(!(date instanceof Date) || isNaN(date)) return null;
     var copy=new Date(date);
@@ -2095,17 +2096,17 @@
     var topPad=28;
     var bottomPad=36;
     var bottom=height-bottomPad;
-    if(loading){ ctx.fillText('Ładowanie prognozy 10-dniowej...', leftPad, height/2); return; }
+    if(loading){ ctx.fillText('Ładowanie prognozy '+FORECAST_DAY_COUNT+'-dniowej...', leftPad, height/2); return; }
     if(message){ ctx.fillText(message, leftPad, height/2); return; }
     if(!daily || !Array.isArray(daily.time) || !daily.time.length){
       var msg;
-      if(!selectedDate){ msg='Dodaj lokalizację i datę, aby zobaczyć prognozę 10 dni.'; }
-      else if(!daily){ msg='Nie udało się pobrać prognozy 10-dniowej.'; }
+      if(!selectedDate){ msg='Dodaj lokalizację i datę, aby zobaczyć prognozę '+FORECAST_DAY_COUNT+' dni.'; }
+      else if(!daily){ msg='Nie udało się pobrać prognozy '+FORECAST_DAY_COUNT+'-dniowej.'; }
       else { msg='Brak danych prognozy dziennej.'; }
       ctx.fillText(msg, leftPad, height/2);
       return;
     }
-    var count=Math.min(10,daily.time.length);
+    var count=Math.min(FORECAST_DAY_COUNT,daily.time.length);
     var points=[];
     for(var i=0;i<count;i++){
       var iso=daily.time[i];
@@ -2429,7 +2430,9 @@
   function buildBestDaysHtml(daily){
     if(!daily || !daily.time || !daily.time.length) return '';
     var days=[];
-    for(var i=0;i<daily.time.length && i<10;i++){
+    var availableDays=Math.min(FORECAST_DAY_COUNT, daily.time.length);
+    if(availableDays<=0) return '';
+    for(var i=0;i<availableDays;i++){
       var iso=daily.time[i];
       if(!iso) continue;
       var date=new Date(iso+'T12:00:00');
@@ -2454,7 +2457,8 @@
         +'<span class="session-summary__future-desc">'+d.desc+'</span>'
         +'</div>';
     }).join('');
-    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu 10 dni</strong><div class="session-summary__future-list">'+items+'</div></div>';
+    var labelRange = availableDays;
+    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu '+labelRange+' dni</strong><div class="session-summary__future-list">'+items+'</div></div>';
   }
   function renderSessionSummary(data,dateStr){
     if(!data){ sessionSummaryNoData(); return; }
