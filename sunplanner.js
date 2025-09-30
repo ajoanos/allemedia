@@ -2179,9 +2179,11 @@
       ctx.fillText(msg, leftPad, height/2);
       return;
     }
-    var count=Math.min(FORECAST_DAY_COUNT,daily.time.length);
+    var windowRange = determineForecastWindow(daily, selectedDate);
+    var startIndex = windowRange.start;
+    var endIndex = windowRange.end;
     var points=[];
-    for(var i=0;i<count;i++){
+    for(var i=startIndex;i<endIndex;i++){
       var iso=daily.time[i];
       if(!iso) continue;
       var date=new Date(iso+'T12:00:00');
@@ -2342,6 +2344,43 @@
     });
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
+  }
+  function determineForecastWindow(daily, selectedDate){
+    var empty={start:0,end:0};
+    if(!daily || !Array.isArray(daily.time) || !daily.time.length){ return empty; }
+    var len=daily.time.length;
+    var start=0;
+    if(typeof selectedDate==='string' && selectedDate){
+      var idx=daily.time.indexOf(selectedDate);
+      if(idx>=0){
+        start=idx;
+      } else {
+        var fallback=null;
+        for(var i=0;i<len;i++){
+          var iso=daily.time[i];
+          if(typeof iso==='string' && iso>=selectedDate){ fallback=i; break; }
+        }
+        if(fallback!=null){ start=fallback; }
+        else { start=len; }
+      }
+    }
+    var span=Math.min(FORECAST_DAY_COUNT,len);
+    if(start>len-1){ start=Math.max(0,len-span); }
+    var end=Math.min(len,start+span);
+    if(end-start<span){ start=Math.max(0,end-span); end=Math.min(len,start+span); }
+    return {start:start,end:end};
+  }
+  function getDailyDaylightRange(daily, index){
+    if(!daily || typeof index!=='number' || index<0) return null;
+    var sunriseIso=daily.sunrise && daily.sunrise[index];
+    var sunsetIso=daily.sunset && daily.sunset[index];
+    if(!sunriseIso || !sunsetIso) return null;
+    var sunrise=(typeof sunriseIso==='string') ? parseLocalISO(sunriseIso) : (sunriseIso instanceof Date ? sunriseIso : null);
+    var sunset =(typeof sunsetIso==='string')  ? parseLocalISO(sunsetIso)  : (sunsetIso  instanceof Date ? sunsetIso  : null);
+    if(!isValidDate(sunrise) || !isValidDate(sunset)) return null;
+    var start=Math.min(sunrise.getTime(), sunset.getTime());
+    var end=Math.max(sunrise.getTime(), sunset.getTime());
+    return {start:start,end:end};
   }
   function renderDaily16BadgeStrip(days) {
     var host = document.getElementById('sp-daily16-strip');
@@ -2539,12 +2578,15 @@
     }
     return clamp(score,0,100);
   }
-  function buildBestDaysHtml(daily){
+  function buildBestDaysHtml(daily, selectedDate){
     if(!daily || !daily.time || !daily.time.length) return '';
+    var windowRange=determineForecastWindow(daily, selectedDate);
+    var startIndex=windowRange.start;
+    var endIndex=windowRange.end;
+    var span=Math.max(0,endIndex-startIndex);
+    if(span<=0) return '';
     var days=[];
-    var availableDays=Math.min(FORECAST_DAY_COUNT, daily.time.length);
-    if(availableDays<=0) return '';
-    for(var i=0;i<availableDays;i++){
+    for(var i=startIndex;i<endIndex;i++){
       var iso=daily.time[i];
       if(!iso) continue;
       var date=new Date(iso+'T12:00:00');
@@ -2569,8 +2611,11 @@
         +'<span class="session-summary__future-desc">'+d.desc+'</span>'
         +'</div>';
     }).join('');
-    var labelRange = availableDays;
-    return '<div class="session-summary__future"><strong>Najlepsze dni w ciągu '+labelRange+' dni</strong><div class="session-summary__future-list">'+items+'</div></div>';
+    var labelRange = span;
+    var title;
+    if(labelRange===1){ title='Najlepszy dzień od wybranej daty'; }
+    else { title='Najlepsze dni od wybranej daty (kolejne '+labelRange+' dni)'; }
+    return '<div class="session-summary__future"><strong>'+title+'</strong><div class="session-summary__future-list">'+items+'</div></div>';
   }
   function renderSessionSummary(data,dateStr){
     if(!data){ sessionSummaryNoData(); return; }
@@ -2592,7 +2637,7 @@
         points.push({time:time,temp:temp,cloud:cloud,prec:prec,score:score,sunshine:sunshineMin,isDaylight:isDaylightTime(time,sunrise,sunset)});
       }
     }
-    var bestDaysHtml=buildBestDaysHtml(data.daily);
+    var bestDaysHtml=buildBestDaysHtml(data.daily, dateStr);
     if(!points.length){
       var baseHtml='<strong>Brak danych godzinowych</strong><span class="session-summary__lead">Nie udało się pobrać szczegółowej prognozy dla wybranej daty.</span>';
       if(bestDaysHtml) baseHtml+=bestDaysHtml;
@@ -2600,14 +2645,29 @@
       return;
     }
     var daylightPoints=points.filter(function(p){ return p.isDaylight; });
-    var evaluationPoints=daylightPoints.length ? daylightPoints : points;
-    var bestScore=0;
-    evaluationPoints.forEach(function(p){ if(p.score>bestScore) bestScore=p.score; });
-
     var dayIndex=-1;
     if(data.daily && Array.isArray(data.daily.time)){
       dayIndex=data.daily.time.indexOf(dateStr);
     }
+    if(!daylightPoints.length && dayIndex>=0){
+      var daylightRange=getDailyDaylightRange(data.daily, dayIndex);
+      if(daylightRange){
+        daylightPoints=points.filter(function(p){
+          var t=p.time.getTime();
+          return t>=daylightRange.start && t<=daylightRange.end;
+        });
+      }
+    }
+    if(!daylightPoints.length){
+      var midPoints=points.filter(function(p){
+        var h=p.time.getHours();
+        return h>=8 && h<=20;
+      });
+      if(midPoints.length) daylightPoints=midPoints;
+    }
+    var evaluationPoints=daylightPoints.length ? daylightPoints : points;
+    var bestScore=0;
+    evaluationPoints.forEach(function(p){ if(p.score>bestScore) bestScore=p.score; });
     var dailyRain=(dayIndex>=0 && data.daily && Array.isArray(data.daily.precipitation_sum) && typeof data.daily.precipitation_sum[dayIndex] === 'number') ? data.daily.precipitation_sum[dayIndex] : null;
     var dailyProb=(dayIndex>=0 && data.daily && Array.isArray(data.daily.precipitation_probability_max) && typeof data.daily.precipitation_probability_max[dayIndex] === 'number') ? data.daily.precipitation_probability_max[dayIndex] : null;
     var rainExpected=evaluationPoints.some(function(p){ return typeof p.prec==='number' && p.prec>=0.2; });
@@ -2623,15 +2683,13 @@
 
     var rating=classifySessionScore(bestScore,{allowIdeal: hasSunshine && !rainExpected});
     var slotsHtml='';
-    if(daylightPoints.length){
-      var slots=buildSlots(daylightPoints,bestScore);
-      if(slots.length){
-        slotsHtml='<div class="session-summary__slots">'+slots.map(function(s){ return '<span>'+slotDescription(s)+'</span>'; }).join('')+'</div>';
-      } else {
-        slotsHtml='<div class="session-summary__slots"><span>Brak wyraźnie dobrego okna — przygotuj alternatywę lub obserwuj zmiany.</span></div>';
-      }
+    var slotSource=daylightPoints.length ? daylightPoints : evaluationPoints;
+    var slots=slotSource.length ? buildSlots(slotSource,bestScore) : [];
+    if(slots.length){
+      var note=!daylightPoints.length ? '<span>Sugerowane najlepsze okna na podstawie prognozy – brak potwierdzonych danych o jasności.</span>' : '';
+      slotsHtml='<div class="session-summary__slots">'+(note||'')+slots.map(function(s){ return '<span>'+slotDescription(s)+'</span>'; }).join('')+'</div>';
     } else {
-      slotsHtml='<div class="session-summary__slots"><span>Brak jasnych godzin – poczekaj na światło dzienne.</span></div>';
+      slotsHtml='<div class="session-summary__slots"><span>Brak wyraźnie dobrego okna — przygotuj alternatywę lub obserwuj zmiany.</span></div>';
     }
     var html='<strong>'+rating.title+'</strong><span class="session-summary__lead">'+rating.desc+'</span>'+slotsHtml;
     if(bestDaysHtml) html+=bestDaysHtml;
