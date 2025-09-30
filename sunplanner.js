@@ -1396,7 +1396,7 @@
   var pendingRadar = false;
 
   // data
-  var FORECAST_DAY_COUNT = 14;
+  var FORECAST_DAY_COUNT = 7;
   var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
   var FORECAST_HORIZON_DAYS = FORECAST_DAY_COUNT;
   function startOfDay(date){
