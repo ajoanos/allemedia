@@ -334,7 +334,6 @@
           '<div class="card inner plan-day-hourly">'+
             '<div class="chart-header">'+
               '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
-              '<p class="chart-description">Temperatura powietrza oraz prognozowane natężenie opadów dla wybranej lokalizacji.</p>'+
             '</div>'+
             '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
             '<div class="weather-legend chart-legend">'+
@@ -348,7 +347,6 @@
             '<div class="sunshine-block">'+
               '<div class="chart-header">'+
                 '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
-                '<p class="chart-description">Szacowana liczba minut ze słońcem w każdej godzinie.</p>'+
               '</div>'+
               '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
               '<div class="weather-legend sunshine-legend chart-legend">'+
