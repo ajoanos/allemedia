@@ -123,8 +123,9 @@
 .toolbar .switch{font-size:.9rem;color:#374151}
 .toolbar .btn{min-width:150px}
 #sp-hourly{width:100%;height:170px;min-height:170px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-.weather-legend{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:.6rem;font-size:.85rem;color:#374151}
-.weather-legend span{display:inline-flex;align-items:center;gap:.4rem}
+.chart-legend{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;font-size:.85rem;font-weight:500;color:#1f2937}
+.chart-legend span{display:inline-flex;align-items:center;gap:.4rem}
+.weather-legend{margin-top:.6rem}
 .weather-legend i{display:inline-block;width:22px;height:3px;border-radius:4px;background:#ef4444}
 .weather-legend i.line{background:#ef4444;height:3px;width:26px}
 .weather-legend i.bar{width:14px;height:14px;border-radius:4px}
@@ -136,8 +137,7 @@
 .sunshine-block .chart-header h3{font-size:1rem;color:#b45309}
 .sunshine-block .chart-header .chart-description{font-size:.85rem}
 .sunshine-canvas{height:160px;min-height:160px;background:#fffbeb;border:1px solid #fcd34d}
-.sunshine-legend{margin-top:.55rem;color:#b45309}
-.sunshine-legend span{color:#b45309;font-weight:500}
+.sunshine-legend{margin-top:.55rem}
 .sunshine-legend i.bar{background:#fde68a}
 .sunshine-legend i.bar.sun-weak{background:#fef3c7}
 .sunshine-legend i.bar.sun-medium{background:#fcd34d}
@@ -145,8 +145,6 @@
 .ten-day-forecast{margin-top:1.2rem;padding:1rem;display:flex;flex-direction:column;gap:.75rem}
 .card.ten-day-forecast{background:#f8fafc;border:1px solid #e2e8f0}
 .ten-day-canvas{width:100%;height:210px;min-height:210px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
-.ten-day-legend{display:flex;flex-wrap:wrap;gap:.75rem;font-size:.85rem;color:#475569}
-.ten-day-legend span{display:inline-flex;align-items:center;gap:.4rem}
 .ten-day-legend i{display:inline-block;border-radius:999px}
 .ten-day-legend i.line{width:26px;height:3px;background:#ef4444}
 .ten-day-legend i.line.min{background:#2563eb}
