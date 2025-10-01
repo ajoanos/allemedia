@@ -334,8 +334,7 @@
           '<strong>Wybierz lokalizację i datę</strong>'+
           '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
         '</div>'+
-
-          '<div id="sp-daily16" class="card inner daily16-block">'+
+        '<div id="sp-daily16" class="card inner daily16-block">'+
             '<div class="chart-header">'+
               '<h3>Prognoza dzienna (do 16 dni)</h3>'+
               '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
@@ -3060,7 +3059,6 @@
       updateSunDirection(null,null);
       applyBands(null);
       weatherState.daily16 = [];
-      renderDaily16BadgeStrip([]);
       renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate(), {
         message: 'Dodaj lokalizację i datę, aby zobaczyć prognozę 16 dni.'
       });
@@ -3098,7 +3096,6 @@
       renderHourlyChart(null,dStr,false,limitMsg);
       renderSunshineChart(null,dStr,false,limitMsg);
       weatherState.daily16 = [];
-      renderDaily16BadgeStrip([]);
       renderDaily16Chart([], getDaily16HighlightDate(), { message: limitMsg });
       sessionSummaryLimit();
       return;
