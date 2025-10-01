@@ -160,27 +160,8 @@
 .daily16-legend i.bar.sun{background:#f59e0b}
 .daily16-legend i.bar.rain{background:rgba(37,99,235,.35)}
 .daily16-note{margin-top:.65rem}
-.ten-day-forecast{margin-top:1.2rem;padding:1rem;display:flex;flex-direction:column;gap:.75rem}
-.card.ten-day-forecast{background:#f8fafc;border:1px solid #e2e8f0}
-.ten-day-canvas{width:100%;height:210px;min-height:210px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
-.ten-day-legend i{display:inline-block;border-radius:999px}
-.ten-day-legend i.line{width:26px;height:3px;background:#ef4444}
-.ten-day-legend i.line.min{background:#2563eb}
-.ten-day-legend i.bar{width:16px;height:14px}
-.ten-day-legend i.bar.rain{background:rgba(37,99,235,.35)}
+
 .plan-day-hourly{margin-top:1.2rem}
-
-@media(max-width:600px){
-  .ten-day-forecast .chart-header{align-items:center}
-  .ten-day-forecast .chart-header,
-  .ten-day-forecast .chart-header h3{width:100%}
-  .ten-day-forecast .chart-header h3{text-align:center}
-}
-
-@media(max-width:640px){
-  .ten-day-forecast.card.inner{padding-left:.5rem;padding-right:.5rem}
-  .ten-day-forecast.card.inner .ten-day-canvas{margin-left:-.25rem;margin-right:-.25rem;width:calc(100% + .5rem)}
-}
 
 .chart-header{display:flex;flex-direction:column;gap:.35rem}
 .chart-header h3{margin:0;font-size:1.05rem;font-weight:600;color:#0f172a}
