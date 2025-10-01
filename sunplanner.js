@@ -345,6 +345,7 @@
             '<div id="sp-daily16-slider-wrap" class="daily16-slider" style="display:none">'+
               '<input id="sp-daily16-slider" class="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Przesuń wykres prognozy dziennej">'+
             '</div>'+
+            '<div id="sp-daily16-strip" class="daily16-strip" aria-live="polite"></div>'+
             '<div id="sp-daily16-empty" class="muted daily16-empty" role="status"></div>'+
             '<div class="chart-legend daily16-legend">'+
               '<span><i class="line max"></i>Maks. temp.</span>'+
@@ -2298,6 +2299,7 @@
     var isLoading = !!options.loading;
     var customMessage = (typeof options.message === 'string') ? options.message : '';
     var hasData = Array.isArray(days) && days.length>0;
+    renderDaily16BadgeStrip(hasData ? days : []);
     if(!hasData){
       if(emptyEl){
         if(customMessage){ emptyEl.textContent = customMessage; }
@@ -2618,6 +2620,92 @@
     });
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
+  }
+  function renderDaily16BadgeStrip(days){
+    var host=document.getElementById('sp-daily16-strip');
+    if(!host) return;
+    host.innerHTML='';
+    if(!Array.isArray(days) || !days.length){
+      host.style.display='none';
+      return;
+    }
+    host.style.display='';
+    var frag=document.createDocumentFragment();
+    days.forEach(function(day){
+      if(!day || !day.dateISO) return;
+      var pill=document.createElement('div');
+      pill.className='daily16-pill';
+      if(day.tentative){ pill.classList.add('daily16-pill--tentative'); }
+      var header=document.createElement('div');
+      header.className='daily16-pill__header';
+      var date=document.createElement('span');
+      date.className='daily16-pill__date';
+      date.textContent=formatDaily16Date(day.dateISO);
+      header.appendChild(date);
+      if(day.tentative){
+        var badge=document.createElement('span');
+        badge.className='badge';
+        badge.textContent='Prognoza orientacyjna';
+        header.appendChild(badge);
+      }
+      pill.appendChild(header);
+      var stats=document.createElement('dl');
+      stats.className='daily16-pill__stats';
+      appendStat(stats,'Max', formatDaily16Temp(day.tMax));
+      appendStat(stats,'Min', formatDaily16Temp(day.tMin));
+      appendStat(stats,'Opady', formatDaily16Rain(day.rain));
+      appendStat(stats,'Prawd. opadów', formatDaily16Percent(day.pop));
+      if(day.sunshineHours!=null && !isNaN(day.sunshineHours)){
+        appendStat(stats,'Słońce', formatDaily16Sun(day.sunshineHours));
+      }
+      pill.appendChild(stats);
+      frag.appendChild(pill);
+    });
+    if(!frag.childNodes.length){
+      host.style.display='none';
+      return;
+    }
+    host.appendChild(frag);
+
+    function appendStat(container,label,value){
+      var dt=document.createElement('dt');
+      dt.textContent=label;
+      container.appendChild(dt);
+      var dd=document.createElement('dd');
+      dd.textContent=value;
+      container.appendChild(dd);
+    }
+  }
+  function formatDaily16Date(iso){
+    if(typeof iso!=='string' || !iso){ return '—'; }
+    var parts=iso.split('-');
+    if(parts.length===3){ return parts[2]+'.'+parts[1]; }
+    return iso;
+  }
+  function formatDaily16Temp(val){
+    if(typeof val==='number' && !isNaN(val)){ return Math.round(val)+'°C'; }
+    return '—';
+  }
+  function formatDaily16Rain(val){
+    if(typeof val==='number' && !isNaN(val)){
+      var rounded=val>=1?Math.round(val*10)/10:Math.round(val*100)/100;
+      var str=String(rounded);
+      str=str.replace(/\.(\d*?[1-9])0+$/,'.$1');
+      str=str.replace(/\.0+$/,'');
+      return (str||'0')+' mm';
+    }
+    return '—';
+  }
+  function formatDaily16Percent(val){
+    if(typeof val==='number' && !isNaN(val)){ return Math.round(val)+'%'; }
+    return '—';
+  }
+  function formatDaily16Sun(val){
+    if(typeof val==='number' && !isNaN(val)){
+      var rounded=val>=10?Math.round(val):Math.round(val*10)/10;
+      return rounded+' h';
+    }
+    return '—';
   }
   function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
   function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
