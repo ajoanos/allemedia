@@ -148,6 +148,8 @@
 .daily16-chart-container::-webkit-scrollbar-track{background:rgba(226,232,240,.6);border-radius:999px}
 .daily16-chart-container::-webkit-scrollbar-thumb{background:rgba(148,163,184,.75);border-radius:999px}
 .daily16-chart-container{scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.75) rgba(226,232,240,.6)}
+.daily16-slider{margin-top:.5rem}
+.daily16-slider .slider{width:100%}
 .daily16-canvas{min-height:320px;height:320px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}
 .daily16-empty{margin-top:.4rem;text-align:center}
 .daily16-legend{margin-top:.75rem}
