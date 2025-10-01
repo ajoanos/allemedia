@@ -556,6 +556,7 @@
       '</div>'+
     '</div>'+
   '</div>';
+  removeLegacyDaily16Strip();
   sessionSummaryDefault();
   renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
 
@@ -698,6 +699,15 @@
       }
     });
   }
+
+
+  function removeLegacyDaily16Strip(){
+    var legacy=document.getElementById('sp-daily16-strip');
+    if(legacy && legacy.parentElement){ legacy.parentElement.removeChild(legacy); }
+  }
+
+  function renderDaily16BadgeStrip(){ removeLegacyDaily16Strip(); }
+
 
   function setSessionSummary(html){ var el=summaryElement(); if(el){ el.innerHTML=html; enhanceTables(el); } }
   function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
