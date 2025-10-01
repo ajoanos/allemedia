@@ -165,6 +165,14 @@
 .daily16-chart-container::-webkit-scrollbar-track{background:rgba(226,232,240,.6);border-radius:999px}
 .daily16-chart-container::-webkit-scrollbar-thumb{background:rgba(148,163,184,.75);border-radius:999px}
 .daily16-chart-container{scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.75) rgba(226,232,240,.6)}
+.daily16-strip{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.75rem}
+.daily16-pill{flex:1 1 160px;min-width:150px;max-width:220px;border:1px solid #e2e8f0;border-radius:14px;padding:.7rem .85rem;background:#fff;box-shadow:0 8px 18px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:.45rem}
+.daily16-pill__header{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.92rem;color:#0f172a}
+.daily16-pill__date{font-weight:600;letter-spacing:.01em}
+.daily16-pill--tentative{background:#f8fafc;border-color:#dbeafe}
+.daily16-pill__stats{margin:0;display:grid;grid-template-columns:1fr auto;column-gap:.75rem;row-gap:.3rem;font-size:.88rem;color:#475569}
+.daily16-pill__stats dt{font-weight:500;color:#1f2937}
+.daily16-pill__stats dd{margin:0;font-weight:600;color:#0f172a;text-align:right}
 .daily16-slider{margin-top:.5rem}
 .daily16-slider .slider{width:100%}
 .daily16-canvas{min-height:320px;height:320px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}
