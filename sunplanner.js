@@ -335,32 +335,7 @@
           '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
         '</div>'+
 
-          '<div class="ten-day-forecast card inner">'+
-            '<div class="chart-header">'+
-              '<h3>Prognoza pogody</h3>'+
-            '</div>'+
-            '<canvas id="sp-ten-day" class="ten-day-canvas" aria-label="'+FORECAST_DAY_COUNT+'-dniowa prognoza temperatury i opadów"></canvas>'+
-            '<div class="ten-day-legend chart-legend">'+
-              '<span><i class="line max"></i>Maks. temp.</span>'+
-              '<span><i class="line min"></i>Min. temp.</span>'+
-              '<span><i class="bar rain"></i>Opady (mm)</span>'+
-            '</div>'+
-          '</div>'+
-
-          '<div class="card inner plan-day-hourly">'+
-            '<div class="chart-header">'+
-              '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
-            '</div>'+
-            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
-            '<div class="weather-legend chart-legend">'+
-
-              '<span><i class="line"></i>Temperatura (°C)</span>'+
-              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
-              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
-              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
-
-            '</div>'+
-          '<div id="sp-daily16" class="sunshine-block daily16-block">'+
+          '<div id="sp-daily16" class="card inner daily16-block">'+
             '<div class="chart-header">'+
               '<h3>Prognoza dzienna (do 16 dni)</h3>'+
               '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
@@ -382,6 +357,20 @@
               'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
             '</p>'+
           '</div>'+
+
+          '<div class="card inner plan-day-hourly">'+
+            '<div class="chart-header">'+
+              '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
+            '</div>'+
+            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+            '<div class="weather-legend chart-legend">'+
+
+              '<span><i class="line"></i>Temperatura (°C)</span>'+
+              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+
+            '</div>'+
             '<div class="sunshine-block">'+
               '<div class="chart-header">'+
                 '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
@@ -568,7 +557,7 @@
     '</div>'+
   '</div>';
   sessionSummaryDefault();
-  renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+  renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
 
   // helpers
   function $(s){ return document.querySelector(s); }
@@ -683,11 +672,11 @@
       var tz = TZ || 'Europe/Warsaw';
       var data = await fetchOpenMeteoDaily16(lat, lon, tz);
       weatherState.daily16 = data;
-      renderDaily16Chart(data, getCoupleSelectedDate());
+      renderDaily16Chart(data, getDaily16HighlightDate());
     } catch (e) {
       try { console.error(e); } catch(_) {}
       weatherState.daily16 = [];
-      renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+      renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
       if (typeof sessionSummaryNoData === 'function') sessionSummaryNoData();
       toast('Brak danych prognozy (Open-Meteo).');
     }
@@ -964,7 +953,7 @@
       empty.className='slot-empty muted';
       empty.textContent='Brak terminów. Dodaj pierwszy termin poniżej.';
       slotListEl.appendChild(empty);
-      renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+      renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
       return;
     }
     var sorted=contactState.slots.slice().sort(function(a,b){
@@ -1069,7 +1058,7 @@
       if(actions.childNodes.length){ item.appendChild(actions); }
       slotListEl.appendChild(item);
     });
-    renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+    renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
   }
 
   function renderContactState(){
@@ -2223,224 +2212,6 @@
       ctx.fillText(lbl,textX,height-6);
     });
   }
-  function renderTenDayChart(daily, selectedDate, loading, message){
-    var canvas=document.getElementById('sp-ten-day');
-    if(!canvas) return;
-    var prep=prepareCanvas(canvas); if(!prep) return;
-    var ctx=prep.ctx, width=prep.width, height=prep.height;
-    ctx.fillStyle='#f8fafc';
-    ctx.fillRect(0,0,width,height);
-    var compact=width<=420;
-    var ultraCompact=width<=360;
-    ctx.font=(ultraCompact?'11px':'12px')+' system-ui, sans-serif';
-    ctx.fillStyle='#64748b';
-    var leftPad=52;
-    var rightPad=46;
-    var topPad=28;
-    var bottomPad=36;
-    if(compact){
-      leftPad=38;
-      rightPad=32;
-      topPad=26;
-      bottomPad=32;
-    }
-    if(ultraCompact){
-      leftPad=30;
-      rightPad=26;
-      topPad=24;
-      bottomPad=30;
-    }
-    var bottom=height-bottomPad;
-    var useVerticalRainLabels = shouldUseVerticalValueLabels(width);
-    if(loading){ ctx.fillText('Ładowanie prognozy '+FORECAST_DAY_COUNT+'-dniowej...', leftPad, height/2); return; }
-    if(message){ ctx.fillText(message, leftPad, height/2); return; }
-    if(!daily || !Array.isArray(daily.time) || !daily.time.length){
-      var msg;
-      if(!selectedDate){ msg='Dodaj lokalizację i datę, aby zobaczyć prognozę '+FORECAST_DAY_COUNT+' dni.'; }
-      else if(!daily){ msg='Nie udało się pobrać prognozy '+FORECAST_DAY_COUNT+'-dniowej.'; }
-      else { msg='Brak danych prognozy dziennej.'; }
-      ctx.fillText(msg, leftPad, height/2);
-      return;
-    }
-    var windowRange = determineForecastWindow(daily, selectedDate);
-    var startIndex = windowRange.start;
-    var endIndex = windowRange.end;
-    var points=[];
-    for(var i=startIndex;i<endIndex;i++){
-      var iso=daily.time[i];
-      if(!iso) continue;
-      var date=new Date(iso+'T12:00:00');
-      if(!(date instanceof Date) || isNaN(date)) continue;
-      var tmax=(daily.temperature_2m_max && typeof daily.temperature_2m_max[i] === 'number') ? daily.temperature_2m_max[i] : null;
-      var tmin=(daily.temperature_2m_min && typeof daily.temperature_2m_min[i] === 'number') ? daily.temperature_2m_min[i] : null;
-      var rain=(daily.precipitation_sum && typeof daily.precipitation_sum[i] === 'number') ? Math.max(0,daily.precipitation_sum[i]) : 0;
-      points.push({iso:iso,date:date,tmax:tmax,tmin:tmin,rain:rain});
-    }
-    if(!points.length){
-      ctx.fillText('Brak kompletnych danych prognozy.', leftPad, height/2);
-      return;
-    }
-    var tempMin=Infinity,tempMax=-Infinity,rainMax=0;
-    points.forEach(function(p){
-      if(typeof p.tmax==='number' && !isNaN(p.tmax)){
-        if(p.tmax>tempMax) tempMax=p.tmax;
-        if(tempMin===Infinity) tempMin=p.tmax;
-      }
-      if(typeof p.tmin==='number' && !isNaN(p.tmin)){
-        if(p.tmin<tempMin) tempMin=p.tmin;
-        if(tempMax===-Infinity) tempMax=p.tmin;
-      }
-      if(typeof p.rain==='number' && !isNaN(p.rain) && p.rain>rainMax) rainMax=p.rain;
-    });
-    if(tempMin===Infinity){ tempMin=0; tempMax=0; }
-    if(tempMax-tempMin<6){ var expand=(6-(tempMax-tempMin))/2; tempMin-=expand; tempMax+=expand; }
-    var tempRange=(tempMax-tempMin)||1;
-    var chartWidth=Math.max(10,width-leftPad-rightPad);
-    var step=chartWidth/points.length;
-    var highlight=(typeof selectedDate==='string' && selectedDate) ? selectedDate : '';
-    var gap=ultraCompact?8:(compact?10:14);
-    var precipHeight=Math.max(48,height*0.28);
-    var tempBottom=bottom-precipHeight-gap;
-    if(tempBottom<topPad+40){ tempBottom=topPad+Math.max(40,height*0.45); }
-    var tempHeight=tempBottom-topPad;
-    var precipTop=bottom-precipHeight;
-    if(highlight){
-      ctx.fillStyle='rgba(59,130,246,0.12)';
-      points.forEach(function(p,idx){
-        if(p.iso===highlight){
-          var x=leftPad+step*idx+step/2;
-          var half=step*0.5;
-          ctx.fillRect(x-half+2, topPad-12, step-4, bottom-topPad+16);
-        }
-      });
-    }
-    ctx.strokeStyle='rgba(148,163,184,0.3)';
-    ctx.setLineDash([4,6]);
-    for(var grid=0;grid<=3;grid++){
-      var y=tempBottom-(grid/3)*tempHeight;
-      ctx.beginPath();
-      ctx.moveTo(leftPad,y);
-      ctx.lineTo(leftPad+chartWidth,y);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.strokeStyle='rgba(148,163,184,0.4)';
-    ctx.beginPath();
-    ctx.moveTo(leftPad, bottom);
-    ctx.lineTo(leftPad+chartWidth, bottom);
-    ctx.stroke();
-    function tempY(val){
-      return tempBottom-((val-tempMin)/tempRange)*tempHeight;
-    }
-    var maxPath=[], minPath=[];
-    points.forEach(function(p,idx){
-      var x=leftPad+step*idx+step/2;
-      p._x=x;
-      if(typeof p.tmax==='number' && !isNaN(p.tmax)){
-        var yMax=tempY(p.tmax);
-        p._yMax=yMax;
-        maxPath.push({x:x,y:yMax});
-      } else {
-        p._yMax=null;
-      }
-      if(typeof p.tmin==='number' && !isNaN(p.tmin)){
-        var yMin=tempY(p.tmin);
-        p._yMin=yMin;
-        minPath.push({x:x,y:yMin});
-      } else {
-        p._yMin=null;
-      }
-    });
-    if(maxPath.length && minPath.length){
-      ctx.beginPath();
-      maxPath.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
-      for(var j=minPath.length-1;j>=0;j--){
-        var pt=minPath[j];
-        ctx.lineTo(pt.x,pt.y);
-      }
-      ctx.closePath();
-      ctx.fillStyle='rgba(239,68,68,0.08)';
-      ctx.fill();
-    }
-    function drawTempLine(path,color){
-      if(!path.length) return;
-      ctx.strokeStyle=color;
-      ctx.lineWidth=2;
-      ctx.beginPath();
-      path.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
-      ctx.stroke();
-      ctx.lineWidth=1;
-      ctx.fillStyle=color;
-      path.forEach(function(pt){
-        ctx.beginPath();
-        ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
-        ctx.fill();
-      });
-    }
-    drawTempLine(maxPath,'#ef4444');
-    drawTempLine(minPath,'#2563eb');
-    var rainScale=rainMax>0?rainMax:1;
-    var rainLabelFont=(ultraCompact?'9px':'10px')+' system-ui, sans-serif';
-    points.forEach(function(p){
-      var barHeight=(p.rain/rainScale)*precipHeight;
-      if(barHeight<=0) return;
-      var x=p._x;
-      var barWidth=Math.max(12, step*0.55);
-      if(barWidth>step-6) barWidth=step-6;
-      ctx.fillStyle='rgba(37,99,235,0.3)';
-      ctx.fillRect(x-barWidth/2, bottom-barHeight, barWidth, barHeight);
-      if(p.rain>=0.1){
-        var labelValue=p.rain>=1?p.rain.toFixed(1):p.rain.toFixed(2);
-        labelValue=labelValue.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
-        var rainLabel=labelValue+' mm';
-        var labelColor=p.rain>=2?'#e0f2fe':'#1d4ed8';
-        ctx.fillStyle=labelColor;
-        ctx.font=rainLabelFont;
-        if(useVerticalRainLabels){
-          var textLength=ctx.measureText(rainLabel).width;
-          var centerY=bottom-barHeight-8;
-          var minCenter=precipTop+(textLength/2)+4;
-          var maxCenter=bottom-10;
-          if(centerY<minCenter) centerY=minCenter;
-          if(centerY>maxCenter) centerY=maxCenter;
-          drawVerticalText(ctx,rainLabel,x,centerY,{font:rainLabelFont,fillStyle:labelColor});
-        } else {
-          ctx.save();
-          ctx.translate(x, bottom-barHeight-6);
-          ctx.textAlign='center';
-          ctx.fillText(rainLabel,0,0);
-          ctx.restore();
-        }
-      }
-    });
-    ctx.fillStyle='#0f172a';
-    ctx.font=(ultraCompact?'10px':'11px')+' system-ui, sans-serif';
-    ctx.textAlign='left';
-    ctx.textBaseline='alphabetic';
-    ctx.fillText(Math.round(tempMax)+'°C', leftPad, topPad-10);
-    ctx.fillText(Math.round(tempMin)+'°C', leftPad, tempBottom+16);
-    ctx.fillStyle='#1d4ed8';
-    ctx.font=rainLabelFont;
-    ctx.textAlign='right';
-    if(rainMax>0){
-      var maxLabel=rainMax>=1?rainMax.toFixed(1):rainMax.toFixed(2);
-      maxLabel=maxLabel.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
-      ctx.fillText('max '+maxLabel+' mm', leftPad+chartWidth, precipTop-8);
-    } else {
-      ctx.fillText('bez opadów', leftPad+chartWidth, precipTop-8);
-    }
-    ctx.fillStyle='#334155';
-    ctx.font=(ultraCompact?'10px':'11px')+' system-ui, sans-serif';
-    ctx.textAlign='center';
-    ctx.textBaseline='top';
-    points.forEach(function(p){
-      var label=p.date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric'});
-      label=label.replace('.','');
-      ctx.fillText(label, p._x, bottom+4);
-    });
-    ctx.textAlign='left';
-    ctx.textBaseline='alphabetic';
-  }
   function determineForecastWindow(daily, selectedDate){
     var empty={start:0,end:0};
     if(!daily || !Array.isArray(daily.time) || !daily.time.length){ return empty; }
@@ -2495,17 +2266,28 @@
     return confirmed[0].date || null;
   }
 
-  function renderDaily16Chart(days, highlightDate){
+  function getDaily16HighlightDate(){
+    var selectedInput = (typeof dEl !== 'undefined' && dEl && typeof dEl.value === 'string' && dEl.value) ? dEl.value : null;
+    if(selectedInput){ return selectedInput; }
+    return getCoupleSelectedDate();
+  }
+
+  function renderDaily16Chart(days, highlightDate, options){
     var canvas = document.getElementById('sp-daily16-canvas');
     var emptyEl = document.getElementById('sp-daily16-empty');
     var scroller = document.getElementById('sp-daily16-scroll');
     if(!canvas) return;
     var sliderWrap = document.getElementById('sp-daily16-slider-wrap');
     var slider = document.getElementById('sp-daily16-slider');
+    options = options || {};
+    var isLoading = !!options.loading;
+    var customMessage = (typeof options.message === 'string') ? options.message : '';
     var hasData = Array.isArray(days) && days.length>0;
     if(!hasData){
       if(emptyEl){
-        emptyEl.textContent = 'Brak prognozy.';
+        if(customMessage){ emptyEl.textContent = customMessage; }
+        else if(isLoading){ emptyEl.textContent = 'Ładowanie prognozy dziennej...'; }
+        else { emptyEl.textContent = 'Brak prognozy.'; }
         emptyEl.style.display = 'block';
       }
       if(sliderWrap){ sliderWrap.style.display = 'none'; }
@@ -3171,11 +2953,13 @@
       clearWeatherPanels();
       renderHourlyChart(null,null,false);
       renderSunshineChart(null,null,false);
-      renderTenDayChart(null,null,false);
       updateSunDirection(null,null);
       applyBands(null);
       weatherState.daily16 = [];
       renderDaily16BadgeStrip([]);
+      renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate(), {
+        message: 'Dodaj lokalizację i datę, aby zobaczyć prognozę 16 dni.'
+      });
 
       sessionSummaryDefault();
 
@@ -3183,6 +2967,11 @@
     }
 
     if (typeof dest.lat === 'number' && typeof dest.lng === 'number') {
+      if(!weatherState.daily16.length){
+        renderDaily16Chart([], getDaily16HighlightDate(), { loading: true });
+      } else {
+        renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
+      }
       loadDailyForecast16(dest.lat, dest.lng);
     }
 
@@ -3204,19 +2993,25 @@
       var limitMsg=forecastLimitMessage();
       renderHourlyChart(null,dStr,false,limitMsg);
       renderSunshineChart(null,dStr,false,limitMsg);
-      renderTenDayChart(null,dStr,false,limitMsg);
+      weatherState.daily16 = [];
+      renderDaily16BadgeStrip([]);
+      renderDaily16Chart([], getDaily16HighlightDate(), { message: limitMsg });
       sessionSummaryLimit();
       return;
     }
 
     renderHourlyChart(null,dStr,true);
     renderSunshineChart(null,dStr,true);
-    renderTenDayChart(null,dStr,true);
+    if(!weatherState.daily16.length){
+      renderDaily16Chart([], getDaily16HighlightDate(), { loading: true });
+    } else {
+      renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
+    }
     sessionSummaryLoading();
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); renderTenDayChart(null,dStr,false); sessionSummaryNoData(); return; }
+        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); return; }
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -3233,10 +3028,9 @@
         }
         renderHourlyChart(data.hourly, dStr, false);
         renderSunshineChart(data.hourly, dStr, false);
-        renderTenDayChart(data.daily, dStr, false);
         renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); renderTenDayChart(null,dStr,false); sessionSummaryNoData(); });
+      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); });
   }
 
   function assignRadarTemplate(template){
@@ -3740,13 +3534,13 @@
       if(next !== daily16ViewState.offset){
         daily16ViewState.offset = next;
         daily16ViewState.touched = true;
-        renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+        renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
       }
     });
   }
 
   window.addEventListener('resize', function(){
-    renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+    renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
   });
 
   // link
