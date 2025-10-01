@@ -89,6 +89,14 @@
   var weatherState = {
     daily16: []
   };
+  var daily16ViewState = {
+    offset: 0,
+    maxOffset: 0,
+    visibleCount: 0,
+    touched: false,
+    lastCount: 0,
+    lastHighlight: null
+  };
 
   var FORECAST_DAY_COUNT = 7;
   var FORECAST_WINDOW_DAYS = FORECAST_DAY_COUNT - 1;
@@ -359,6 +367,9 @@
             '</div>'+
             '<div id="sp-daily16-scroll" class="daily16-chart-container">'+
               '<canvas id="sp-daily16-canvas" class="daily16-canvas" aria-label="Prognoza dzienna do 16 dni"></canvas>'+
+            '</div>'+
+            '<div id="sp-daily16-slider-wrap" class="daily16-slider" style="display:none">'+
+              '<input id="sp-daily16-slider" class="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Przesuń wykres prognozy dziennej">'+
             '</div>'+
             '<div id="sp-daily16-empty" class="muted daily16-empty" role="status"></div>'+
             '<div class="chart-legend daily16-legend">'+
@@ -2489,12 +2500,21 @@
     var emptyEl = document.getElementById('sp-daily16-empty');
     var scroller = document.getElementById('sp-daily16-scroll');
     if(!canvas) return;
+    var sliderWrap = document.getElementById('sp-daily16-slider-wrap');
+    var slider = document.getElementById('sp-daily16-slider');
     var hasData = Array.isArray(days) && days.length>0;
     if(!hasData){
       if(emptyEl){
         emptyEl.textContent = 'Brak prognozy.';
         emptyEl.style.display = 'block';
       }
+      if(sliderWrap){ sliderWrap.style.display = 'none'; }
+      daily16ViewState.offset = 0;
+      daily16ViewState.maxOffset = 0;
+      daily16ViewState.visibleCount = 0;
+      daily16ViewState.lastCount = 0;
+      daily16ViewState.lastHighlight = null;
+      daily16ViewState.touched = false;
       canvas.style.display = 'none';
       return;
     }
@@ -2505,9 +2525,14 @@
     }
 
     var highlightIso = (typeof highlightDate === 'string' && highlightDate) ? highlightDate : null;
-    var baseWidth = Math.max((days.length * 82) + 120, scroller ? scroller.clientWidth : (canvas.clientWidth||0), 420);
+    var containerWidth = scroller ? scroller.clientWidth : 0;
+    if(containerWidth<10 && scroller && scroller.parentElement){
+      containerWidth = scroller.parentElement.clientWidth || containerWidth;
+    }
+    var baseWidth = Math.max(containerWidth, 420);
     canvas.style.width = baseWidth + 'px';
     canvas.style.height = '320px';
+    if(scroller){ scroller.scrollLeft = 0; }
     var prep = prepareCanvas(canvas);
     if(!prep) return;
     var ctx = prep.ctx, width = prep.width, height = prep.height;
@@ -2532,27 +2557,14 @@
     }
     var tempHeight = tempBottom - topPad;
     var chartWidth = Math.max(10, width - leftPad - rightPad);
-    var step = chartWidth / days.length;
 
     var points = [];
-    var tempMin = Infinity;
-    var tempMax = -Infinity;
-    var rainMax = 0;
-    days.forEach(function(d, idx){
+    days.forEach(function(d){
       if(!d || !d.dateISO) return;
       var tmax = (typeof d.tMax === 'number' && !isNaN(d.tMax)) ? d.tMax : null;
       var tmin = (typeof d.tMin === 'number' && !isNaN(d.tMin)) ? d.tMin : null;
       var rain = (typeof d.rain === 'number' && !isNaN(d.rain)) ? Math.max(0, d.rain) : 0;
       var sun = (typeof d.sunshineHours === 'number' && !isNaN(d.sunshineHours)) ? Math.max(0, d.sunshineHours) : null;
-      if(tmax!=null){
-        if(tmax>tempMax) tempMax=tmax;
-        if(tempMin===Infinity) tempMin=tmax;
-      }
-      if(tmin!=null){
-        if(tmin<tempMin) tempMin=tmin;
-        if(tempMax===-Infinity) tempMax=tmin;
-      }
-      if(rain>rainMax) rainMax=rain;
       points.push({
         iso:d.dateISO,
         tmax:tmax,
@@ -2567,9 +2579,91 @@
         emptyEl.textContent = 'Brak prognozy.';
         emptyEl.style.display = 'block';
       }
+      if(sliderWrap){ sliderWrap.style.display = 'none'; }
+      daily16ViewState.offset = 0;
+      daily16ViewState.maxOffset = 0;
+      daily16ViewState.visibleCount = 0;
       canvas.style.display = 'none';
       return;
     }
+    if(daily16ViewState.lastCount !== points.length){
+      daily16ViewState.touched = false;
+    }
+    if(daily16ViewState.lastHighlight !== highlightIso){
+      daily16ViewState.touched = false;
+    }
+    daily16ViewState.lastCount = points.length;
+    daily16ViewState.lastHighlight = highlightIso;
+
+    var approxVisible = Math.max(1, Math.round(chartWidth / 86));
+    var visibleCount = Math.min(points.length, Math.max(3, approxVisible));
+    var maxOffset = Math.max(0, points.length - visibleCount);
+    var offset = daily16ViewState.offset || 0;
+    if(maxOffset === 0){
+      offset = 0;
+      daily16ViewState.touched = false;
+    } else {
+      offset = clamp(offset, 0, maxOffset);
+      if(!daily16ViewState.touched && highlightIso){
+        var highlightIndex = -1;
+        for(var hi=0; hi<points.length; hi++){
+          if(points[hi].iso === highlightIso){ highlightIndex = hi; break; }
+        }
+        if(highlightIndex !== -1){
+          if(highlightIndex < offset || highlightIndex >= offset + visibleCount){
+            offset = clamp(highlightIndex - Math.floor(visibleCount/2), 0, maxOffset);
+          }
+        }
+      }
+    }
+    daily16ViewState.offset = offset;
+    daily16ViewState.maxOffset = maxOffset;
+    daily16ViewState.visibleCount = visibleCount;
+
+    if(sliderWrap){
+      if(maxOffset > 0){
+        sliderWrap.style.display = 'block';
+        if(slider){
+          slider.disabled = false;
+          slider.max = String(maxOffset);
+          slider.value = String(offset);
+        }
+      } else {
+        sliderWrap.style.display = 'none';
+        if(slider){
+          slider.disabled = true;
+          slider.value = '0';
+        }
+      }
+    }
+
+    var startIndex = offset;
+    var endIndex = Math.min(points.length, startIndex + visibleCount);
+    var visiblePoints = points.slice(startIndex, endIndex);
+    if(!visiblePoints.length){
+      if(emptyEl){
+        emptyEl.textContent = 'Brak prognozy.';
+        emptyEl.style.display = 'block';
+      }
+      if(sliderWrap){ sliderWrap.style.display = 'none'; }
+      canvas.style.display = 'none';
+      return;
+    }
+
+    var tempMin = Infinity;
+    var tempMax = -Infinity;
+    var rainMax = 0;
+    visiblePoints.forEach(function(p){
+      if(p.tmax!=null){
+        if(p.tmax>tempMax) tempMax=p.tmax;
+        if(tempMin===Infinity) tempMin=p.tmax;
+      }
+      if(p.tmin!=null){
+        if(p.tmin<tempMin) tempMin=p.tmin;
+        if(tempMax===-Infinity) tempMax=p.tmin;
+      }
+      if(p.rain>rainMax) rainMax=p.rain;
+    });
     if(tempMin===Infinity){ tempMin=0; tempMax=0; }
     if(tempMax-tempMin<6){
       var expand=(6-(tempMax-tempMin))/2;
@@ -2579,8 +2673,9 @@
     var tempRange=(tempMax-tempMin)||1;
     var highlightTop=Math.max(12, topPad-34);
     var highlightHeight=(bottom - highlightTop) + 46;
+    var step = chartWidth / visiblePoints.length;
 
-    points.forEach(function(p, idx){
+    visiblePoints.forEach(function(p, idx){
       var x = leftPad + step*idx + step/2;
       p._x = x;
       var colWidth = Math.max(24, step-10);
@@ -2591,9 +2686,9 @@
     });
 
     if(highlightIso){
-      points.forEach(function(p, idx){
+      visiblePoints.forEach(function(p){
         if(p.iso===highlightIso){
-          var x = leftPad + step*idx + step/2;
+          var x = p._x;
           var colWidth = Math.max(26, step-10);
           ctx.fillStyle = 'rgba(37,99,235,0.18)';
           ctx.fillRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
@@ -2626,7 +2721,7 @@
     }
 
     var maxPath=[], minPath=[];
-    points.forEach(function(p){
+    visiblePoints.forEach(function(p){
       var x=p._x;
       if(p.tmax!=null){
         var yMax=tempY(p.tmax);
@@ -2677,7 +2772,7 @@
     ctx.font='11px system-ui, sans-serif';
     ctx.textAlign='center';
     var sunLabelY=Math.max(18, topPad-26);
-    points.forEach(function(p){
+    visiblePoints.forEach(function(p){
       if(p.sun==null) return;
       var txtVal = p.sun>=9 ? Math.round(p.sun) : Math.round(p.sun*10)/10;
       var label = '☀️ '+txtVal+' h';
@@ -2687,7 +2782,7 @@
 
     var rainScale = rainMax>0?rainMax:1;
     var rainBottom = bottom;
-    points.forEach(function(p){
+    visiblePoints.forEach(function(p){
       if(!(p.rain>0)) return;
       var barHeight = (p.rain/rainScale)*precipHeight;
       var barWidth = Math.max(18, Math.min(step-12, step*0.6));
@@ -2704,7 +2799,7 @@
 
     ctx.font='11px system-ui, sans-serif';
     ctx.fillStyle='#0f172a';
-    points.forEach(function(p){
+    visiblePoints.forEach(function(p){
       if(p._yMax!=null){
         ctx.fillText(Math.round(p.tmax)+'°', p._x, p._yMax-10);
       }
@@ -2715,7 +2810,7 @@
 
     ctx.fillStyle='#334155';
     ctx.font='11px system-ui, sans-serif';
-    points.forEach(function(p){
+    visiblePoints.forEach(function(p){
       var iso=p.iso;
       if(!iso) return;
       var date=new Date(iso+'T12:00:00');
@@ -3636,6 +3731,23 @@
   }
   hookSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise', updateSunWeather);
   hookSlider('sp-ring-set','sp-txt-set','sp-slider-set', updateSunWeather);
+
+  var daily16Slider=document.getElementById('sp-daily16-slider');
+  if(daily16Slider){
+    daily16Slider.addEventListener('input', function(e){
+      var max = daily16ViewState.maxOffset || 0;
+      var next = clamp(Math.round(e.target.value), 0, max);
+      if(next !== daily16ViewState.offset){
+        daily16ViewState.offset = next;
+        daily16ViewState.touched = true;
+        renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+      }
+    });
+  }
+
+  window.addEventListener('resize', function(){
+    renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
+  });
 
   // link
   function updateLink(){
