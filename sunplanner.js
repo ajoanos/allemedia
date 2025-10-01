@@ -683,7 +683,23 @@
   }
 
   function summaryElement(){ return document.getElementById('sp-session-summary'); }
-  function setSessionSummary(html){ var el=summaryElement(); if(el){ el.innerHTML=html; } }
+  enhanceTables(root);
+
+  function enhanceTables(scope){
+    if(!scope || !scope.querySelectorAll) return;
+    var tables=scope.querySelectorAll('table');
+    Array.prototype.forEach.call(tables,function(table){
+      if(!table || table.closest('.table-scroll')) return;
+      var wrap=document.createElement('div');
+      wrap.className='table-scroll';
+      if(table.parentNode){
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+      }
+    });
+  }
+
+  function setSessionSummary(html){ var el=summaryElement(); if(el){ el.innerHTML=html; enhanceTables(el); } }
   function sessionSummaryDefault(){ setSessionSummary('<strong>Wybierz lokalizację i datę</strong><span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'); }
   function sessionSummaryLoading(){ setSessionSummary('<strong>Analizuję prognozę…</strong><span class="session-summary__lead">Sprawdzam pogodę i najlepsze okna na zdjęcia.</span>'); }
   function sessionSummaryNoData(){ setSessionSummary('<strong>Brak prognozy pogodowej</strong><span class="session-summary__lead">Spróbuj ponownie później lub wybierz inną lokalizację.</span>'); }
