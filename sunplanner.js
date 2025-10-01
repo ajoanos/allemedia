@@ -352,13 +352,25 @@
               '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
 
             '</div>'+
-            '<div id="sp-daily16" class="sunshine-block">'+
+          '<div id="sp-daily16" class="sunshine-block daily16-block">'+
+            '<div class="chart-header">'+
               '<h3>Prognoza dzienna (do 16 dni)</h3>'+
-              '<div id="sp-daily16-strip" class="row" style="flex-wrap:wrap"></div>'+
-              '<p class="muted" style="margin-top:.25rem">'+
-                'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
-              '</p>'+
+              '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
             '</div>'+
+            '<div id="sp-daily16-scroll" class="daily16-chart-container">'+
+              '<canvas id="sp-daily16-canvas" class="daily16-canvas" aria-label="Prognoza dzienna do 16 dni"></canvas>'+
+            '</div>'+
+            '<div id="sp-daily16-empty" class="muted daily16-empty" role="status"></div>'+
+            '<div class="chart-legend daily16-legend">'+
+              '<span><i class="line max"></i>Maks. temp.</span>'+
+              '<span><i class="line min"></i>Min. temp.</span>'+
+              '<span><i class="bar sun"></i>Słońce (h)</span>'+
+              '<span><i class="bar rain"></i>Opady (mm)</span>'+
+            '</div>'+
+            '<p class="muted daily16-note">'+
+              'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
+            '</p>'+
+          '</div>'+
             '<div class="sunshine-block">'+
               '<div class="chart-header">'+
                 '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
@@ -545,7 +557,7 @@
     '</div>'+
   '</div>';
   sessionSummaryDefault();
-  renderDaily16BadgeStrip(weatherState.daily16);
+  renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
 
   // helpers
   function $(s){ return document.querySelector(s); }
@@ -615,7 +627,8 @@
       'precipitation_probability_max',
       'sunrise',
       'sunset',
-      'wind_speed_10m_max'
+      'wind_speed_10m_max',
+      'sunshine_duration'
     ].join(',');
 
     var url =
@@ -641,6 +654,10 @@
       sunrise: j.daily.sunrise?.[i] || null,
       sunset:  j.daily.sunset?.[i]  || null,
       windMax: num(j.daily.wind_speed_10m_max?.[i]),  // km/h (Open-Meteo zwraca m/s lub km/h zależnie od param., ale tu informacyjnie)
+      sunshineHours: (function(){
+        var sec = num(j.daily.sunshine_duration?.[i]);
+        return sec!=null ? sec/3600 : null;
+      })(),
       tentative: i >= 10                               // dni 11–16 jako orientacyjne
     }));
 
@@ -655,10 +672,11 @@
       var tz = TZ || 'Europe/Warsaw';
       var data = await fetchOpenMeteoDaily16(lat, lon, tz);
       weatherState.daily16 = data;
-      renderDaily16BadgeStrip(data);
+      renderDaily16Chart(data, getCoupleSelectedDate());
     } catch (e) {
       try { console.error(e); } catch(_) {}
       weatherState.daily16 = [];
+      renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
       if (typeof sessionSummaryNoData === 'function') sessionSummaryNoData();
       toast('Brak danych prognozy (Open-Meteo).');
     }
@@ -935,6 +953,7 @@
       empty.className='slot-empty muted';
       empty.textContent='Brak terminów. Dodaj pierwszy termin poniżej.';
       slotListEl.appendChild(empty);
+      renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
       return;
     }
     var sorted=contactState.slots.slice().sort(function(a,b){
@@ -1039,6 +1058,7 @@
       if(actions.childNodes.length){ item.appendChild(actions); }
       slotListEl.appendChild(item);
     });
+    renderDaily16Chart(weatherState.daily16, getCoupleSelectedDate());
   }
 
   function renderContactState(){
@@ -2447,44 +2467,265 @@
     var end=Math.max(sunrise.getTime(), sunset.getTime());
     return {start:start,end:end};
   }
-  function renderDaily16BadgeStrip(days) {
-    var host = document.getElementById('sp-daily16-strip');
-    if (!host) return;
-    host.innerHTML = '';
+  function getCoupleSelectedDate(){
+    if(!contactState || !Array.isArray(contactState.slots) || !contactState.slots.length){
+      return null;
+    }
+    var confirmed = contactState.slots.filter(function(slot){
+      return slot && slot.status === SLOT_STATUSES.CONFIRMED && typeof slot.date === 'string' && slot.date;
+    });
+    if(!confirmed.length){ return null; }
+    confirmed.sort(function(a,b){
+      var aKey=(a.date||'')+'T'+(a.time||'');
+      var bKey=(b.date||'')+'T'+(b.time||'');
+      if(aKey===bKey) return 0;
+      return aKey<bKey?-1:1;
+    });
+    return confirmed[0].date || null;
+  }
 
-    if (!Array.isArray(days) || !days.length) {
-      host.innerHTML = '<div class="muted">Brak prognozy.</div>';
+  function renderDaily16Chart(days, highlightDate){
+    var canvas = document.getElementById('sp-daily16-canvas');
+    var emptyEl = document.getElementById('sp-daily16-empty');
+    var scroller = document.getElementById('sp-daily16-scroll');
+    if(!canvas) return;
+    var hasData = Array.isArray(days) && days.length>0;
+    if(!hasData){
+      if(emptyEl){
+        emptyEl.textContent = 'Brak prognozy.';
+        emptyEl.style.display = 'block';
+      }
+      canvas.style.display = 'none';
       return;
     }
+    canvas.style.display = 'block';
+    if(emptyEl){
+      emptyEl.textContent = '';
+      emptyEl.style.display = 'none';
+    }
 
-    days.forEach(function(d, i){
-      var el = document.createElement('div');
-      el.style.border = '1px solid #e5e7eb';
-      el.style.borderRadius = '8px';
-      el.style.padding = '.5rem .6rem';
-      el.style.margin = '.25rem';
-      el.style.minWidth = '140px';
-      el.style.background = d.tentative ? '#f9fafb' : '#fff';
-      el.style.boxShadow = '0 1px 3px rgba(15,23,42,.06)';
+    var highlightIso = (typeof highlightDate === 'string' && highlightDate) ? highlightDate : null;
+    var baseWidth = Math.max((days.length * 82) + 120, scroller ? scroller.clientWidth : (canvas.clientWidth||0), 420);
+    canvas.style.width = baseWidth + 'px';
+    canvas.style.height = '320px';
+    var prep = prepareCanvas(canvas);
+    if(!prep) return;
+    var ctx = prep.ctx, width = prep.width, height = prep.height;
+    ctx.clearRect(0,0,width,height);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0,0,width,height);
 
-      var dateLabel = (function(){
-        // 'YYYY-MM-DD' -> 'DD.MM'
-        var s = (d.dateISO || '').split('-');
-        return (s.length === 3) ? (s[2] + '.' + s[1]) : (d.dateISO || '—');
-      })();
+    var leftPad = width<560 ? 46 : (width<720 ? 52 : 60);
+    var rightPad = width<560 ? 42 : (width<720 ? 48 : 58);
+    var topPad = 60;
+    var bottomPad = 62;
+    var bottom = height - bottomPad;
+    var precipHeight = Math.max(56, height * 0.26);
+    if(bottom - topPad - precipHeight < 96){
+      precipHeight = Math.max(48, (bottom - topPad) * 0.35);
+    }
+    var gap = 26;
+    var tempBottom = bottom - precipHeight - gap;
+    if(tempBottom < topPad + 88){
+      tempBottom = topPad + 88;
+      precipHeight = Math.max(46, bottom - tempBottom - gap);
+    }
+    var tempHeight = tempBottom - topPad;
+    var chartWidth = Math.max(10, width - leftPad - rightPad);
+    var step = chartWidth / days.length;
 
-      el.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">' +
-          '<strong>' + dateLabel + '</strong>' +
-          (d.tentative ? '<span class="badge">Prognoza orientacyjna</span>' : '') +
-        '</div>' +
-        '<div class="rowd"><span>Max</span><strong>' + (d.tMax!=null ? d.tMax : '—') + '°</strong></div>' +
-        '<div class="rowd"><span>Min</span><strong>' + (d.tMin!=null ? d.tMin : '—') + '°</strong></div>' +
-        '<div class="rowd"><span>Opady</span><strong>' + (d.rain!=null ? d.rain : '—') + ' mm</strong></div>' +
-        '<div class="rowd"><span>Prawd. opadów</span><strong>' + (d.pop!=null ? d.pop : '—') + '%</strong></div>';
-
-      host.appendChild(el);
+    var points = [];
+    var tempMin = Infinity;
+    var tempMax = -Infinity;
+    var rainMax = 0;
+    days.forEach(function(d, idx){
+      if(!d || !d.dateISO) return;
+      var tmax = (typeof d.tMax === 'number' && !isNaN(d.tMax)) ? d.tMax : null;
+      var tmin = (typeof d.tMin === 'number' && !isNaN(d.tMin)) ? d.tMin : null;
+      var rain = (typeof d.rain === 'number' && !isNaN(d.rain)) ? Math.max(0, d.rain) : 0;
+      var sun = (typeof d.sunshineHours === 'number' && !isNaN(d.sunshineHours)) ? Math.max(0, d.sunshineHours) : null;
+      if(tmax!=null){
+        if(tmax>tempMax) tempMax=tmax;
+        if(tempMin===Infinity) tempMin=tmax;
+      }
+      if(tmin!=null){
+        if(tmin<tempMin) tempMin=tmin;
+        if(tempMax===-Infinity) tempMax=tmin;
+      }
+      if(rain>rainMax) rainMax=rain;
+      points.push({
+        iso:d.dateISO,
+        tmax:tmax,
+        tmin:tmin,
+        rain:rain,
+        sun:sun,
+        tentative:!!d.tentative
+      });
     });
+    if(!points.length){
+      if(emptyEl){
+        emptyEl.textContent = 'Brak prognozy.';
+        emptyEl.style.display = 'block';
+      }
+      canvas.style.display = 'none';
+      return;
+    }
+    if(tempMin===Infinity){ tempMin=0; tempMax=0; }
+    if(tempMax-tempMin<6){
+      var expand=(6-(tempMax-tempMin))/2;
+      tempMin-=expand;
+      tempMax+=expand;
+    }
+    var tempRange=(tempMax-tempMin)||1;
+    var highlightTop=Math.max(12, topPad-34);
+    var highlightHeight=(bottom - highlightTop) + 46;
+
+    points.forEach(function(p, idx){
+      var x = leftPad + step*idx + step/2;
+      p._x = x;
+      var colWidth = Math.max(24, step-10);
+      if(p.tentative){
+        ctx.fillStyle = 'rgba(148,163,184,0.12)';
+        ctx.fillRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+      }
+    });
+
+    if(highlightIso){
+      points.forEach(function(p, idx){
+        if(p.iso===highlightIso){
+          var x = leftPad + step*idx + step/2;
+          var colWidth = Math.max(26, step-10);
+          ctx.fillStyle = 'rgba(37,99,235,0.18)';
+          ctx.fillRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+          ctx.lineWidth = 1;
+        }
+      });
+    }
+
+    ctx.strokeStyle='rgba(148,163,184,0.3)';
+    ctx.setLineDash([4,6]);
+    for(var grid=0; grid<=3; grid++){
+      var y=tempBottom-(grid/3)*tempHeight;
+      ctx.beginPath();
+      ctx.moveTo(leftPad,y);
+      ctx.lineTo(leftPad+chartWidth,y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(148,163,184,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(leftPad,bottom);
+    ctx.lineTo(leftPad+chartWidth,bottom);
+    ctx.stroke();
+
+    function tempY(val){
+      return tempBottom-((val-tempMin)/tempRange)*tempHeight;
+    }
+
+    var maxPath=[], minPath=[];
+    points.forEach(function(p){
+      var x=p._x;
+      if(p.tmax!=null){
+        var yMax=tempY(p.tmax);
+        p._yMax=yMax;
+        maxPath.push({x:x,y:yMax});
+      } else {
+        p._yMax=null;
+      }
+      if(p.tmin!=null){
+        var yMin=tempY(p.tmin);
+        p._yMin=yMin;
+        minPath.push({x:x,y:yMin});
+      } else {
+        p._yMin=null;
+      }
+    });
+
+    if(maxPath.length && minPath.length){
+      ctx.beginPath();
+      maxPath.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      for(var j=minPath.length-1;j>=0;j--){
+        var pt=minPath[j];
+        ctx.lineTo(pt.x,pt.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle='rgba(239,68,68,0.08)';
+      ctx.fill();
+    }
+
+    function drawTempLine(path,color){
+      if(!path.length) return;
+      ctx.strokeStyle=color;
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      path.forEach(function(pt,idx){ if(idx===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      ctx.stroke();
+      ctx.lineWidth=1;
+      ctx.fillStyle=color;
+      path.forEach(function(pt){
+        ctx.beginPath();
+        ctx.arc(pt.x,pt.y,3,0,Math.PI*2);
+        ctx.fill();
+      });
+    }
+    drawTempLine(maxPath,'#ef4444');
+    drawTempLine(minPath,'#2563eb');
+
+    ctx.font='11px system-ui, sans-serif';
+    ctx.textAlign='center';
+    var sunLabelY=Math.max(18, topPad-26);
+    points.forEach(function(p){
+      if(p.sun==null) return;
+      var txtVal = p.sun>=9 ? Math.round(p.sun) : Math.round(p.sun*10)/10;
+      var label = '☀️ '+txtVal+' h';
+      ctx.fillStyle='#b45309';
+      ctx.fillText(label, p._x, sunLabelY);
+    });
+
+    var rainScale = rainMax>0?rainMax:1;
+    var rainBottom = bottom;
+    points.forEach(function(p){
+      if(!(p.rain>0)) return;
+      var barHeight = (p.rain/rainScale)*precipHeight;
+      var barWidth = Math.max(18, Math.min(step-12, step*0.6));
+      var x = p._x;
+      ctx.fillStyle='rgba(37,99,235,0.32)';
+      ctx.fillRect(x-barWidth/2, rainBottom-barHeight, barWidth, barHeight);
+      if(p.rain>=0.2){
+        ctx.fillStyle='#1d4ed8';
+        ctx.font='10px system-ui, sans-serif';
+        var text=p.rain>=1?Math.round(p.rain)+' mm':(Math.round(p.rain*10)/10)+' mm';
+        ctx.fillText(text, x, rainBottom-barHeight-6);
+      }
+    });
+
+    ctx.font='11px system-ui, sans-serif';
+    ctx.fillStyle='#0f172a';
+    points.forEach(function(p){
+      if(p._yMax!=null){
+        ctx.fillText(Math.round(p.tmax)+'°', p._x, p._yMax-10);
+      }
+      if(p._yMin!=null){
+        ctx.fillText(Math.round(p.tmin)+'°', p._x, p._yMin+14);
+      }
+    });
+
+    ctx.fillStyle='#334155';
+    ctx.font='11px system-ui, sans-serif';
+    points.forEach(function(p){
+      var iso=p.iso;
+      if(!iso) return;
+      var date=new Date(iso+'T12:00:00');
+      if(!(date instanceof Date) || isNaN(date)) return;
+      var label=date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric'});
+      label=label.replace('.', '');
+      ctx.fillText(label, p._x, height-bottomPad+28);
+    });
+    ctx.textAlign='left';
+    ctx.textBaseline='alphabetic';
   }
   function clamp(val,min,max){ if(typeof val!=='number' || isNaN(val)) return min; return Math.min(max,Math.max(min,val)); }
   function average(arr){ if(!arr || !arr.length) return null; var sum=0,count=0; arr.forEach(function(v){ if(typeof v==='number' && !isNaN(v)){ sum+=v; count++; } }); return count?sum/count:null; }
