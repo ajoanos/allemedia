@@ -4405,32 +4405,22 @@
     slider.addEventListener('input', function(e){ apply(+e.target.value || min); });
     slider.addEventListener('change', function(e){ apply(+e.target.value || min); });
 
-    // Nie przewijaj widoku przy fokusowaniu slidera
-    function safeFocus(){
+    function focusSliderWithoutScroll(){
       try {
-        if(typeof slider.matches === 'function' && document.activeElement === slider) return;
-        if(slider.focus){
-          if(typeof slider.focus === 'function' && slider.focus.length === 1){
-            // focus(options) wspierany
-            slider.focus({ preventScroll: true });
-          } else {
-            // fallback; minimalizujemy skoki — wywołuj tylko gdy nie ma focusu
-            slider.focus();
-          }
+        if (document.activeElement !== slider && typeof slider.focus === 'function') {
+          if (slider.focus.length === 1) slider.focus({ preventScroll: true });
+          else slider.focus();
         }
       } catch(_) {}
     }
 
-    slider.addEventListener('pointerdown', function(e){
-      // zapobiegaj side-efektom pointerdown -> scroll
-      safeFocus();
-      // nie dopuszczaj do „text selection scroll”
-      e.preventDefault();
+    // pointerdown – fokus bez przewijania, bez preventDefault (żeby nie zabić drag)
+    slider.addEventListener('pointerdown', function(){
+      focusSliderWithoutScroll();
     });
 
     slider.addEventListener('touchstart', function(){
-      // passive:true zachowujemy, ale bez scrolla na focus
-      safeFocus();
+      focusSliderWithoutScroll();
     }, { passive: true });
 
     // Zablokuj scroll strony nad suwakiem (kółko myszy)
@@ -4464,6 +4454,8 @@
 
         apply(next);
         slider.value = String(next);
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
 
