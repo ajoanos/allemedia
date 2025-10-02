@@ -419,20 +419,14 @@
                   '<strong id="sp-txt-rise" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
                 '<div class="glow-adjuster__slider">'+
-                  '<div id="sp-slider-rise"'+
-                     ' class="ns-slider"'+
-                     ' role="slider"'+
-                     ' tabindex="0"'+
-                     ' aria-label="Wybierz długość snu w godzinach"'+
-                     ' aria-valuemin="1" aria-valuemax="8" aria-valuenow="6"'+
-                     ' data-min="1" data-max="8" data-step="1" data-value="6">'+
-                    '<div class="ns-slider__track">'+
-                      '<div class="ns-slider__fill"></div>'+
-                      '<div class="ns-slider__thumb" aria-hidden="true"></div>'+
-                    '</div>'+
-                    '<div class="ns-slider__scale" aria-hidden="true">'+
-                      '<span>1 h</span><span>4 h</span><span>8 h</span>'+
-                    '</div>'+
+                  '<input id="sp-slider-rise"'+
+                         ' class="glow-slider"'+
+                         ' type="range"'+
+                         ' min="1" max="8" step="1" value="6"'+
+                         ' data-min="1" data-max="8" data-step="1" data-value="6"'+
+                         ' aria-label="Wybierz długość snu w godzinach">'+
+                  '<div class="glow-slider__scale" aria-hidden="true">'+
+                    '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                   '</div>'+
                 '</div>'+
               '</div>'+
@@ -455,20 +449,14 @@
                   '<strong id="sp-txt-set" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
                 '<div class="glow-adjuster__slider">'+
-                  '<div id="sp-slider-set"'+
-                     ' class="ns-slider"'+
-                     ' role="slider"'+
-                     ' tabindex="0"'+
-                     ' aria-label="Wybierz margines czasowy w godzinach"'+
-                     ' aria-valuemin="1" aria-valuemax="8" aria-valuenow="6"'+
-                     ' data-min="1" data-max="8" data-step="1" data-value="6">'+
-                    '<div class="ns-slider__track">'+
-                      '<div class="ns-slider__fill"></div>'+
-                      '<div class="ns-slider__thumb" aria-hidden="true"></div>'+
-                    '</div>'+
-                    '<div class="ns-slider__scale" aria-hidden="true">'+
-                      '<span>1 h</span><span>4 h</span><span>8 h</span>'+
-                    '</div>'+
+                  '<input id="sp-slider-set"'+
+                         ' class="glow-slider"'+
+                         ' type="range"'+
+                         ' min="1" max="8" step="1" value="6"'+
+                         ' data-min="1" data-max="8" data-step="1" data-value="6"'+
+                         ' aria-label="Wybierz margines czasowy w godzinach">'+
+                  '<div class="glow-slider__scale" aria-hidden="true">'+
+                    '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                   '</div>'+
                 '</div>'+
               '</div>'+
@@ -4396,125 +4384,153 @@
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
-  // === NiceSlider: dotykoodporny slider (custom) ===
-  function initNiceSlider(txtId, sliderId, onChange){
+  // === Suwaki (Świt/Zachód) ===
+  function hookSlider(txtId, sliderId, cb){
     var labelEl = document.getElementById(txtId);
-    var el = document.getElementById(sliderId);
-    if(!el) return;
+    var slider = document.getElementById(sliderId);
+    if(!slider) return;
 
-    var track = el.querySelector('.ns-slider__track');
-    var thumb = el.querySelector('.ns-slider__thumb');
-    var fill  = el.querySelector('.ns-slider__fill');
-    if(!track || !thumb || !fill) return;
+    function getNumberAttr(el, names){
+      for(var i=0;i<names.length;i++){
+        var raw = el.getAttribute(names[i]);
+        if(raw === null || raw === undefined || raw === '') continue;
+        var num = Number(raw);
+        if(Number.isFinite(num)) return num;
+      }
+      return null;
+    }
 
-    var min  = Number(el.getAttribute('data-min'))  || 0;
-    var max  = Number(el.getAttribute('data-max'))  || 100;
-    var step = Number(el.getAttribute('data-step')) || 1;
-    var val  = Number(el.getAttribute('data-value'));
-    if(!Number.isFinite(val)) val = min;
+    function getMin(){
+      var fromProp = Number(slider.min);
+      if(Number.isFinite(fromProp)) return fromProp;
+      var fromAttr = getNumberAttr(slider, ['min','data-min']);
+      return Number.isFinite(fromAttr) ? fromAttr : 0;
+    }
 
-    function clamp(v){ return Math.min(Math.max(v, min), max); }
+    function getMax(){
+      var fromProp = Number(slider.max);
+      if(Number.isFinite(fromProp)) return fromProp;
+      var fromAttr = getNumberAttr(slider, ['max','data-max']);
+      if(Number.isFinite(fromAttr)) return fromAttr;
+      var min = getMin();
+      return min;
+    }
+
+    function getStep(){
+      var prop = slider.step;
+      if(prop && prop !== 'any'){
+        var stepNum = Number(prop);
+        if(Number.isFinite(stepNum) && stepNum > 0) return stepNum;
+      }
+      var attr = getNumberAttr(slider, ['step','data-step']);
+      if(Number.isFinite(attr) && attr > 0) return attr;
+      return 1;
+    }
+
+    function clamp(v){
+      var min = getMin();
+      var max = getMax();
+      if(Number.isFinite(min) && v < min) v = min;
+      if(Number.isFinite(max) && v > max) v = max;
+      return v;
+    }
+
     function toPct(v){
-      if(max === min) return 0;
+      var min = getMin();
+      var max = getMax();
+      if(!Number.isFinite(min) || !Number.isFinite(max) || max === min) return 0;
       return ((v - min) / (max - min)) * 100;
     }
-    function snap(v){
-      var steps = Math.round((v - min) / step);
-      return clamp(min + steps * step);
+
+    function focusSliderWithoutScroll(){
+      try {
+        if (document.activeElement !== slider && typeof slider.focus === 'function') {
+          if (slider.focus.length === 1) slider.focus({ preventScroll: true });
+          else slider.focus();
+        }
+      } catch(_) {}
     }
 
-    function apply(v, emit){
-      v = snap(v);
-      var pct = toPct(v);
-      fill.style.width = pct + '%';
-      thumb.style.left = pct + '%';
-      el.setAttribute('aria-valuenow', String(v));
-      el.setAttribute('data-value', String(v));
-      val = v;
-      if(labelEl) labelEl.textContent = v + ' h';
-      if(emit && typeof onChange === 'function'){ onChange(); }
-      if(typeof updateLink === 'function') updateLink();
+    function updateSlider(emitCb){
+      var current = Number(slider.value);
+      if(!Number.isFinite(current)) current = getNumberAttr(slider, ['value','data-value']);
+      if(!Number.isFinite(current)) current = getMin();
+      if(!Number.isFinite(current)) current = 0;
+      current = clamp(current);
+      slider.value = String(current);
+      slider.setAttribute('value', String(current));
+      slider.setAttribute('data-value', String(current));
+      slider.setAttribute('aria-valuenow', String(current));
+      slider.style.setProperty('--slider-fill', toPct(current) + '%');
+      if(labelEl) labelEl.textContent = current + ' h';
+      if(emitCb && typeof cb === 'function'){ cb(); }
+      if(typeof updateLink === 'function'){ updateLink(); }
     }
 
-    function posToValue(clientX){
-      var rect = track.getBoundingClientRect();
-      var x = clientX - rect.left;
-      var ratio = x / rect.width;
-      var raw = min + ratio * (max - min);
-      return clamp(raw);
-    }
+    slider.__spUpdateSlider = function(emitCb){ updateSlider(!!emitCb); };
 
-    // Pointer events
-    var dragging = false;
+    slider.addEventListener('input', function(){ updateSlider(true); });
+    slider.addEventListener('change', function(){ updateSlider(false); });
 
-    function onPointerDown(e){
-      // całkowicie przejmujemy gest -> bez scrolla strony
-      el.setPointerCapture?.(e.pointerId);
-      dragging = true;
-      apply(posToValue(e.clientX), true);
-      e.preventDefault();
-    }
-    function onPointerMove(e){
-      if(!dragging) return;
-      apply(posToValue(e.clientX), true);
-      e.preventDefault();
-    }
-    function onPointerUp(e){
-      if(!dragging) return;
-      dragging = false;
-      e.preventDefault();
-    }
-
-    track.addEventListener('pointerdown', onPointerDown, { passive:false });
-    thumb.addEventListener('pointerdown', onPointerDown, { passive:false });
-    window.addEventListener('pointermove', onPointerMove, { passive:false });
-    window.addEventListener('pointerup', onPointerUp, { passive:false });
-
-    // Klawiatura
-    el.addEventListener('keydown', function(e){
-      var k = e.key;
-      var next = Number(el.getAttribute('data-value')) || val;
-      if(k==='ArrowRight' || k==='ArrowUp'){ next += step; }
-      else if(k==='ArrowLeft' || k==='ArrowDown'){ next -= step; }
-      else if(k==='PageUp'){ next += step*2; }
-      else if(k==='PageDown'){ next -= step*2; }
-      else if(k==='Home'){ next = min; }
-      else if(k==='End'){ next = max; }
-      else { return; }
-      e.preventDefault();
-      apply(next, true);
+    slider.addEventListener('pointerdown', function(){
+      focusSliderWithoutScroll();
     });
 
-    // Zablokuj scroll kółkiem na komponencie
-    el.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive:false });
+    slider.addEventListener('touchstart', function(){
+      focusSliderWithoutScroll();
+    }, { passive: true });
 
-    // API dla zewnętrznych wywołań
-    el.__niceSliderSet = function(v, emit){ apply(v, !!emit); };
-    el.__niceSliderGet = function(){
-      var current = Number(el.getAttribute('data-value'));
-      if(Number.isFinite(current)) return current;
-      return min;
-    };
+    slider.addEventListener('keydown', function(e){
+      var key = e.key;
+      var step = getStep();
+      var next = Number(slider.value);
+      if(!Number.isFinite(next)) next = getMin();
+      if(!Number.isFinite(next)) next = 0;
+      var handled = true;
+      if(key === 'ArrowRight' || key === 'ArrowUp'){ next += step; }
+      else if(key === 'ArrowLeft' || key === 'ArrowDown'){ next -= step; }
+      else if(key === 'PageUp'){ next += step * 2; }
+      else if(key === 'PageDown'){ next -= step * 2; }
+      else if(key === 'Home'){ next = getMin(); }
+      else if(key === 'End'){ next = getMax(); }
+      else { handled = false; }
+      if(!handled) return;
+      e.preventDefault();
+      slider.value = String(clamp(next));
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    });
 
-    // Inicjalizacja
-    apply(val, false);
+    slider.addEventListener('wheel', function(e){
+      e.preventDefault();
+      var delta = e.deltaY || e.deltaX || 0;
+      if(delta === 0) return;
+      var step = getStep();
+      var next = Number(slider.value);
+      if(!Number.isFinite(next)) next = getMin();
+      if(!Number.isFinite(next)) next = 0;
+      next += delta < 0 ? step : -step;
+      slider.value = String(clamp(next));
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: false });
+
+    updateSlider(false);
   }
 
   function getNiceSliderValue(id){
     var el = document.getElementById(id);
     if(!el) return 0;
-    if(typeof el.__niceSliderGet === 'function'){
-      return el.__niceSliderGet();
-    }
-    var min = Number(el.getAttribute('data-min'));
-    var max = Number(el.getAttribute('data-max'));
-    var val = Number(el.getAttribute('data-value'));
+    var val = Number(el.value);
+    if(Number.isFinite(val)) return val;
+    val = Number(el.getAttribute('value'));
+    if(Number.isFinite(val)) return val;
+    val = Number(el.getAttribute('data-value'));
+    if(Number.isFinite(val)) return val;
+    var min = Number(el.getAttribute('min'));
+    if(!Number.isFinite(min)) min = Number(el.getAttribute('data-min'));
     if(!Number.isFinite(min)) min = 0;
-    if(!Number.isFinite(max)) max = min;
-    if(!Number.isFinite(val)) val = min;
-    if(val < min) val = min;
-    if(val > max) val = max;
-    return val;
+    return min;
   }
 
   function setNiceSliderValue(id, value, emit){
@@ -4522,19 +4538,31 @@
     if(!el) return;
     var next = Number(value);
     if(!Number.isFinite(next)){
-      var minAttr = Number(el.getAttribute('data-min'));
+      var minAttr = Number(el.getAttribute('min'));
+      if(!Number.isFinite(minAttr)) minAttr = Number(el.getAttribute('data-min'));
       next = Number.isFinite(minAttr) ? minAttr : 0;
     }
-    if(typeof el.__niceSliderSet === 'function'){
-      el.__niceSliderSet(next, !!emit);
-      return;
-    }
+    var min = Number(el.getAttribute('min'));
+    if(!Number.isFinite(min)) min = Number(el.getAttribute('data-min'));
+    var max = Number(el.getAttribute('max'));
+    if(!Number.isFinite(max)) max = Number(el.getAttribute('data-max'));
+    if(Number.isFinite(min) && next < min) next = min;
+    if(Number.isFinite(max) && next > max) next = max;
+    el.value = String(next);
+    el.setAttribute('value', String(next));
     el.setAttribute('data-value', String(next));
+    if(typeof el.__spUpdateSlider === 'function'){
+      el.__spUpdateSlider(false);
+    }
+    if(emit){
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   }
 
-  // Zainicjuj nowe suwaki (Świt/Zachód)
-  initNiceSlider('sp-txt-rise', 'sp-slider-rise', updateSunWeather);
-  initNiceSlider('sp-txt-set',  'sp-slider-set',  updateSunWeather);
+  // Zainicjuj suwaki (Świt/Zachód)
+  hookSlider('sp-txt-rise', 'sp-slider-rise', updateSunWeather);
+  hookSlider('sp-txt-set',  'sp-slider-set',  updateSunWeather);
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
