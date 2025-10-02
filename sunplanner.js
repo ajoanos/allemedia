@@ -413,12 +413,19 @@
               '<div class="rowd"><span>Wyjazd</span><strong id="sp-rise-wake">—</strong></div>'+
               '<div class="rowd"><span>Sen od</span><strong id="sp-rise-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Ile snu chcesz mieć?</p>'+
-              '<div style="display:flex;align-items:center;gap:.7rem">'+
-                '<div class="ring">'+
-                  '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-rise" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
-                  '<div class="text" id="sp-txt-rise">6 h</div>'+
+              '<div class="glow-adjuster" role="group" aria-label="Ustaw długość snu">'+
+                '<div class="glow-adjuster__status">'+
+                  '<span class="glow-adjuster__label">Długość snu</span>'+
+                  '<strong id="sp-txt-rise" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
-                '<input id="sp-slider-rise" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
+                '<div class="glow-adjuster__slider">'+
+                  '<input id="sp-slider-rise" class="glow-slider" type="range" min="1" max="8" step="1" value="6" aria-valuemin="1" aria-valuemax="8" aria-valuenow="6" aria-label="Wybierz długość snu w godzinach">'+
+                  '<div class="glow-slider__scale" aria-hidden="true">'+
+                    '<span>1 h</span>'+
+                    '<span>4 h</span>'+
+                    '<span>8 h</span>'+
+                  '</div>'+
+                '</div>'+
               '</div>'+
               '<div class="glow-info morning">'+
                 '<h4>Poranek</h4>'+
@@ -433,12 +440,19 @@
               '<div class="rowd"><span>Wyjazd</span><strong id="sp-set-wake">—</strong></div>'+
               '<div class="rowd"><span>Czas na przygotowania</span><strong id="sp-set-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Dopasuj czas, aby wszystko dopiąć.</p>'+
-              '<div style="display:flex;align-items:center;gap:.7rem">'+
-                '<div class="ring">'+
-                  '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-set" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
-                  '<div class="text" id="sp-txt-set">6 h</div>'+
+              '<div class="glow-adjuster" role="group" aria-label="Ustaw margines czasowy">'+
+                '<div class="glow-adjuster__status">'+
+                  '<span class="glow-adjuster__label">Margines czasowy</span>'+
+                  '<strong id="sp-txt-set" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
-                '<input id="sp-slider-set" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
+                '<div class="glow-adjuster__slider">'+
+                  '<input id="sp-slider-set" class="glow-slider" type="range" min="1" max="8" step="1" value="6" aria-valuemin="1" aria-valuemax="8" aria-valuenow="6" aria-label="Wybierz margines czasowy w godzinach">'+
+                  '<div class="glow-slider__scale" aria-hidden="true">'+
+                    '<span>1 h</span>'+
+                    '<span>4 h</span>'+
+                    '<span>8 h</span>'+
+                  '</div>'+
+                '</div>'+
               '</div>'+
               '<div class="glow-info align-right evening">'+
                 '<h4>Wieczór</h4>'+
@@ -4365,13 +4379,34 @@
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
   // suwaki
-  function hookSlider(ringId,txtId,sliderId,cb){
-    var r=document.getElementById(ringId), t=document.getElementById(txtId), s=document.getElementById(sliderId);
-    function apply(v){ var rr=+r.getAttribute('r'), per=2*Math.PI*rr, pct=(v-1)/7; r.style.strokeDasharray=per; r.style.strokeDashoffset=per*(1-pct); t.textContent=v+' h'; if(cb) cb(); updateLink(); }
-    s.addEventListener('input', function(e){ apply(+e.target.value); }); apply(+s.value);
+  function hookSlider(txtId, sliderId, cb){
+    var labelEl=document.getElementById(txtId);
+    var slider=document.getElementById(sliderId);
+    if(!slider) return;
+    var min=Number(slider.min||0);
+    var max=Number(slider.max||0);
+    if(!Number.isFinite(min)){ min=0; }
+    if(!Number.isFinite(max) || max<=min){ max=min+1; }
+    var span=max-min;
+    function apply(v){
+      if(!Number.isFinite(v)){ v=min; }
+      v=Math.min(Math.max(v,min),max);
+      if(labelEl){ labelEl.textContent=v+' h'; }
+      var pct=(v-min)/span;
+      slider.style.setProperty('--slider-fill', (pct*100)+'%');
+      slider.setAttribute('aria-valuenow', String(v));
+      slider.setAttribute('aria-valuetext', v+' godzin');
+      if(cb){ cb(); }
+      updateLink();
+    }
+    slider.addEventListener('input', function(e){ apply(+e.target.value||min); });
+    slider.addEventListener('change', function(e){ apply(+e.target.value||min); });
+    slider.addEventListener('pointerdown', function(){ slider.focus(); });
+    slider.addEventListener('touchstart', function(){ slider.focus(); }, {passive:true});
+    apply(+slider.value||min);
   }
-  hookSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise', updateSunWeather);
-  hookSlider('sp-ring-set','sp-txt-set','sp-slider-set', updateSunWeather);
+  hookSlider('sp-txt-rise','sp-slider-rise', updateSunWeather);
+  hookSlider('sp-txt-set','sp-slider-set', updateSunWeather);
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
