@@ -89,6 +89,13 @@
   var weatherState = {
     daily16: []
   };
+
+  // === HOURLY: state ===
+  var hourlyState = {
+    dateISO: null,
+    hours: [] // { date: Date, hh: string('00-23'), temp: number|null, precip: number|null, sunshineSec: number|null }
+  };
+  var currentCoords = { lat: null, lon: null };
   var daily16ViewState = {
     offset: 0,
     maxOffset: 0,
@@ -733,16 +740,251 @@
     function num(v){ var n = Number(v); return Number.isFinite(n) ? n : null; }
   }
 
+  // === HOURLY: fetch ===
+  async function fetchOpenMeteoHourly(lat, lon, dateISO, tz){
+    var tzParam = encodeURIComponent(tz || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw'));
+    var d = String(dateISO || '').slice(0,10);
+    if(!(typeof lat === 'number' && isFinite(lat)) || !(typeof lon === 'number' && isFinite(lon)) || !d){ return []; }
+
+    var hourly = [
+      'temperature_2m',
+      'precipitation',
+      'sunshine_duration'
+    ].join(',');
+
+    var url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+      `&hourly=${hourly}`+
+      `&start_date=${d}&end_date=${d}`+
+      `&timezone=${tzParam}`;
+
+    var r = await fetch(url);
+    if(!r.ok) throw new Error('Open-Meteo hourly HTTP '+r.status);
+    var j = await r.json();
+    var T = (j && j.hourly) ? j.hourly : null;
+    if(!T || !Array.isArray(T.time)){ return []; }
+
+    function num(v){ var n = Number(v); return Number.isFinite(n) ? n : null; }
+
+    var out = T.time.map(function(iso, i){
+      // iso: 'YYYY-MM-DDTHH:00'
+      var date = new Date(iso);
+      var hh = iso.split('T')[1]?.slice(0,2) || String(date.getHours()).padStart(2,'0');
+      return {
+        dateISO: d,
+        date: date,
+        hh: hh,
+        temp: num(T.temperature_2m?.[i]),
+        precip: num(T.precipitation?.[i]),      // mm/h
+        sunshineSec: num(T.sunshine_duration?.[i]) // sekundy słońca w tej godzinie
+      };
+    });
+
+    // upewnij się, że mamy pełne godziny 00–23 (niektóre modele zwracają mniej)
+    out = out.filter(function(x){ return x && x.hh!=null; });
+    out.sort(function(a,b){ return a.hh.localeCompare(b.hh); });
+    return out;
+  }
+
+  // === HOURLY: render temperature + precipitation ===
+  function renderHourlyTempRain(hours){
+    var canvas = document.getElementById('sp-hourly');
+    if(!canvas) return;
+
+    // Rozmiar widoczny
+    var cssW = canvas.clientWidth || 600;
+    var cssH = canvas.clientHeight || 170;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+
+    var ctx = canvas.getContext('2d');
+    if(!ctx) return;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    if(!hours || !hours.length){
+      // brak danych — nic nie rysujemy (UI ma legendę osobno)
+      return;
+    }
+
+    // Marginesy
+    var padL = 32, padR = 12, padT = 12, padB = 22;
+    var plotW = Math.max(10, cssW - padL - padR);
+    var plotH = Math.max(10, cssH - padT - padB);
+
+    // X: równomiernie co godzinę
+    var n = hours.length;
+    var stepX = plotW / Math.max(1, n-1);
+
+    // Skale Y
+    var temps = hours.map(function(h){ return (h.temp!=null? h.temp : null); }).filter(function(v){ return v!=null; });
+    var minT = temps.length ? Math.min.apply(null, temps) : 0;
+    var maxT = temps.length ? Math.max.apply(null, temps) : 1;
+    if(minT===maxT){ minT -= 1; maxT += 1; }
+    var tRange = (maxT - minT) || 1;
+
+    var rains = hours.map(function(h){ return (h.precip!=null? h.precip : 0); });
+    var maxR = Math.max.apply(null, rains.concat([1]));
+    // lekko podnieś sufit, żeby słupki nie „przyklejały się”
+    maxR = Math.max(1, maxR*1.1);
+
+    function xAt(i){ return padL + i*stepX; }
+    function yForTemp(v){ return padT + (plotH - ( (v - minT)/tRange )*plotH ); }
+    function hForRain(v){ return (v / maxR) * plotH; }
+
+    // Słupki opadów (na tle)
+    var barW = Math.max(3, stepX*0.45);
+    ctx.save();
+    hours.forEach(function(h, i){
+      var x = xAt(i) - barW/2;
+      var hgt = hForRain(Math.max(0, h.precip||0));
+      var y = padT + (plotH - hgt);
+
+      // alpha wg progu
+      var a = 0.25;
+      if(h.precip > 2){ a = 0.85; }
+      else if(h.precip >= 0.6){ a = 0.55; }
+
+      ctx.fillStyle = 'rgba(30,64,175,'+a+')'; // nie ustawiamy stylów globalnie, barwy spójne z legendą
+      ctx.fillRect(Math.round(x)+0.5, Math.round(y)+0.5, Math.round(barW), Math.round(hgt));
+    });
+    ctx.restore();
+
+    // Linia temperatury
+    ctx.save();
+    ctx.beginPath();
+    hours.forEach(function(h, i){
+      if(h.temp==null) return;
+      var x = xAt(i);
+      var y = yForTemp(h.temp);
+      (i===0) ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ef4444'; // czerwony jak w legendzie
+    ctx.stroke();
+    ctx.restore();
+
+    // Oś X (co 3 godziny: podpis HH)
+    ctx.fillStyle = '#374151';
+    ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    for(var i=0;i<n;i++){
+      if(i%3!==0 && i!==n-1) continue;
+      var label = hours[i].hh;
+      var x = xAt(i);
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, cssH - 6);
+    }
+  }
+
+  // === HOURLY: render sunshine ===
+  function renderSunshine(hours){
+    var canvas = document.getElementById('sp-sunshine');
+    if(!canvas) return;
+
+    var cssW = canvas.clientWidth || 600;
+    var cssH = canvas.clientHeight || 160;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+
+    var ctx = canvas.getContext('2d');
+    if(!ctx) return;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    if(!hours || !hours.length){ return; }
+
+    var padL = 16, padR = 12, padT = 12, padB = 22;
+    var plotW = Math.max(10, cssW - padL - padR);
+    var plotH = Math.max(10, cssH - padT - padB);
+
+    var n = hours.length;
+    var stepX = plotW / Math.max(1, n-1);
+
+    var secs = hours.map(function(h){ return Math.max(0, h.sunshineSec||0); });
+    var maxS = Math.max.apply(null, secs.concat([3600])); // 3600 sekund = pełne słońce
+    maxS = Math.max(1800, maxS); // minimum sensownego zakresu
+
+    function xAt(i){ return padL + i*stepX; }
+    function hForSun(v){ return (v / maxS) * plotH; }
+
+    var barW = Math.max(6, stepX*0.6);
+    hours.forEach(function(h, i){
+      var s = Math.max(0, h.sunshineSec||0);
+      var x = xAt(i) - barW/2;
+      var hgt = hForSun(s);
+      var y = padT + (plotH - hgt);
+
+      // odcień wg progu (spójny z legendą: sun-weak/medium/strong)
+      var fill = '#fde68a'; // bazowy (żółty)
+      if(s > 2700){ fill = '#f59e0b'; }
+      else if(s >= 900){ fill = '#fcd34d'; }
+      else { fill = '#fef3c7'; }
+
+      ctx.fillStyle = fill;
+      ctx.fillRect(Math.round(x)+0.5, Math.round(y)+0.5, Math.round(barW), Math.round(hgt));
+    });
+
+    // Oś X (co 3 godziny)
+    ctx.fillStyle = '#92400e';
+    ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    for(var i=0;i<n;i++){
+      if(i%3!==0 && i!==n-1) continue;
+      var label = hours[i].hh;
+      var x = xAt(i);
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, cssH - 6);
+    }
+  }
+
+  // === HOURLY: main loader ===
+  async function loadHourlyForecast(lat, lon, dateISO){
+    try{
+      var tz = TZ || 'Europe/Warsaw';
+      hourlyState.dateISO = (dateISO || '').slice(0,10) || null;
+      var hasLat = (typeof lat === 'number' && isFinite(lat));
+      var hasLon = (typeof lon === 'number' && isFinite(lon));
+      if(!hasLat || !hasLon || !hourlyState.dateISO){
+        hourlyState.hours = [];
+        // brak danych – wyczyść wykresy
+        renderHourlyTempRain([]);
+        renderSunshine([]);
+        return;
+      }
+      var hours = await fetchOpenMeteoHourly(lat, lon, hourlyState.dateISO, tz);
+      hourlyState.hours = hours;
+      renderHourlyTempRain(hours);
+      renderSunshine(hours);
+    }catch(e){
+      try{ console.error(e); }catch(_){ }
+      toast('Brak danych prognozy godzinowej (Open-Meteo).');
+      renderHourlyTempRain([]);
+      renderSunshine([]);
+    }
+  }
+
   async function loadDailyForecast16(lat, lon) {
     try {
       sessionSummaryLoading && sessionSummaryLoading(); // jeśli istnieje, pokaż "Analizuję..."
       var tz = TZ || 'Europe/Warsaw';
       var data = await fetchOpenMeteoDaily16(lat, lon, tz);
       weatherState.daily16 = data;
+      currentCoords.lat = (typeof lat === 'number' && isFinite(lat)) ? lat : null;
+      currentCoords.lon = (typeof lon === 'number' && isFinite(lon)) ? lon : null;
+      var dateInput = document.getElementById('sp-date');
+      var chosen = dateInput && dateInput.value ? dateInput.value : (weatherState.daily16?.[0]?.dateISO || null);
+      loadHourlyForecast(currentCoords.lat, currentCoords.lon, chosen);
       renderDaily16Chart(data, getDaily16HighlightDate());
     } catch (e) {
       try { console.error(e); } catch(_) {}
       weatherState.daily16 = [];
+      currentCoords.lat = null;
+      currentCoords.lon = null;
+      hourlyState.dateISO = null;
+      hourlyState.hours = [];
+      renderHourlyTempRain([]);
+      renderSunshine([]);
       renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
       if (typeof sessionSummaryNoData === 'function') sessionSummaryNoData();
       toast('Brak danych prognozy (Open-Meteo).');
@@ -1603,6 +1845,20 @@
   var dEl = $('#sp-date');
   dEl.min=today.toISOString().split('T')[0]; dEl.max=max.toISOString().split('T')[0];
   dEl.value = dEl.value || today.toISOString().split('T')[0];
+
+  // === HOURLY: on date change ===
+  var _spDateInput = document.getElementById('sp-date');
+  if(_spDateInput){
+    _spDateInput.addEventListener('change', function(){
+      var d = _spDateInput.value || null;
+      if(!d) return;
+      var hasLat = (typeof currentCoords.lat === 'number' && isFinite(currentCoords.lat));
+      var hasLon = (typeof currentCoords.lon === 'number' && isFinite(currentCoords.lon));
+      if(hasLat && hasLon){
+        loadHourlyForecast(currentCoords.lat, currentCoords.lon, d);
+      }
+    });
+  }
 
   function dateFromInput(iso){ var a=(iso||'').split('-'); return new Date(Date.UTC(+a[0],(+a[1]||1)-1,+a[2]||1,12,0,0)); }
 
@@ -3170,8 +3426,12 @@
     if(!dest || !dStr){
       setSunMeta(null,null,null);
       clearWeatherPanels();
-      renderHourlyChart(null,null,false);
-      renderSunshineChart(null,null,false);
+      currentCoords.lat = null;
+      currentCoords.lon = null;
+      hourlyState.dateISO = null;
+      hourlyState.hours = [];
+      renderHourlyTempRain([]);
+      renderSunshine([]);
       updateSunDirection(null,null);
       applyBands(null);
       weatherState.daily16 = [];
@@ -3209,16 +3469,18 @@
     var ahead=daysAhead(base);
     if(ahead!=null && ahead>FORECAST_HORIZON_DAYS){
       var limitMsg=forecastLimitMessage();
-      renderHourlyChart(null,dStr,false,limitMsg);
-      renderSunshineChart(null,dStr,false,limitMsg);
+      hourlyState.dateISO = null;
+      hourlyState.hours = [];
+      renderHourlyTempRain([]);
+      renderSunshine([]);
       weatherState.daily16 = [];
       renderDaily16Chart([], getDaily16HighlightDate(), { message: limitMsg });
       sessionSummaryLimit();
       return;
     }
 
-    renderHourlyChart(null,dStr,true);
-    renderSunshineChart(null,dStr,true);
+    renderHourlyTempRain([]);
+    renderSunshine([]);
     if(!weatherState.daily16.length){
       renderDaily16Chart([], getDaily16HighlightDate(), { loading: true });
     } else {
@@ -3228,7 +3490,12 @@
 
     getForecast(dest.lat, dest.lng, dStr)
       .then(function(data){
-        if(!data){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); return; }
+        if(!data){
+          renderHourlyTempRain([]);
+          renderSunshine([]);
+          sessionSummaryNoData();
+          return;
+        }
         var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
         var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
         if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
@@ -3243,11 +3510,13 @@
           setWeatherOnly('rise', data.hourly, sunrise);
           setWeatherOnly('set' , data.hourly, sunset);
         }
-        renderHourlyChart(data.hourly, dStr, false);
-        renderSunshineChart(data.hourly, dStr, false);
         renderSessionSummary(data, dStr);
       })
-      .catch(function(){ renderHourlyChart(null,dStr,false); renderSunshineChart(null,dStr,false); sessionSummaryNoData(); });
+      .catch(function(){
+        renderHourlyTempRain([]);
+        renderSunshine([]);
+        sessionSummaryNoData();
+      });
   }
 
   function assignRadarTemplate(template){
