@@ -570,7 +570,7 @@
 
   function scrollGalleryBy(dir){
     if(!galleryTrack) return;
-    var firstCard=galleryTrack.querySelector('a');
+    var firstCard=galleryTrack.querySelector('.gallery-item');
     var styles=window.getComputedStyle?getComputedStyle(galleryTrack):{gap:'0',columnGap:'0'};
     var gap=parseFloat(styles.columnGap||styles.gap||0)||0;
     var width=firstCard?firstCard.getBoundingClientRect().width:galleryTrack.clientWidth*0.8;
@@ -3501,7 +3501,7 @@
     if(!label){ gal.innerHTML=''; return; }
     gal.innerHTML='<div class="muted">Ładuję zdjęcia...</div>';
 
-    var sizeAttr='(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw';
+    var sizeAttr='(min-width:1200px) 25vw, (min-width:768px) 33vw, (max-width:480px) 48vw, 100vw';
 
     function normalizeAlt(text){
       if(typeof text==='string' && text.trim()){ return text.trim(); }
@@ -3513,12 +3513,21 @@
       gal.innerHTML='';
       var frag=document.createDocumentFragment();
       items.forEach(function(item){
-        if(!item || !item.src || !item.href) return;
-        var link=document.createElement('a');
-        link.href=item.href;
-        link.target='_blank';
-        link.rel='noopener';
-        if(item.title){ link.title=item.title; }
+        if(!item || !item.src) return;
+        var figure=document.createElement('figure');
+        figure.className='gallery-item';
+
+        var wrapper=figure;
+        if(item.href){
+          var link=document.createElement('a');
+          link.className='gallery-link';
+          link.href=item.href;
+          link.target='_blank';
+          link.rel='noopener noreferrer';
+          if(item.title){ link.title=item.title; }
+          wrapper=link;
+          figure.appendChild(link);
+        }
 
         var img=document.createElement('img');
         img.className='gallery-img';
@@ -3532,8 +3541,8 @@
         if(item.width){ img.width=item.width; }
         if(item.height){ img.height=item.height; }
 
-        link.appendChild(img);
-        frag.appendChild(link);
+        wrapper.appendChild(img);
+        frag.appendChild(figure);
       });
 
       if(!frag.childNodes.length){
