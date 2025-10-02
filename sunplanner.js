@@ -310,7 +310,7 @@
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
-      '<div class="card">'+
+      '<div class="card plan-day">'+
         '<h3>Plan dnia – przebieg zdjęć</h3>'+
         '<div class="session-meta" aria-label="Kluczowe informacje o planie dnia">'+
           '<div class="session-meta__item">'+
@@ -447,8 +447,14 @@
         '</div>'+
 
           '<div class="card inner plan-day-gallery">'+
-            '<h3>Galeria inspiracji – zdjęcia</h3>'+
-            '<div id="sp-gallery"></div>'+
+            '<div class="plan-day-gallery__header">'+
+              '<h3>Galeria inspiracji – zdjęcia</h3>'+
+              '<div class="plan-day-gallery__nav">'+
+                '<button type="button" class="gallery-nav" data-gallery-prev aria-controls="sp-gallery" aria-label="Poprzednie zdjęcia">&#8249;</button>'+
+                '<button type="button" class="gallery-nav" data-gallery-next aria-controls="sp-gallery" aria-label="Następne zdjęcia">&#8250;</button>'+
+              '</div>'+
+            '</div>'+
+            '<div id="sp-gallery" class="gallery-track" tabindex="0" aria-live="polite"></div>'+
           '</div>'+
           '<div id="sp-location-insights" class="location-insights">'+
             '<h3>Zasady na miejscu</h3>'+
@@ -556,6 +562,25 @@
       '</div>'+
     '</div>'+
   '</div>';
+  var galleryTrack=document.querySelector('#sp-gallery');
+  var galleryPrev=document.querySelector('[data-gallery-prev]');
+  var galleryNext=document.querySelector('[data-gallery-next]');
+
+  function scrollGalleryBy(dir){
+    if(!galleryTrack) return;
+    var firstCard=galleryTrack.querySelector('a');
+    var styles=window.getComputedStyle?getComputedStyle(galleryTrack):{gap:'0',columnGap:'0'};
+    var gap=parseFloat(styles.columnGap||styles.gap||0)||0;
+    var width=firstCard?firstCard.getBoundingClientRect().width:galleryTrack.clientWidth*0.8;
+    galleryTrack.scrollBy({left:dir*(width+gap),behavior:'smooth'});
+  }
+
+  galleryPrev && galleryPrev.addEventListener('click',function(){scrollGalleryBy(-1);});
+  galleryNext && galleryNext.addEventListener('click',function(){scrollGalleryBy(1);});
+  galleryTrack && galleryTrack.addEventListener('keydown',function(e){
+    if(e.key==='ArrowLeft'){e.preventDefault();scrollGalleryBy(-1);}
+    else if(e.key==='ArrowRight'){e.preventDefault();scrollGalleryBy(1);}
+  });
   removeLegacyDaily16Strip();
   sessionSummaryDefault();
   renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
@@ -3442,6 +3467,7 @@
         a.appendChild(img); gal.appendChild(a);
       });
       if(!gal.children.length) gal.innerHTML='<div class="muted">Brak zdjęć.</div>';
+      gal.scrollLeft=0;
     }
 
     if(CSE_ID){
