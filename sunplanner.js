@@ -4464,15 +4464,6 @@
       return ((v - min) / (max - min)) * 100;
     }
 
-    function focusSliderWithoutScroll(){
-      try {
-        if (document.activeElement !== slider && typeof slider.focus === 'function') {
-          if (slider.focus.length === 1) slider.focus({ preventScroll: true });
-          else slider.focus();
-        }
-      } catch(_) {}
-    }
-
     function formatValueLabel(v){
       if(!Number.isFinite(v)) return unit ? '0 ' + unit : '0';
       var rounded = Math.round(v * 100) / 100;
@@ -4530,14 +4521,6 @@
 
     slider.addEventListener('input', function(){ updateSlider(true); });
     slider.addEventListener('change', function(){ updateSlider(false); });
-
-    slider.addEventListener('pointerdown', function(){
-      focusSliderWithoutScroll();
-    });
-
-    slider.addEventListener('touchstart', function(){
-      focusSliderWithoutScroll();
-    }, { passive: true });
 
     slider.addEventListener('keydown', function(e){
       var key = e.key;
