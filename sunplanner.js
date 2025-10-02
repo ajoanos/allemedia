@@ -419,11 +419,20 @@
                   '<strong id="sp-txt-rise" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
                 '<div class="glow-adjuster__slider">'+
-                  '<input id="sp-slider-rise" class="glow-slider" type="range" min="1" max="8" step="1" value="6" aria-valuemin="1" aria-valuemax="8" aria-valuenow="6" aria-label="Wybierz długość snu w godzinach">'+
-                  '<div class="glow-slider__scale" aria-hidden="true">'+
-                    '<span>1 h</span>'+
-                    '<span>4 h</span>'+
-                    '<span>8 h</span>'+
+                  '<div id="sp-slider-rise"'+
+                     ' class="ns-slider"'+
+                     ' role="slider"'+
+                     ' tabindex="0"'+
+                     ' aria-label="Wybierz długość snu w godzinach"'+
+                     ' aria-valuemin="1" aria-valuemax="8" aria-valuenow="6"'+
+                     ' data-min="1" data-max="8" data-step="1" data-value="6">'+
+                    '<div class="ns-slider__track">'+
+                      '<div class="ns-slider__fill"></div>'+
+                      '<div class="ns-slider__thumb" aria-hidden="true"></div>'+
+                    '</div>'+
+                    '<div class="ns-slider__scale" aria-hidden="true">'+
+                      '<span>1 h</span><span>4 h</span><span>8 h</span>'+
+                    '</div>'+
                   '</div>'+
                 '</div>'+
               '</div>'+
@@ -446,11 +455,20 @@
                   '<strong id="sp-txt-set" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
                 '<div class="glow-adjuster__slider">'+
-                  '<input id="sp-slider-set" class="glow-slider" type="range" min="1" max="8" step="1" value="6" aria-valuemin="1" aria-valuemax="8" aria-valuenow="6" aria-label="Wybierz margines czasowy w godzinach">'+
-                  '<div class="glow-slider__scale" aria-hidden="true">'+
-                    '<span>1 h</span>'+
-                    '<span>4 h</span>'+
-                    '<span>8 h</span>'+
+                  '<div id="sp-slider-set"'+
+                     ' class="ns-slider"'+
+                     ' role="slider"'+
+                     ' tabindex="0"'+
+                     ' aria-label="Wybierz margines czasowy w godzinach"'+
+                     ' aria-valuemin="1" aria-valuemax="8" aria-valuenow="6"'+
+                     ' data-min="1" data-max="8" data-step="1" data-value="6">'+
+                    '<div class="ns-slider__track">'+
+                      '<div class="ns-slider__fill"></div>'+
+                      '<div class="ns-slider__thumb" aria-hidden="true"></div>'+
+                    '</div>'+
+                    '<div class="ns-slider__scale" aria-hidden="true">'+
+                      '<span>1 h</span><span>4 h</span><span>8 h</span>'+
+                    '</div>'+
                   '</div>'+
                 '</div>'+
               '</div>'+
@@ -1157,8 +1175,8 @@
     if(!hasSunset){ sunset = lastSunData && isValidDate(lastSunData.set) ? lastSunData.set : null; }
     setSunMeta(dest, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
-    fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
-    fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+    fillCardTimes('rise', sunrise, RISE_OFF, getNiceSliderValue('sp-slider-rise'));
+    fillCardTimes('set' , sunset , SET_OFF , getNiceSliderValue('sp-slider-set'));
     var derivedBands = deriveBandsFromSun(sunrise, sunset);
     if(derivedBands) applyBands(derivedBands);
     updateRiseSetWeatherPanels();
@@ -2180,8 +2198,8 @@
     var radarEl=$('#sp-radar');
     return {
       date:dEl.value,
-      sr:$('#sp-slider-rise').value,
-      ss:$('#sp-slider-set').value,
+      sr:getNiceSliderValue('sp-slider-rise'),
+      ss:getNiceSliderValue('sp-slider-set'),
       rad:(radarEl && radarEl.checked)?1:0,
       pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
       contact:{
@@ -2202,8 +2220,8 @@
   function unpackState(obj){
     if(!obj) return;
     if(obj.date) dEl.value=obj.date;
-    if(obj.sr) $('#sp-slider-rise').value=obj.sr;
-    if(obj.ss) $('#sp-slider-set').value=obj.ss;
+    if(typeof obj.sr !== 'undefined') setNiceSliderValue('sp-slider-rise', Number(obj.sr));
+    if(typeof obj.ss !== 'undefined') setNiceSliderValue('sp-slider-set', Number(obj.ss));
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
     if(Object.prototype.toString.call(obj.pts)==='[object Array]'){
       points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
@@ -3725,8 +3743,8 @@
     setSunMeta(dest, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
 
-    fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
-    fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+    fillCardTimes('rise', sunrise, RISE_OFF, getNiceSliderValue('sp-slider-rise'));
+    fillCardTimes('set' , sunset , SET_OFF , getNiceSliderValue('sp-slider-set'));
 
     clearWeatherPanels();
     var ahead=daysAhead(base);
@@ -4378,91 +4396,145 @@
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
-  // suwaki
-  function hookSlider(txtId, sliderId, cb){
+  // === NiceSlider: dotykoodporny slider (custom) ===
+  function initNiceSlider(txtId, sliderId, onChange){
     var labelEl = document.getElementById(txtId);
-    var slider  = document.getElementById(sliderId);
-    if(!slider) return;
+    var el = document.getElementById(sliderId);
+    if(!el) return;
 
-    var min = Number(slider.min || 0);
-    var max = Number(slider.max || 0);
-    if(!Number.isFinite(min)) min = 0;
-    if(!Number.isFinite(max) || max <= min) max = min + 1;
-    var span = max - min;
+    var track = el.querySelector('.ns-slider__track');
+    var thumb = el.querySelector('.ns-slider__thumb');
+    var fill  = el.querySelector('.ns-slider__fill');
+    if(!track || !thumb || !fill) return;
 
-    function apply(v){
-      if(!Number.isFinite(v)) v = min;
-      v = Math.min(Math.max(v, min), max);
+    var min  = Number(el.getAttribute('data-min'))  || 0;
+    var max  = Number(el.getAttribute('data-max'))  || 100;
+    var step = Number(el.getAttribute('data-step')) || 1;
+    var val  = Number(el.getAttribute('data-value'));
+    if(!Number.isFinite(val)) val = min;
+
+    function clamp(v){ return Math.min(Math.max(v, min), max); }
+    function toPct(v){
+      if(max === min) return 0;
+      return ((v - min) / (max - min)) * 100;
+    }
+    function snap(v){
+      var steps = Math.round((v - min) / step);
+      return clamp(min + steps * step);
+    }
+
+    function apply(v, emit){
+      v = snap(v);
+      var pct = toPct(v);
+      fill.style.width = pct + '%';
+      thumb.style.left = pct + '%';
+      el.setAttribute('aria-valuenow', String(v));
+      el.setAttribute('data-value', String(v));
+      val = v;
       if(labelEl) labelEl.textContent = v + ' h';
-      var pct = (v - min) / span;
-      slider.style.setProperty('--slider-fill', (pct * 100) + '%');
-      slider.setAttribute('aria-valuenow', String(v));
-      slider.setAttribute('aria-valuetext', v + ' godzin');
-      if(cb) cb();
-      updateLink();
+      if(emit && typeof onChange === 'function'){ onChange(); }
+      if(typeof updateLink === 'function') updateLink();
     }
 
-    slider.addEventListener('input', function(e){ apply(+e.target.value || min); });
-    slider.addEventListener('change', function(e){ apply(+e.target.value || min); });
-
-    function focusSliderWithoutScroll(){
-      try {
-        if (document.activeElement !== slider && typeof slider.focus === 'function') {
-          if (slider.focus.length === 1) slider.focus({ preventScroll: true });
-          else slider.focus();
-        }
-      } catch(_) {}
+    function posToValue(clientX){
+      var rect = track.getBoundingClientRect();
+      var x = clientX - rect.left;
+      var ratio = x / rect.width;
+      var raw = min + ratio * (max - min);
+      return clamp(raw);
     }
 
-    // pointerdown – fokus bez przewijania, bez preventDefault (żeby nie zabić drag)
-    slider.addEventListener('pointerdown', function(){
-      focusSliderWithoutScroll();
-    });
+    // Pointer events
+    var dragging = false;
 
-    slider.addEventListener('touchstart', function(){
-      focusSliderWithoutScroll();
-    }, { passive: true });
-
-    // Zablokuj scroll strony nad suwakiem (kółko myszy)
-    slider.addEventListener('wheel', function(e){
-      // Jeśli kursor jest nad suwakiem — nie przewijaj dokumentu
+    function onPointerDown(e){
+      // całkowicie przejmujemy gest -> bez scrolla strony
+      el.setPointerCapture?.(e.pointerId);
+      dragging = true;
+      apply(posToValue(e.clientX), true);
       e.preventDefault();
-      // (opcjonalnie) delikatna zmiana wartości kółkiem
-      var step = Number(slider.step || 1) || 1;
-      var dir  = (e.deltaY || e.deltaX || 0) > 0 ? 1 : -1;
-      var next = Number(slider.value) + (dir * step);
-      apply(next);
-      slider.value = String(next);
-    }, { passive: false });
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      apply(posToValue(e.clientX), true);
+      e.preventDefault();
+    }
+    function onPointerUp(e){
+      if(!dragging) return;
+      dragging = false;
+      e.preventDefault();
+    }
 
-    // Zablokuj scroll dokumentu dla klawiszy sterujących
-    slider.addEventListener('keydown', function(e){
+    track.addEventListener('pointerdown', onPointerDown, { passive:false });
+    thumb.addEventListener('pointerdown', onPointerDown, { passive:false });
+    window.addEventListener('pointermove', onPointerMove, { passive:false });
+    window.addEventListener('pointerup', onPointerUp, { passive:false });
+
+    // Klawiatura
+    el.addEventListener('keydown', function(e){
       var k = e.key;
-      if(k === ' ' || k === 'Spacebar' || k === 'ArrowUp' || k === 'ArrowDown' ||
-         k === 'ArrowLeft' || k === 'ArrowRight' || k === 'PageUp' || k === 'PageDown' ||
-         k === 'Home' || k === 'End'){
-        e.preventDefault(); // nie przewijaj strony
-        // pozwól przeglądarce/mnie zmienić wartość — obsłużmy pojedyncze klawisze:
-        var step = Number(slider.step || 1) || 1;
-        var cur  = Number(slider.value) || min;
-        var next = cur;
-        if(k === 'ArrowRight' || k === 'ArrowUp' || k === 'PageUp') next = cur + step;
-        else if(k === 'ArrowLeft' || k === 'ArrowDown' || k === 'PageDown') next = cur - step;
-        else if(k === 'Home') next = min;
-        else if(k === 'End') next = max;
-        else if(k === ' ' || k === 'Spacebar') next = cur + step;
-
-        apply(next);
-        slider.value = String(next);
-        slider.dispatchEvent(new Event('input', { bubbles: true }));
-        slider.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      var next = Number(el.getAttribute('data-value')) || val;
+      if(k==='ArrowRight' || k==='ArrowUp'){ next += step; }
+      else if(k==='ArrowLeft' || k==='ArrowDown'){ next -= step; }
+      else if(k==='PageUp'){ next += step*2; }
+      else if(k==='PageDown'){ next -= step*2; }
+      else if(k==='Home'){ next = min; }
+      else if(k==='End'){ next = max; }
+      else { return; }
+      e.preventDefault();
+      apply(next, true);
     });
 
-    apply(+slider.value || min);
+    // Zablokuj scroll kółkiem na komponencie
+    el.addEventListener('wheel', function(e){ e.preventDefault(); }, { passive:false });
+
+    // API dla zewnętrznych wywołań
+    el.__niceSliderSet = function(v, emit){ apply(v, !!emit); };
+    el.__niceSliderGet = function(){
+      var current = Number(el.getAttribute('data-value'));
+      if(Number.isFinite(current)) return current;
+      return min;
+    };
+
+    // Inicjalizacja
+    apply(val, false);
   }
-  hookSlider('sp-txt-rise','sp-slider-rise', updateSunWeather);
-  hookSlider('sp-txt-set','sp-slider-set', updateSunWeather);
+
+  function getNiceSliderValue(id){
+    var el = document.getElementById(id);
+    if(!el) return 0;
+    if(typeof el.__niceSliderGet === 'function'){
+      return el.__niceSliderGet();
+    }
+    var min = Number(el.getAttribute('data-min'));
+    var max = Number(el.getAttribute('data-max'));
+    var val = Number(el.getAttribute('data-value'));
+    if(!Number.isFinite(min)) min = 0;
+    if(!Number.isFinite(max)) max = min;
+    if(!Number.isFinite(val)) val = min;
+    if(val < min) val = min;
+    if(val > max) val = max;
+    return val;
+  }
+
+  function setNiceSliderValue(id, value, emit){
+    var el = document.getElementById(id);
+    if(!el) return;
+    var next = Number(value);
+    if(!Number.isFinite(next)){
+      var minAttr = Number(el.getAttribute('data-min'));
+      next = Number.isFinite(minAttr) ? minAttr : 0;
+    }
+    if(typeof el.__niceSliderSet === 'function'){
+      el.__niceSliderSet(next, !!emit);
+      return;
+    }
+    el.setAttribute('data-value', String(next));
+  }
+
+  // Zainicjuj nowe suwaki (Świt/Zachód)
+  initNiceSlider('sp-txt-rise', 'sp-slider-rise', updateSunWeather);
+  initNiceSlider('sp-txt-set',  'sp-slider-set',  updateSunWeather);
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
