@@ -10,8 +10,16 @@ License: GPLv2 or later
 Text Domain: sunplanner
 */
 add_action('init', function () {
-add_rewrite_tag('%sunplan%', '([A-Za-z0-9_-]+)');
-add_rewrite_rule('^sp/([A-Za-z0-9_-]+)/?$', 'index.php?sunplan=$matches[1]', 'top');
+    add_rewrite_tag('%sunplan%', '([A-Za-z0-9_-]+)');
+    add_rewrite_rule('^sp/([A-Za-z0-9_-]+)/?$', 'index.php?sunplan=$matches[1]', 'top');
+});
+
+add_action('after_setup_theme', function () {
+    add_image_size('insp-xxl', 2200, 0, false);
+    add_image_size('insp-xl', 1600, 0, false);
+    add_image_size('insp-lg', 1200, 0, false);
+    add_image_size('insp-md', 900, 0, false);
+    add_image_size('insp-sm', 600, 0, false);
 });
 register_activation_hook(__FILE__, function () { flush_rewrite_rules(); });
 register_deactivation_hook(__FILE__, function () { flush_rewrite_rules(); });
