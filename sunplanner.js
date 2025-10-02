@@ -746,21 +746,32 @@
     var d = String(dateISO || '').slice(0,10);
     if(!(typeof lat === 'number' && isFinite(lat)) || !(typeof lon === 'number' && isFinite(lon)) || !d){ return []; }
 
-    var hourly = [
-      'temperature_2m',
-      'precipitation',
-      'sunshine_duration'
-    ].join(',');
-
-    var url =
+    var baseUrl =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
-      `&hourly=${hourly}`+
       `&start_date=${d}&end_date=${d}`+
       `&timezone=${tzParam}`;
 
-    var r = await fetch(url);
-    if(!r.ok) throw new Error('Open-Meteo hourly HTTP '+r.status);
-    var j = await r.json();
+    function buildUrl(fields){
+      return baseUrl + `&hourly=${fields.join(',')}`;
+    }
+
+    async function tryHourly(urlBuilderList){
+      for(var i=0;i<urlBuilderList.length;i++){
+        var url = urlBuilderList[i]();
+        var r = await fetch(url);
+        if(r.ok){ return await r.json(); }
+        if(r.status !== 400){ throw new Error('Open-Meteo hourly HTTP '+r.status); }
+      }
+      return null;
+    }
+
+    var builders = [
+      function(){ return buildUrl(['temperature_2m','precipitation','sunshine_duration']); },
+      function(){ return buildUrl(['temperature_2m','precipitation']); },
+      function(){ return buildUrl(['temperature_2m','precipitation']); }
+    ];
+
+    var j = await tryHourly(builders);
     var T = (j && j.hourly) ? j.hourly : null;
     if(!T || !Array.isArray(T.time)){ return []; }
 
@@ -774,6 +785,7 @@
         dateISO: d,
         date: date,
         hh: hh,
+        iso: iso,
         temp: num(T.temperature_2m?.[i]),
         precip: num(T.precipitation?.[i]),      // mm/h
         sunshineSec: num(T.sunshine_duration?.[i]) // sekundy słońca w tej godzinie
@@ -3411,10 +3423,62 @@
     entry.promise=new Promise(function(resolve,reject){
       clearTimeout(entry.timer);
       entry.timer=setTimeout(function(){
+        var tz = TZ || 'Europe/Warsaw';
+        var tzEnc = encodeURIComponent(tz);
         var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
-        fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&hourly=temperature_2m,cloudcover,wind_speed_10m,relative_humidity_2m,visibility,precipitation,sunshine_duration&timezone='+encodeURIComponent(TZ)+'&start_date='+startRange+'&end_date='+endRange)
-          .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
-          .then(function(data){ entry.data=data; entry.time=Date.now(); delete entry.promise; resolve(data); })
+        var dailyUrl='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&timezone='+tzEnc+'&start_date='+startRange+'&end_date='+endRange;
+        var dailyPromise = fetch(dailyUrl).then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); });
+        var hourlyPromise = fetchOpenMeteoHourly(lat, lng, dateStr, tz).catch(function(err){
+          try{ console.warn('SunPlanner hourly fallback', err); }catch(_){ }
+          return [];
+        });
+
+        function buildHourlyBlock(list){
+          if(!list || !list.length){ return null; }
+          var block={
+            time: [],
+            temperature_2m: [],
+            precipitation: [],
+            sunshine_duration: [],
+            cloudcover: [],
+            wind_speed_10m: [],
+            relative_humidity_2m: [],
+            visibility: []
+          };
+          list.forEach(function(item){
+            if(!item) return;
+            var iso = (typeof item.iso === 'string' && item.iso) ? item.iso : null;
+            if(!iso){
+              var hh = (typeof item.hh === 'string' && item.hh) ? item.hh : '00';
+              var base = item.dateISO || dateStr || '';
+              if(base){ iso = base.slice(0,10)+'T'+hh+':00'; }
+            }
+            if(!iso) return;
+            block.time.push(iso);
+            block.temperature_2m.push((typeof item.temp === 'number' && Number.isFinite(item.temp)) ? item.temp : null);
+            block.precipitation.push((typeof item.precip === 'number' && Number.isFinite(item.precip)) ? item.precip : null);
+            block.sunshine_duration.push((typeof item.sunshineSec === 'number' && Number.isFinite(item.sunshineSec)) ? item.sunshineSec : null);
+            block.cloudcover.push(null);
+            block.wind_speed_10m.push(null);
+            block.relative_humidity_2m.push(null);
+            block.visibility.push(null);
+          });
+          return block.time.length ? block : null;
+        }
+
+        Promise.all([dailyPromise, hourlyPromise])
+          .then(function(results){
+            var dailyData = results[0];
+            var hoursList = results[1];
+            var combined = {
+              daily: dailyData && dailyData.daily ? dailyData.daily : null,
+              hourly: buildHourlyBlock(hoursList)
+            };
+            entry.data = combined;
+            entry.time = Date.now();
+            delete entry.promise;
+            resolve(combined);
+          })
           .catch(function(err){ delete forecastCache[key]; reject(err); });
       },250);
     });
