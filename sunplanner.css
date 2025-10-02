@@ -137,8 +137,21 @@ html,body{overflow-x:hidden}
 .toolbar{justify-content:space-between;margin:.4rem 0 1rem}
 .toolbar .switch{font-size:.9rem;color:#374151}
 .toolbar .btn{min-width:150px}
+.hourly-chart-wrapper{display:flex;gap:1rem;align-items:stretch;flex-wrap:wrap}
+.hourly-chart-area{flex:1 1 240px;min-width:0}
 #sp-hourly{width:100%;height:170px;min-height:170px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
 #sp-hourly,#sp-sunshine{image-rendering:-webkit-optimize-contrast}
+.hourly-temp-scale{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:.75rem .5rem;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;min-width:96px;text-align:center;gap:.5rem}
+.hourly-temp-scale__label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;line-height:1.2}
+.hourly-temp-scale__value{font-size:1.1rem;font-weight:700;color:#111827;display:inline-block}
+.hourly-temp-scale.is-empty .hourly-temp-scale__value{color:#9ca3af}
+.hourly-values{margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.55rem;align-items:flex-end}
+.hourly-values.is-empty{justify-content:center}
+.hourly-values__empty{margin:0;font-size:.85rem;color:#6b7280;text-align:center}
+.hourly-value{flex:1 0 52px;display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.15rem 0}
+.hourly-value__hour{font-size:.75rem;font-weight:500;color:#6b7280;text-transform:none}
+.hourly-value__value{font-size:.85rem;font-weight:600;color:#1f2937;display:inline-block;white-space:nowrap}
+.sunshine-values .hourly-value__value{color:#b45309}
 .chart-legend{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;font-size:.85rem;font-weight:500;color:#1f2937}
 .chart-legend span{display:inline-flex;align-items:center;gap:.4rem}
 .weather-legend{margin-top:.6rem}
@@ -150,7 +163,7 @@ html,body{overflow-x:hidden}
 .weather-legend i.bar.heavy{background:#1e3a8a}
 .sunshine-block{margin-top:1.2rem}
 .sunshine-block .chart-header{gap:.25rem}
-.sunshine-block .chart-header h3{font-size:1rem;color:#b45309}
+.sunshine-block .chart-header h3{font-size:clamp(1.05rem,2.4vw,1.25rem);color:#000}
 .sunshine-block .chart-header .chart-description{font-size:.85rem}
 .sunshine-canvas{height:160px;min-height:160px;background:#fffbeb;border:1px solid #fcd34d}
 .sunshine-legend{margin-top:.55rem}
@@ -198,6 +211,13 @@ html,body{overflow-x:hidden}
 }
 .plan-day>.forecast-wrap{grid-column:1/-1}
 .plan-day>.daily16-block,.plan-day>.plan-day-hourly{grid-column:1/-1}
+
+@media(max-width:640px){
+  .hourly-values{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.35rem}
+  .hourly-value{flex:0 0 48px}
+  .hourly-value__value{transform:rotate(-90deg);transform-origin:center}
+  .hourly-value__hour{font-size:.7rem}
+}
 
 .daily-forecast-card{overflow:hidden}
 .daily-forecast-chart{width:100%;height:clamp(220px,40vw,360px);overflow:hidden}

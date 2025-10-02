@@ -370,7 +370,17 @@
                 '<div class="chart-header">'+
                   '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
                 '</div>'+
-                '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+                '<div class="hourly-chart-wrapper">'+
+                  '<div class="hourly-chart-area">'+
+                    '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+                    '<div id="sp-hourly-precip-values" class="hourly-values" role="list" aria-label="Godzinowe opady"></div>'+
+                  '</div>'+
+                  '<div id="sp-hourly-temp-range" class="hourly-temp-scale" aria-live="polite">'+
+                    '<span class="hourly-temp-scale__value hourly-temp-scale__value--max" data-role="temp-max">—</span>'+
+                    '<span class="hourly-temp-scale__label">Zakres temperatur</span>'+
+                    '<span class="hourly-temp-scale__value hourly-temp-scale__value--min" data-role="temp-min">—</span>'+
+                  '</div>'+
+                '</div>'+
                 '<div class="weather-legend chart-legend">'+
 
                   '<span><i class="line"></i>Temperatura (°C)</span>'+
@@ -384,6 +394,7 @@
                     '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
                   '</div>'+
                   '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
+                  '<div id="sp-sunshine-values" class="hourly-values sunshine-values" role="list" aria-label="Godzinowe nasłonecznienie"></div>'+
                   '<div class="weather-legend sunshine-legend chart-legend">'+
                     '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
                     '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
@@ -803,6 +814,9 @@
     var canvas = document.getElementById('sp-hourly');
     if(!canvas) return;
 
+    updateHourlyPrecipValues(hours);
+    updateHourlyTempScale(hours);
+
     // Rozmiar widoczny
     var cssW = canvas.clientWidth || 600;
     var cssH = canvas.clientHeight || 170;
@@ -889,10 +903,78 @@
     }
   }
 
+  function updateHourlyPrecipValues(hours){
+    var container = document.getElementById('sp-hourly-precip-values');
+    if(!container) return;
+
+    if(!Array.isArray(hours) || !hours.length){
+      container.innerHTML = '<p class="hourly-values__empty">Brak danych</p>';
+      container.classList.add('is-empty');
+      return;
+    }
+
+    container.classList.remove('is-empty');
+    container.scrollLeft = 0;
+    var html = hours.map(function(hour){
+      if(!hour) return '';
+      var hh = (typeof hour.hh === 'string' && hour.hh) ? hour.hh : '--';
+      var precip = (typeof hour.precip === 'number' && Number.isFinite(hour.precip)) ? hour.precip : null;
+      var label = precip==null ? '—' : formatPrecipValue(precip);
+      return '<div class="hourly-value" role="listitem">'
+        + '<span class="hourly-value__hour">'+escapeHtml(hh)+'</span>'
+        + '<span class="hourly-value__value">'+label+'</span>'
+        + '</div>';
+    }).join('');
+    container.innerHTML = html;
+  }
+
+  function formatPrecipValue(value){
+    if(!Number.isFinite(value)){ return '—'; }
+    if(value === 0){ return '0 mm'; }
+    if(Math.abs(value) < 1){ return value.toFixed(2)+' mm'; }
+    return value.toFixed(1)+' mm';
+  }
+
+  function updateHourlyTempScale(hours){
+    var scale = document.getElementById('sp-hourly-temp-range');
+    if(!scale) return;
+    var minEl = scale.querySelector('[data-role="temp-min"]');
+    var maxEl = scale.querySelector('[data-role="temp-max"]');
+
+    if(!Array.isArray(hours) || !hours.length){
+      if(minEl) minEl.textContent = '—';
+      if(maxEl) maxEl.textContent = '—';
+      scale.classList.add('is-empty');
+      return;
+    }
+
+    var temps = hours.map(function(h){ return (h && typeof h.temp === 'number' && Number.isFinite(h.temp)) ? h.temp : null; })
+      .filter(function(v){ return v!=null; });
+    if(!temps.length){
+      if(minEl) minEl.textContent = '—';
+      if(maxEl) maxEl.textContent = '—';
+      scale.classList.add('is-empty');
+      return;
+    }
+
+    var minT = Math.min.apply(null, temps);
+    var maxT = Math.max.apply(null, temps);
+    if(minEl) minEl.textContent = formatTempValue(minT);
+    if(maxEl) maxEl.textContent = formatTempValue(maxT);
+    scale.classList.remove('is-empty');
+  }
+
+  function formatTempValue(value){
+    if(!Number.isFinite(value)){ return '—'; }
+    return Math.round(value)+'°C';
+  }
+
   // === HOURLY: render sunshine ===
   function renderSunshine(hours){
     var canvas = document.getElementById('sp-sunshine');
     if(!canvas) return;
+
+    updateSunshineValues(hours);
 
     var cssW = canvas.clientWidth || 600;
     var cssH = canvas.clientHeight || 160;
@@ -948,6 +1030,43 @@
       ctx.textAlign = 'center';
       ctx.fillText(label, x, cssH - 6);
     }
+  }
+
+  function updateSunshineValues(hours){
+    var container = document.getElementById('sp-sunshine-values');
+    if(!container) return;
+
+    if(!Array.isArray(hours) || !hours.length){
+      container.innerHTML = '<p class="hourly-values__empty">Brak danych</p>';
+      container.classList.add('is-empty');
+      return;
+    }
+
+    container.classList.remove('is-empty');
+    container.scrollLeft = 0;
+    var html = hours.map(function(hour){
+      if(!hour) return '';
+      var hh = (typeof hour.hh === 'string' && hour.hh) ? hour.hh : '--';
+      var sunshine = (typeof hour.sunshineSec === 'number' && Number.isFinite(hour.sunshineSec)) ? hour.sunshineSec : null;
+      var label = sunshine==null ? '—' : formatSunshineValue(sunshine);
+      return '<div class="hourly-value" role="listitem">'
+        + '<span class="hourly-value__hour">'+escapeHtml(hh)+'</span>'
+        + '<span class="hourly-value__value">'+label+'</span>'
+        + '</div>';
+    }).join('');
+    container.innerHTML = html;
+  }
+
+  function formatSunshineValue(value){
+    if(!Number.isFinite(value) || value <= 0){ return '0 min'; }
+    if(value >= 3600){
+      var hours = value / 3600;
+      if(hours >= 2){ return Math.round(hours)+' h'; }
+      var rounded = (Math.round(hours * 10) / 10).toFixed(1);
+      return (rounded.endsWith('.0') ? rounded.slice(0,-2) : rounded)+' h';
+    }
+    var minutes = Math.round(value / 60);
+    return minutes+' min';
   }
 
   function findDaily16ByDate(dateISO){
