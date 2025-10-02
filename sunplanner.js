@@ -420,14 +420,6 @@
                 '</div>'+
                 '<input id="sp-slider-rise" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
               '</div>'+
-              '<div class="kpi">'+
-                '<div class="rowd"><span>Temp.</span><strong id="sp-rise-t">—</strong></div>'+
-                '<div class="rowd"><span>Wiatr</span><strong id="sp-rise-w">—</strong></div>'+
-                '<div class="rowd"><span>Chmury</span><strong id="sp-rise-c">—</strong></div>'+
-                '<div class="rowd"><span>Wilg.</span><strong id="sp-rise-h">—</strong></div>'+
-                '<div class="rowd"><span>Widocz.</span><strong id="sp-rise-v">—</strong></div>'+
-                '<div class="rowd"><span>Opady</span><strong id="sp-rise-p">—</strong></div>'+
-              '</div>'+
               '<div class="glow-info morning">'+
                 '<h4>Poranek</h4>'+
                 '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
@@ -447,14 +439,6 @@
                   '<div class="text" id="sp-txt-set">6 h</div>'+
                 '</div>'+
                 '<input id="sp-slider-set" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
-              '</div>'+
-              '<div class="kpi">'+
-                '<div class="rowd"><span>Temp.</span><strong id="sp-set-t">—</strong></div>'+
-                '<div class="rowd"><span>Wiatr</span><strong id="sp-set-w">—</strong></div>'+
-                '<div class="rowd"><span>Chmury</span><strong id="sp-set-c">—</strong></div>'+
-                '<div class="rowd"><span>Wilg.</span><strong id="sp-set-h">—</strong></div>'+
-                '<div class="rowd"><span>Widocz.</span><strong id="sp-set-v">—</strong></div>'+
-                '<div class="rowd"><span>Opady</span><strong id="sp-set-p">—</strong></div>'+
               '</div>'+
               '<div class="glow-info align-right evening">'+
                 '<h4>Wieczór</h4>'+
@@ -1226,13 +1210,7 @@
   }
 
   function updateRiseSetWeatherPanels(){
-    if(!Array.isArray(hourlyState.hours) || !hourlyState.hours.length){
-      return;
-    }
-    var sunrise = (lastSunData && isValidDate(lastSunData.rise)) ? lastSunData.rise : null;
-    var sunset = (lastSunData && isValidDate(lastSunData.set)) ? lastSunData.set : null;
-    if(isValidDate(sunrise)){ setWeatherOnly('rise', hourlyState.hours, sunrise); }
-    if(isValidDate(sunset)){ setWeatherOnly('set', hourlyState.hours, sunset); }
+    // Dane pogodowe dla sekcji świtu i zachodu zostały usunięte.
   }
 
   // === HOURLY: main loader ===
@@ -2541,52 +2519,8 @@
     setText('sp-'+pref+'-wake', fmt(wake));
     setText('sp-'+pref+'-bed', fmt(bed));
   }
-  function setWeatherOnly(pref, hourly, when){
-    if(Array.isArray(hourly)){
-      if(!(when instanceof Date) || isNaN(when)) return;
-      var best=null, bestDiff=Infinity;
-      for(var i=0;i<hourly.length;i++){
-        var entry=hourly[i];
-        if(!entry) continue;
-        var d=null;
-        if(entry.date instanceof Date && !isNaN(entry.date)){ d=entry.date; }
-        else if(typeof entry.iso==='string' && entry.iso){
-          d=new Date(entry.iso);
-        }
-        if(!(d instanceof Date) || isNaN(d)) continue;
-        var diff=Math.abs(d.getTime()-when.getTime());
-        if(diff<bestDiff){ bestDiff=diff; best=entry; }
-      }
-      if(!best) return;
-      var temp=(typeof best.temp==='number' && Number.isFinite(best.temp)) ? Math.round(best.temp)+'°C' : '—';
-      var cloud=(typeof best.cloud==='number' && Number.isFinite(best.cloud)) ? Math.round(best.cloud)+'%' : '—';
-      var wind=(typeof best.wind==='number' && Number.isFinite(best.wind)) ? Math.round(best.wind)+' km/h' : '—';
-      var hum=(typeof best.humidity==='number' && Number.isFinite(best.humidity)) ? Math.round(best.humidity)+'%' : '—';
-      var vis=(typeof best.visibility==='number' && Number.isFinite(best.visibility)) ? Math.round(best.visibility/1000)+' km' : '—';
-      var prec=(typeof best.precip==='number' && Number.isFinite(best.precip)) ? Number(best.precip).toFixed(1)+' mm' : '—';
-      setText('sp-'+pref+'-t', temp);
-      setText('sp-'+pref+'-c', cloud);
-      setText('sp-'+pref+'-w', wind);
-      setText('sp-'+pref+'-h', hum);
-      setText('sp-'+pref+'-v', vis);
-      setText('sp-'+pref+'-p', prec);
-      return;
-    }
-    if(!hourly || !hourly.time || !hourly.time.length || !(when instanceof Date)) return;
-    var idx=closestHourIndex(hourly, when);
-    function pick(arr){ return (arr && typeof arr[idx] !== 'undefined') ? arr[idx] : null; }
-    var t=pick(hourly.temperature_2m), c=pick(hourly.cloudcover), w=pick(hourly.wind_speed_10m), h=pick(hourly.relative_humidity_2m), v=pick(hourly.visibility), p=pick(hourly.precipitation);
-    setText('sp-'+pref+'-t', t!=null?Math.round(t)+'°C':'—');
-    setText('sp-'+pref+'-c', c!=null?Math.round(c)+'%':'—');
-    setText('sp-'+pref+'-w', w!=null?Math.round(w)+' km/h':'—');
-    setText('sp-'+pref+'-h', h!=null?Math.round(h)+'%':'—');
-    setText('sp-'+pref+'-v', v!=null?Math.round(v/1000)+' km':'—');
-    setText('sp-'+pref+'-p', p!=null?Number(p).toFixed(1)+' mm':'—');
-  }
   function clearWeatherPanels(){
-    ['rise','set'].forEach(function(pref){
-      ['t','c','w','h','v','p'].forEach(function(k){ setText('sp-'+pref+'-'+k,'—'); });
-    });
+    // Sekcje pogody zostały usunięte, więc nie ma czego czyścić.
   }
   function prepareCanvas(canvas){
     if(!canvas) return null;
