@@ -2600,8 +2600,20 @@
     ctx.clearRect(0,0,width,height);
     return {ctx:ctx,width:width,height:height};
   }
+  function isMobileViewport(){
+    if(typeof window === 'undefined'){ return false; }
+    if(typeof window.matchMedia === 'function'){
+      try {
+        if(window.matchMedia('(max-width: 720px)').matches){ return true; }
+      } catch(err){}
+    }
+    if(typeof window.innerWidth === 'number' && window.innerWidth<=720){ return true; }
+    return false;
+  }
   function shouldUseVerticalValueLabels(width){
-    return width<=520;
+    if(typeof width !== 'number' || !isFinite(width)){ return isMobileViewport(); }
+    if(width<=560){ return true; }
+    return isMobileViewport();
   }
   function drawVerticalText(ctx, text, x, y, options){
     options = options || {};
@@ -2654,6 +2666,7 @@
     var range=(maxTemp-minTemp)||1;
     var axisTop=bottom-barArea;
     var useVerticalPrecipLabels = shouldUseVerticalValueLabels(width);
+    var precipLabelFont = useVerticalPrecipLabels ? '11px system-ui, sans-serif' : '10px system-ui, sans-serif';
     function formatPrec(val){
       var num=Math.max(0,Number(val||0));
       var decimals=num>=1?1:2;
@@ -2722,7 +2735,7 @@
         if(p.prec>=0.1){
           var labelText=formatPrec(p.prec)+' mm';
           ctx.fillStyle='#1e3a8a';
-          ctx.font='10px system-ui, sans-serif';
+          ctx.font=precipLabelFont;
           if(useVerticalPrecipLabels){
             var textLength=ctx.measureText(labelText).width;
             var centerY=bottom-barHeight-8;
@@ -2730,7 +2743,7 @@
             var maxCenter=bottom-10;
             if(centerY<minCenter) centerY=minCenter;
             if(centerY>maxCenter) centerY=maxCenter;
-            drawVerticalText(ctx,labelText,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#1e3a8a'});
+            drawVerticalText(ctx,labelText,x,centerY,{font:precipLabelFont,fillStyle:'#1e3a8a'});
           } else {
             var maxLabelX=Math.max(leftPad,rightEdge-36);
             var textX=Math.min(maxLabelX,Math.max(leftPad,x-16));
@@ -2769,6 +2782,7 @@
     var bottom=height-28;
     var chartHeight=Math.max(40,height-56);
     var useVerticalSunLabels = shouldUseVerticalValueLabels(width);
+    var sunLabelFont = useVerticalSunLabels ? '11px system-ui, sans-serif' : '10px system-ui, sans-serif';
     var top=bottom-chartHeight;
     if(loading){ ctx.fillText('Ładowanie danych o słońcu...',leftPad,height/2); return; }
     if(message){ ctx.fillText(message,leftPad,height/2); return; }
@@ -2866,7 +2880,7 @@
       if(minutes>=5){
         var label=Math.round(minutes)+' min';
         ctx.fillStyle='#92400e';
-        ctx.font='10px system-ui, sans-serif';
+        ctx.font=sunLabelFont;
         if(useVerticalSunLabels){
           var textLength=ctx.measureText(label).width;
           var centerY=bottom-barHeight-8;
@@ -2874,7 +2888,7 @@
           var maxCenter=bottom-10;
           if(centerY<minCenter) centerY=minCenter;
           if(centerY>maxCenter) centerY=maxCenter;
-          drawVerticalText(ctx,label,x,centerY,{font:'10px system-ui, sans-serif',fillStyle:'#92400e'});
+          drawVerticalText(ctx,label,x,centerY,{font:sunLabelFont,fillStyle:'#92400e'});
         } else {
           var textWidth=ctx.measureText(label).width;
           var textX=Math.max(leftPad, Math.min(rightEdge-textWidth, x-textWidth/2));
