@@ -211,8 +211,8 @@ html,body{overflow-x:hidden}
 .plan-day-gallery__nav{display:inline-flex;align-items:center;gap:clamp(8px,2vw,16px)}
 .gallery-nav{display:inline-flex;align-items:center;justify-content:center;width:clamp(36px,6vw,44px);height:clamp(36px,6vw,44px);border-radius:50%;border:1px solid #d1d5db;background:#fff;color:#0f172a;font-size:clamp(1rem,2.2vw,1.2rem);line-height:1;cursor:pointer;transition:background .2s ease,border-color .2s ease}
 .gallery-nav:hover,.gallery-nav:focus-visible{background:#0f172a;color:#fff;border-color:#0f172a;outline:2px solid rgba(15,23,42,.6);outline-offset:2px}
-.gallery-inspirations{max-width:100%}
-td .gallery-inspirations,th .gallery-inspirations{max-width:100%;margin:0;padding:0}
+.gallery-inspirations{width:100%;max-width:100%}
+td .gallery-inspirations,th .gallery-inspirations{width:100%!important;max-width:100%!important;margin:0;padding:0}
 .gallery-inspirations-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:clamp(8px,1.2vw,16px);width:100%;max-width:100%;min-width:0}
 .gallery-inspirations-grid:focus-visible{outline:2px solid rgba(15,23,42,.35);outline-offset:4px}
 .gallery-item{min-width:0;margin:0}
@@ -231,6 +231,17 @@ td .gallery-inspirations figure,td .gallery-inspirations p{margin:0}
 }
 @media(min-width:1200px){
   .gallery-inspirations-grid{grid-template-columns:repeat(4,1fr)}
+}
+@media(min-width:1024px){
+  .gallery-inspirations{display:block}
+  .gallery-inspirations-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:clamp(12px,1.2vw,20px);width:100%;max-width:100%}
+  .gallery-track{display:grid!important;grid-template-columns:unset;grid-auto-flow:column;grid-auto-columns:minmax(340px,1fr);gap:clamp(12px,1.2vw,20px);width:100%;max-width:100%;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .gallery-track .gallery-item{scroll-snap-align:start}
+  .gallery-item{border-radius:12px;overflow:hidden}
+  .gallery-link{border-radius:12px}
+  .gallery-item img{aspect-ratio:16/9}
+  .gallery-controls{display:flex;gap:12px;margin-bottom:12px}
+  .gallery-controls>*{flex:0 0 auto}
 }
 .contact-card{margin-top:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:clamp(20px,3vw,32px)}
 .contact-card h3{margin:0}
