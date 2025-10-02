@@ -3501,7 +3501,7 @@
     if(!label){ gal.innerHTML=''; return; }
     gal.innerHTML='<div class="muted">Ładuję zdjęcia...</div>';
 
-    var sizeAttr='(min-width:1200px) 25vw, (min-width:768px) 33vw, (max-width:480px) 48vw, 100vw';
+    var sizeAttr='(min-width:1200px) 18vw, (min-width:1024px) 20vw, (min-width:768px) 33vw, (max-width:480px) 48vw, 100vw';
 
     function normalizeAlt(text){
       if(typeof text==='string' && text.trim()){ return text.trim(); }
@@ -3634,7 +3634,7 @@
     }
 
     function fetchUnsplashItems(){
-      return fetch('https://api.unsplash.com/search/photos?per_page=6&query='+encodeURIComponent(label+' wedding shoot')+'&client_id='+UNSPLASH_KEY)
+      return fetch('https://api.unsplash.com/search/photos?per_page=12&query='+encodeURIComponent(label+' wedding shoot')+'&orientation=landscape&client_id='+UNSPLASH_KEY)
         .then(function(r){ return r.json(); })
         .then(function(d){
           var arr=(d && d.results)? d.results : [];
