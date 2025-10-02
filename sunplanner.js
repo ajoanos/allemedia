@@ -862,9 +862,11 @@
     // Słupki opadów (na tle)
     var barW = Math.max(3, stepX*0.45);
     ctx.save();
+    var barHeights = [];
     hours.forEach(function(h, i){
       var x = xAt(i) - barW/2;
       var hgt = hForRain(Math.max(0, h.precip||0));
+      barHeights[i] = hgt;
       var y = padT + (plotH - hgt);
 
       // alpha wg progu
@@ -874,6 +876,34 @@
 
       ctx.fillStyle = 'rgba(30,64,175,'+a+')'; // nie ustawiamy stylów globalnie, barwy spójne z legendą
       ctx.fillRect(Math.round(x)+0.5, Math.round(y)+0.5, Math.round(barW), Math.round(hgt));
+    });
+    ctx.restore();
+
+    // Opisy wartości opadów na słupkach
+    ctx.save();
+    ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    hours.forEach(function(h, i){
+      if(h.precip==null || !Number.isFinite(h.precip)) return;
+      var label = formatPrecipValue(h.precip);
+      if(!label) return;
+      var barH = barHeights[i] || 0;
+      var x = xAt(i);
+      var yTop = padT + (plotH - barH);
+      var textY = yTop - 4;
+      var color = '#1e3a8a';
+      if(barH >= 26){
+        textY = yTop + Math.min(barH - 6, 18);
+        color = '#ffffff';
+      } else if(textY < 12){
+        textY = Math.max(12, yTop + Math.min(barH + 8, 18));
+      }
+      var maxY = padT + plotH - 4;
+      if(textY > maxY){ textY = maxY; }
+      if(textY < 10){ textY = 10; }
+      ctx.fillStyle = color;
+      ctx.fillText(label, x, textY);
     });
     ctx.restore();
 
@@ -908,11 +938,13 @@
     if(!container) return;
 
     if(!Array.isArray(hours) || !hours.length){
+      container.classList.remove('hourly-values--sr-only');
       container.innerHTML = '<p class="hourly-values__empty">Brak danych</p>';
       container.classList.add('is-empty');
       return;
     }
 
+    container.classList.add('hourly-values--sr-only');
     container.classList.remove('is-empty');
     container.scrollLeft = 0;
     var html = hours.map(function(hour){
@@ -1004,10 +1036,12 @@
     function hForSun(v){ return (v / maxS) * plotH; }
 
     var barW = Math.max(6, stepX*0.6);
+    var barHeights = [];
     hours.forEach(function(h, i){
       var s = Math.max(0, h.sunshineSec||0);
       var x = xAt(i) - barW/2;
       var hgt = hForSun(s);
+      barHeights[i] = hgt;
       var y = padT + (plotH - hgt);
 
       // odcień wg progu (spójny z legendą: sun-weak/medium/strong)
@@ -1019,6 +1053,34 @@
       ctx.fillStyle = fill;
       ctx.fillRect(Math.round(x)+0.5, Math.round(y)+0.5, Math.round(barW), Math.round(hgt));
     });
+
+    // Opisy czasu nasłonecznienia na słupkach
+    ctx.save();
+    ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    hours.forEach(function(h, i){
+      if(h.sunshineSec==null || !Number.isFinite(h.sunshineSec)) return;
+      var label = formatSunshineValue(h.sunshineSec);
+      if(!label) return;
+      var barH = barHeights[i] || 0;
+      var x = xAt(i);
+      var yTop = padT + (plotH - barH);
+      var textY = yTop - 4;
+      var color = '#92400e';
+      if(barH >= 26){
+        textY = yTop + Math.min(barH - 6, 18);
+        color = '#ffffff';
+      } else if(textY < 12){
+        textY = Math.max(12, yTop + Math.min(barH + 8, 18));
+      }
+      var maxY = padT + plotH - 4;
+      if(textY > maxY){ textY = maxY; }
+      if(textY < 10){ textY = 10; }
+      ctx.fillStyle = color;
+      ctx.fillText(label, x, textY);
+    });
+    ctx.restore();
 
     // Oś X (co 3 godziny)
     ctx.fillStyle = '#92400e';
@@ -1037,11 +1099,13 @@
     if(!container) return;
 
     if(!Array.isArray(hours) || !hours.length){
+      container.classList.remove('hourly-values--sr-only');
       container.innerHTML = '<p class="hourly-values__empty">Brak danych</p>';
       container.classList.add('is-empty');
       return;
     }
 
+    container.classList.add('hourly-values--sr-only');
     container.classList.remove('is-empty');
     container.scrollLeft = 0;
     var html = hours.map(function(hour){
