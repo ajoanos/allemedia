@@ -334,54 +334,56 @@
           '<strong>Wybierz lokalizację i datę</strong>'+
           '<span class="session-summary__lead">Dodaj cel podróży, aby ocenić warunki sesji w plenerze.</span>'+
         '</div>'+
-        '<div id="sp-daily16" class="card inner daily16-block">'+
-            '<div class="chart-header">'+
-              '<h3>Prognoza dzienna (do 16 dni)</h3>'+
-              '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
-            '</div>'+
-            '<div id="sp-daily16-scroll" class="daily16-chart-container">'+
-              '<canvas id="sp-daily16-canvas" class="daily16-canvas" aria-label="Prognoza dzienna do 16 dni"></canvas>'+
-            '</div>'+
-            '<div id="sp-daily16-slider-wrap" class="daily16-slider" style="display:none">'+
-              '<input id="sp-daily16-slider" class="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Przesuń wykres prognozy dziennej">'+
-            '</div>'+
-            '<div id="sp-daily16-strip" class="daily16-strip" aria-live="polite"></div>'+
-            '<div id="sp-daily16-empty" class="muted daily16-empty" role="status"></div>'+
-            '<div class="chart-legend daily16-legend">'+
-              '<span><i class="line max"></i>Maks. temp.</span>'+
-              '<span><i class="line min"></i>Min. temp.</span>'+
-              '<span><i class="bar sun"></i>Słońce (h)</span>'+
-              '<span><i class="bar rain"></i>Opady (mm)</span>'+
-            '</div>'+
-            '<p class="muted daily16-note">'+
-              'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
-            '</p>'+
-          '</div>'+
-
-          '<div class="card inner plan-day-hourly">'+
-            '<div class="chart-header">'+
-              '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
-            '</div>'+
-            '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
-            '<div class="weather-legend chart-legend">'+
-
-              '<span><i class="line"></i>Temperatura (°C)</span>'+
-              '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
-              '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
-              '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
-
-            '</div>'+
-            '<div class="sunshine-block">'+
-              '<div class="chart-header">'+
-                '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
+          '<div class="forecast-wrap">'+
+            '<div id="sp-daily16" class="card inner daily16-block daily-forecast-card">'+
+                '<div class="chart-header">'+
+                  '<h3>Prognoza dzienna (do 16 dni)</h3>'+
+                  '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
+                '</div>'+
+                '<div id="sp-daily16-scroll" class="daily16-chart-container daily-forecast-chart">'+
+                  '<canvas id="sp-daily16-canvas" class="daily16-canvas daily-forecast-canvas" aria-label="Prognoza dzienna do 16 dni"></canvas>'+
+                '</div>'+
+                '<div id="sp-daily16-slider-wrap" class="daily16-slider" style="display:none">'+
+                  '<input id="sp-daily16-slider" class="slider" type="range" min="0" max="0" value="0" step="1" aria-label="Przesuń wykres prognozy dziennej">'+
+                '</div>'+
+                '<div id="sp-daily16-strip" class="daily16-strip" aria-live="polite"></div>'+
+                '<div id="sp-daily16-empty" class="muted daily16-empty" role="status"></div>'+
+                '<div class="chart-legend daily16-legend">'+
+                  '<span><i class="line max"></i>Maks. temp.</span>'+
+                  '<span><i class="line min"></i>Min. temp.</span>'+
+                  '<span><i class="bar sun"></i>Słońce (h)</span>'+
+                  '<span><i class="bar rain"></i>Opady (mm)</span>'+
+                '</div>'+
+                '<p class="muted daily16-note">'+
+                  'Dni 11–16 oznaczone jako <span class="badge">Prognoza orientacyjna</span>.'+
+                '</p>'+
               '</div>'+
-              '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
-              '<div class="weather-legend sunshine-legend chart-legend">'+
-                '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
-                '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
-                '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+
+              '<div class="card inner plan-day-hourly">'+
+                '<div class="chart-header">'+
+                  '<h3>Prognoza godzinowa – temperatura i opady</h3>'+
+                '</div>'+
+                '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
+                '<div class="weather-legend chart-legend">'+
+
+                  '<span><i class="line"></i>Temperatura (°C)</span>'+
+                  '<span><i class="bar weak"></i>Opady 0–0,5 mm</span>'+
+                  '<span><i class="bar medium"></i>Opady 0,6–2 mm</span>'+
+                  '<span><i class="bar heavy"></i>Opady powyżej 2 mm</span>'+
+
+                '</div>'+
+                '<div class="sunshine-block">'+
+                  '<div class="chart-header">'+
+                    '<h3>Prognoza godzinowa – nasłonecznienie</h3>'+
+                  '</div>'+
+                  '<canvas id="sp-sunshine" class="smallcanvas sunshine-canvas" aria-label="Godziny nasłonecznienia"></canvas>'+
+                  '<div class="weather-legend sunshine-legend chart-legend">'+
+                    '<span><i class="bar sun-weak"></i>Przebłyski</span>'+
+                    '<span><i class="bar sun-medium"></i>Słońce przez część godziny</span>'+
+                    '<span><i class="bar sun-strong"></i>Pełne słońce</span>'+
+                  '</div>'+
+                '</div>'+
               '</div>'+
-            '</div>'+
           '</div>'+
 
           '<div class="golden-block">'+
@@ -446,7 +448,7 @@
 
         '</div>'+
 
-          '<div class="card inner plan-day-gallery">'+
+          '<div class="card inner plan-day-gallery gallery-inspirations">'+
             '<div class="plan-day-gallery__header">'+
               '<h3>Galeria inspiracji – zdjęcia</h3>'+
               '<div class="plan-day-gallery__nav">'+
@@ -454,7 +456,7 @@
                 '<button type="button" class="gallery-nav" data-gallery-next aria-controls="sp-gallery" aria-label="Następne zdjęcia">&#8250;</button>'+
               '</div>'+
             '</div>'+
-            '<div id="sp-gallery" class="gallery-track" tabindex="0" aria-live="polite"></div>'+
+            '<div id="sp-gallery" class="gallery-track gallery-inspirations-grid" tabindex="0" aria-live="polite"></div>'+
           '</div>'+
           '<div id="sp-location-insights" class="location-insights">'+
             '<h3>Zasady na miejscu</h3>'+
@@ -2363,9 +2365,11 @@
     if(containerWidth<10 && scroller && scroller.parentElement){
       containerWidth = scroller.parentElement.clientWidth || containerWidth;
     }
-    var baseWidth = Math.max(containerWidth, 420);
-    canvas.style.width = baseWidth + 'px';
-    canvas.style.height = '320px';
+    if(containerWidth <= 0 && canvas.parentElement){
+      containerWidth = canvas.parentElement.clientWidth || containerWidth;
+    }
+    canvas.style.width = '100%';
+    canvas.style.height = '';
     if(scroller){ scroller.scrollLeft = 0; }
     var prep = prepareCanvas(canvas);
     if(!prep) return;
@@ -2507,28 +2511,55 @@
     var tempRange=(tempMax-tempMin)||1;
     var highlightTop=Math.max(12, topPad-34);
     var highlightHeight=(bottom - highlightTop) + 46;
-    var step = chartWidth / visiblePoints.length;
+    var stepSpacing = visiblePoints.length>1 ? chartWidth/(visiblePoints.length-1) : chartWidth;
+    var slotSpacing = visiblePoints.length>0 ? chartWidth/Math.max(visiblePoints.length,1) : chartWidth;
+    var avgSpacing = visiblePoints.length>0 ? chartWidth/visiblePoints.length : chartWidth;
+    var chartRight = leftPad + chartWidth;
 
     visiblePoints.forEach(function(p, idx){
-      var x = leftPad + step*idx + step/2;
-      p._x = x;
-      var colWidth = Math.max(24, step-10);
+      var lineX = visiblePoints.length>1 ? (leftPad + stepSpacing*idx) : (leftPad + chartWidth/2);
+      var baseWidth = visiblePoints.length>1 ? stepSpacing : slotSpacing;
+      var desiredWidth = Math.max(24, Math.min(baseWidth*0.85, baseWidth-8));
+      if(!isFinite(desiredWidth) || desiredWidth<=0){
+        desiredWidth = Math.max(24, Math.min(slotSpacing*0.85, chartWidth));
+      }
+      desiredWidth = Math.min(desiredWidth, chartWidth);
+      var half=desiredWidth/2;
+      var leftEdge=Math.max(leftPad, lineX-half);
+      var rightEdge=Math.min(chartRight, lineX+half);
+      if(rightEdge<leftEdge){ rightEdge=leftEdge; }
+      var actualWidth=rightEdge-leftEdge;
+      if(actualWidth<=0){
+        actualWidth=Math.min(desiredWidth, chartWidth);
+        leftEdge=Math.max(leftPad, Math.min(lineX-actualWidth/2, chartRight-actualWidth));
+        rightEdge=leftEdge+actualWidth;
+      }
+      var slotCenter=leftEdge+(actualWidth/2);
+      p._lineX = lineX;
+      p._x = slotCenter;
+      p._slotCenter = slotCenter;
+      p._slotLeft = leftEdge;
+      p._slotWidth = actualWidth;
       if(p.tentative){
         ctx.fillStyle = 'rgba(148,163,184,0.12)';
-        ctx.fillRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+        ctx.fillRect(leftEdge, highlightTop, actualWidth, highlightHeight);
       }
     });
 
     if(highlightIso){
       visiblePoints.forEach(function(p){
         if(p.iso===highlightIso){
-          var x = p._x;
-          var colWidth = Math.max(26, step-10);
+          var widthRect = (typeof p._slotWidth === 'number' && p._slotWidth>0) ? p._slotWidth : Math.max(24, Math.min(slotSpacing*0.85, chartWidth));
+          var left = (typeof p._slotLeft === 'number') ? p._slotLeft : Math.max(leftPad, (p._x||leftPad) - widthRect/2);
+          if(left+widthRect>chartRight){ left = chartRight-widthRect; }
+          if(left<leftPad){ left = leftPad; }
+          if(widthRect>chartRight-left){ widthRect = chartRight-left; }
+          var colWidth = Math.max(0, widthRect);
           ctx.fillStyle = 'rgba(37,99,235,0.18)';
-          ctx.fillRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+          ctx.fillRect(left, highlightTop, colWidth, highlightHeight);
           ctx.strokeStyle = '#2563eb';
           ctx.lineWidth = 2;
-          ctx.strokeRect(x - colWidth/2, highlightTop, colWidth, highlightHeight);
+          ctx.strokeRect(left, highlightTop, colWidth, highlightHeight);
           ctx.lineWidth = 1;
         }
       });
@@ -2556,18 +2587,18 @@
 
     var maxPath=[], minPath=[];
     visiblePoints.forEach(function(p){
-      var x=p._x;
+      var xLine=(typeof p._lineX === 'number') ? p._lineX : p._x;
       if(p.tmax!=null){
         var yMax=tempY(p.tmax);
         p._yMax=yMax;
-        maxPath.push({x:x,y:yMax});
+        maxPath.push({x:xLine,y:yMax});
       } else {
         p._yMax=null;
       }
       if(p.tmin!=null){
         var yMin=tempY(p.tmin);
         p._yMin=yMin;
-        minPath.push({x:x,y:yMin});
+        minPath.push({x:xLine,y:yMin});
       } else {
         p._yMin=null;
       }
@@ -2611,7 +2642,9 @@
       var txtVal = p.sun>=9 ? Math.round(p.sun) : Math.round(p.sun*10)/10;
       var label = '☀️ '+txtVal+' h';
       ctx.fillStyle='#b45309';
-      ctx.fillText(label, p._x, sunLabelY);
+      var labelX=(typeof p._slotCenter === 'number') ? p._slotCenter : (p._x||leftPad);
+      labelX=Math.max(leftPad+12, Math.min(chartRight-12, labelX));
+      ctx.fillText(label, labelX, sunLabelY);
     });
 
     var rainScale = rainMax>0?rainMax:1;
@@ -2619,15 +2652,21 @@
     visiblePoints.forEach(function(p){
       if(!(p.rain>0)) return;
       var barHeight = (p.rain/rainScale)*precipHeight;
-      var barWidth = Math.max(18, Math.min(step-12, step*0.6));
-      var x = p._x;
+      var slotWidth = (typeof p._slotWidth === 'number' && p._slotWidth>0) ? p._slotWidth : Math.max(24, Math.min(slotSpacing*0.85, chartWidth));
+      var barWidth = Math.max(18, Math.min(slotWidth-12, slotWidth*0.6));
+      if(!isFinite(barWidth) || barWidth<=0){
+        barWidth = Math.max(18, Math.min(slotSpacing*0.6, avgSpacing*0.6));
+      }
+      var center=(typeof p._slotCenter === 'number') ? p._slotCenter : (p._x||leftPad);
+      var barLeft=Math.max(leftPad, Math.min(center - barWidth/2, chartRight - barWidth));
       ctx.fillStyle='rgba(37,99,235,0.32)';
-      ctx.fillRect(x-barWidth/2, rainBottom-barHeight, barWidth, barHeight);
+      ctx.fillRect(barLeft, rainBottom-barHeight, barWidth, barHeight);
       if(p.rain>=0.2){
         ctx.fillStyle='#1d4ed8';
         ctx.font='10px system-ui, sans-serif';
         var text=p.rain>=1?Math.round(p.rain)+' mm':(Math.round(p.rain*10)/10)+' mm';
-        ctx.fillText(text, x, rainBottom-barHeight-6);
+        var textX=Math.max(leftPad+10, Math.min(chartRight-10, center));
+        ctx.fillText(text, textX, rainBottom-barHeight-6);
       }
     });
 
@@ -2635,10 +2674,12 @@
     ctx.fillStyle='#0f172a';
     visiblePoints.forEach(function(p){
       if(p._yMax!=null){
-        ctx.fillText(Math.round(p.tmax)+'°', p._x, p._yMax-10);
+        var maxX=(typeof p._slotCenter === 'number') ? p._slotCenter : (p._x||leftPad);
+        ctx.fillText(Math.round(p.tmax)+'°', Math.max(leftPad+10, Math.min(chartRight-10, maxX)), p._yMax-10);
       }
       if(p._yMin!=null){
-        ctx.fillText(Math.round(p.tmin)+'°', p._x, p._yMin+14);
+        var minX=(typeof p._slotCenter === 'number') ? p._slotCenter : (p._x||leftPad);
+        ctx.fillText(Math.round(p.tmin)+'°', Math.max(leftPad+10, Math.min(chartRight-10, minX)), p._yMin+14);
       }
     });
 
@@ -2651,7 +2692,8 @@
       if(!(date instanceof Date) || isNaN(date)) return;
       var label=date.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric'});
       label=label.replace('.', '');
-      ctx.fillText(label, p._x, height-bottomPad+28);
+      var labelX=(typeof p._slotCenter === 'number') ? p._slotCenter : (p._x||leftPad);
+      ctx.fillText(label, Math.max(leftPad+14, Math.min(chartRight-14, labelX)), height-bottomPad+28);
     });
     ctx.textAlign='left';
     ctx.textBaseline='alphabetic';
@@ -3459,43 +3501,171 @@
     if(!label){ gal.innerHTML=''; return; }
     gal.innerHTML='<div class="muted">Ładuję zdjęcia...</div>';
 
-    function renderItems(items, makeUrl, makeThumb){
+    var sizeAttr='(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw';
+
+    function normalizeAlt(text){
+      if(typeof text==='string' && text.trim()){ return text.trim(); }
+      if(typeof label==='string' && label.trim()){ return label.trim()+' – inspiracja'; }
+      return 'Inspiracja fotograficzna';
+    }
+
+    function renderItems(items){
       gal.innerHTML='';
-      items.forEach(function(it){
-        var a=document.createElement('a'); a.href=makeUrl(it); a.target='_blank'; a.rel='noopener';
-        var img=new Image(); img.src=makeThumb(it); img.loading='lazy'; img.alt=label+' - inspiracja';
-        a.appendChild(img); gal.appendChild(a);
+      var frag=document.createDocumentFragment();
+      items.forEach(function(item){
+        if(!item || !item.src || !item.href) return;
+        var link=document.createElement('a');
+        link.href=item.href;
+        link.target='_blank';
+        link.rel='noopener';
+        if(item.title){ link.title=item.title; }
+
+        var img=document.createElement('img');
+        img.className='gallery-img';
+        img.loading='lazy';
+        img.decoding='async';
+        img.alt=normalizeAlt(item.alt || '');
+        img.src=item.src;
+        if(item.srcset){ img.srcset=item.srcset; }
+        if(item.sizes){ img.sizes=item.sizes; }
+        else { img.sizes=sizeAttr; }
+        if(item.width){ img.width=item.width; }
+        if(item.height){ img.height=item.height; }
+
+        link.appendChild(img);
+        frag.appendChild(link);
       });
-      if(!gal.children.length) gal.innerHTML='<div class="muted">Brak zdjęć.</div>';
+
+      if(!frag.childNodes.length){
+        gal.innerHTML='<div class="muted">Brak zdjęć.</div>';
+        return;
+      }
+
+      gal.appendChild(frag);
       gal.scrollLeft=0;
+    }
+
+    function showGalleryError(){
+      gal.innerHTML='<div class="muted">Błąd galerii.</div>';
+    }
+
+    function buildCseItems(items){
+      if(!Array.isArray(items) || !items.length) return [];
+      var out=[];
+      items.forEach(function(it){
+        if(!it || !it.link) return;
+        var meta=it.image || {};
+        var width=meta.width ? Number(meta.width) : null;
+        if(width && width<960) return;
+        var height=meta.height ? Number(meta.height) : null;
+        var thumb=meta.thumbnailLink || '';
+        var src=it.link;
+        var srcsetParts=[];
+        if(thumb){ srcsetParts.push(thumb+' 320w'); }
+        if(width){ srcsetParts.push(src+' '+width+'w'); }
+        var href=it.link;
+        out.push({
+          href:href,
+          src:src,
+          srcset:srcsetParts.join(', '),
+          sizes:sizeAttr,
+          alt:it.title || label,
+          width:width || undefined,
+          height:height || undefined
+        });
+      });
+      return out.slice(0,6);
+    }
+
+    function unsplashVariant(url,width){
+      if(!url || !width) return null;
+      var parts=String(url).split('?');
+      var base=parts[0];
+      var extras=[];
+      if(parts[1]){
+        parts[1].split('&').forEach(function(seg){
+          if(!seg) return;
+          if(/^w=/i.test(seg)) return;
+          if(/^auto=/i.test(seg)) return;
+          if(/^fit=/i.test(seg)) return;
+          if(/^q=/i.test(seg)) return;
+          extras.push(seg);
+        });
+      }
+      extras.push('auto=format','fit=crop','q=85','w='+Math.round(width));
+      return base+'?'+extras.join('&');
+    }
+
+    function buildUnsplashItems(items){
+      if(!Array.isArray(items) || !items.length) return [];
+      var out=[];
+      items.forEach(function(p){
+        if(!p || !p.urls) return;
+        var base=p.urls.raw || p.urls.full || p.urls.regular || p.urls.small;
+        if(!base) return;
+        var src=unsplashVariant(base,1024) || base;
+        var srcsetWidths=[768,1024,1600,2200];
+        var srcset=srcsetWidths.map(function(w){
+          var variant=unsplashVariant(base,w);
+          return variant ? variant+' '+w+'w' : null;
+        }).filter(Boolean).join(', ');
+        var href=(p.links && (p.links.html || p.links.download)) || src;
+        var altText=p.alt_description || p.description || label;
+        out.push({
+          href:href,
+          src:src,
+          srcset:srcset,
+          sizes:sizeAttr,
+          alt:altText,
+          width:1024,
+          height:Math.round(1024*((p.height && p.width) ? (p.height/p.width) : (2/3)))
+        });
+      });
+      return out.slice(0,6);
+    }
+
+    function fetchUnsplashItems(){
+      return fetch('https://api.unsplash.com/search/photos?per_page=6&query='+encodeURIComponent(label+' wedding shoot')+'&client_id='+UNSPLASH_KEY)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var arr=(d && d.results)? d.results : [];
+          var prepared=buildUnsplashItems(arr);
+          if(prepared.length){ return prepared; }
+          throw new Error('no-unsplash');
+        });
     }
 
     if(CSE_ID){
       fetch('https://www.googleapis.com/customsearch/v1?key='+GMAPS_KEY+'&cx='+CSE_ID+'&searchType=image&num=6&q='+encodeURIComponent(label+' sesja ślubna'))
         .then(function(r){ return r.json(); })
         .then(function(data){
-          if(data && data.items && data.items.length){
-            renderItems(data.items.slice(0,6), function(it){ return it.link; }, function(it){ return (it.image && it.image.thumbnailLink)? it.image.thumbnailLink : it.link; });
+          var prepared=buildCseItems(data && data.items ? data.items : []);
+          if(prepared.length){
+            renderItems(prepared);
+            if(prepared.length<6){
+              fetchUnsplashItems()
+                .then(function(extra){
+                  if(!extra || !extra.length) return;
+                  var combined=prepared.concat(extra).slice(0,6);
+                  renderItems(combined);
+                })
+                .catch(function(){ /* silent fallback */ });
+            }
           } else {
-            // fallback Unsplash
-            fetch('https://api.unsplash.com/search/photos?per_page=6&query='+encodeURIComponent(label+' wedding shoot')+'&client_id='+UNSPLASH_KEY)
-              .then(function(r){ return r.json(); })
-              .then(function(d){
-                var arr=(d && d.results)? d.results : [];
-                renderItems(arr, function(p){ return (p.links && p.links.html) ? p.links.html : (p.urls && p.urls.regular ? p.urls.regular : '#'); }, function(p){ return p.urls.small; });
-              })
-              .catch(function(){ gal.innerHTML='<div class="muted">Błąd galerii.</div>'; });
+            fetchUnsplashItems()
+              .then(function(items){ renderItems(items); })
+              .catch(function(){ showGalleryError(); });
           }
         })
-        .catch(function(){ gal.innerHTML='<div class="muted">Błąd galerii.</div>'; });
+        .catch(function(){
+          fetchUnsplashItems()
+            .then(function(items){ renderItems(items); })
+            .catch(function(){ showGalleryError(); });
+        });
     } else {
-      fetch('https://api.unsplash.com/search/photos?per_page=6&query='+encodeURIComponent(label+' wedding shoot')+'&client_id='+UNSPLASH_KEY)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          var arr=(d && d.results)? d.results : [];
-          renderItems(arr, function(p){ return (p.links && p.links.html) ? p.links.html : (p.urls && p.urls.regular ? p.urls.regular : '#'); }, function(p){ return p.urls.small; });
-        })
-        .catch(function(){ gal.innerHTML='<div class="muted">Błąd galerii.</div>'; });
+      fetchUnsplashItems()
+        .then(function(items){ renderItems(items); })
+        .catch(function(){ showGalleryError(); });
     }
   }
 
