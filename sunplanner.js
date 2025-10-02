@@ -567,22 +567,61 @@
   var galleryTrack=document.querySelector('#sp-gallery');
   var galleryPrev=document.querySelector('[data-gallery-prev]');
   var galleryNext=document.querySelector('[data-gallery-next]');
+  var galleryPage=0;
 
-  function scrollGalleryBy(dir){
-    if(!galleryTrack) return;
-    var firstCard=galleryTrack.querySelector('.gallery-item');
-    var styles=window.getComputedStyle?getComputedStyle(galleryTrack):{gap:'0',columnGap:'0'};
-    var gap=parseFloat(styles.columnGap||styles.gap||0)||0;
-    var width=firstCard?firstCard.getBoundingClientRect().width:galleryTrack.clientWidth*0.8;
-    galleryTrack.scrollBy({left:dir*(width+gap),behavior:'smooth'});
+  function galleryItemsPerPage(){
+    if(typeof window!=='undefined' && typeof window.matchMedia==='function'){
+      if(window.matchMedia('(max-width: 640px)').matches){ return 1; }
+      if(window.matchMedia('(max-width: 900px)').matches){ return 2; }
+    }
+    return 3;
   }
 
-  galleryPrev && galleryPrev.addEventListener('click',function(){scrollGalleryBy(-1);});
-  galleryNext && galleryNext.addEventListener('click',function(){scrollGalleryBy(1);});
+  function updateGalleryPagination(){
+    if(!galleryTrack) return;
+    var items=galleryTrack.querySelectorAll('.gallery-item');
+    var total=items.length;
+    var perPage=galleryItemsPerPage();
+    if(perPage<1){ perPage=1; }
+    var maxPage=Math.max(0, Math.ceil(total/perPage)-1);
+    if(galleryPage>maxPage){ galleryPage=maxPage; }
+    if(galleryPage<0){ galleryPage=0; }
+    items.forEach(function(item,idx){
+      if(Math.floor(idx/perPage)===galleryPage){ item.classList.remove('is-hidden'); }
+      else { item.classList.add('is-hidden'); }
+    });
+    if(galleryPrev){
+      var disablePrev = !total || galleryPage<=0;
+      galleryPrev.disabled=disablePrev;
+      if(disablePrev){ galleryPrev.setAttribute('aria-disabled','true'); }
+      else { galleryPrev.removeAttribute('aria-disabled'); }
+    }
+    if(galleryNext){
+      var disableNext = !total || galleryPage>=maxPage;
+      galleryNext.disabled=disableNext;
+      if(disableNext){ galleryNext.setAttribute('aria-disabled','true'); }
+      else { galleryNext.removeAttribute('aria-disabled'); }
+    }
+    galleryTrack.setAttribute('data-gallery-page', total ? String(galleryPage+1) : '0');
+    galleryTrack.setAttribute('data-gallery-pages', total ? String(maxPage+1) : '0');
+  }
+
+  function shiftGalleryPage(delta){
+    if(!galleryTrack) return;
+    var items=galleryTrack.querySelectorAll('.gallery-item');
+    if(!items.length) return;
+    galleryPage+=delta;
+    updateGalleryPagination();
+  }
+
+  galleryPrev && galleryPrev.addEventListener('click',function(){ shiftGalleryPage(-1); });
+  galleryNext && galleryNext.addEventListener('click',function(){ shiftGalleryPage(1); });
   galleryTrack && galleryTrack.addEventListener('keydown',function(e){
-    if(e.key==='ArrowLeft'){e.preventDefault();scrollGalleryBy(-1);}
-    else if(e.key==='ArrowRight'){e.preventDefault();scrollGalleryBy(1);}
+    if(e.key==='ArrowLeft'){ e.preventDefault(); shiftGalleryPage(-1); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); shiftGalleryPage(1); }
   });
+  if(typeof window!=='undefined'){ window.addEventListener('resize', updateGalleryPagination); }
+  updateGalleryPagination();
   removeLegacyDaily16Strip();
   sessionSummaryDefault();
   renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
@@ -3498,8 +3537,9 @@
   // galeria (tylko cel, 6 zdjęć, link w nowym oknie)
   function loadGallery(){
     var dest=points[points.length-1]; var label=dest? (dest.label||'') : ''; var gal=$('#sp-gallery');
-    if(!label){ gal.innerHTML=''; return; }
+    if(!label){ gal.innerHTML=''; if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); } return; }
     gal.innerHTML='<div class="muted">Ładuję zdjęcia...</div>';
+    if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
 
     var sizeAttr='(min-width:1200px) 18vw, (min-width:1024px) 20vw, (min-width:768px) 33vw, (max-width:480px) 48vw, 100vw';
 
@@ -3547,15 +3587,18 @@
 
       if(!frag.childNodes.length){
         gal.innerHTML='<div class="muted">Brak zdjęć.</div>';
+        if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
         return;
       }
 
       gal.appendChild(frag);
       gal.scrollLeft=0;
+      if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
     }
 
     function showGalleryError(){
       gal.innerHTML='<div class="muted">Błąd galerii.</div>';
+      if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
     }
 
     function buildCseItems(items){
