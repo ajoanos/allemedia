@@ -4380,30 +4380,94 @@
 
   // suwaki
   function hookSlider(txtId, sliderId, cb){
-    var labelEl=document.getElementById(txtId);
-    var slider=document.getElementById(sliderId);
+    var labelEl = document.getElementById(txtId);
+    var slider  = document.getElementById(sliderId);
     if(!slider) return;
-    var min=Number(slider.min||0);
-    var max=Number(slider.max||0);
-    if(!Number.isFinite(min)){ min=0; }
-    if(!Number.isFinite(max) || max<=min){ max=min+1; }
-    var span=max-min;
+
+    var min = Number(slider.min || 0);
+    var max = Number(slider.max || 0);
+    if(!Number.isFinite(min)) min = 0;
+    if(!Number.isFinite(max) || max <= min) max = min + 1;
+    var span = max - min;
+
     function apply(v){
-      if(!Number.isFinite(v)){ v=min; }
-      v=Math.min(Math.max(v,min),max);
-      if(labelEl){ labelEl.textContent=v+' h'; }
-      var pct=(v-min)/span;
-      slider.style.setProperty('--slider-fill', (pct*100)+'%');
+      if(!Number.isFinite(v)) v = min;
+      v = Math.min(Math.max(v, min), max);
+      if(labelEl) labelEl.textContent = v + ' h';
+      var pct = (v - min) / span;
+      slider.style.setProperty('--slider-fill', (pct * 100) + '%');
       slider.setAttribute('aria-valuenow', String(v));
-      slider.setAttribute('aria-valuetext', v+' godzin');
-      if(cb){ cb(); }
+      slider.setAttribute('aria-valuetext', v + ' godzin');
+      if(cb) cb();
       updateLink();
     }
-    slider.addEventListener('input', function(e){ apply(+e.target.value||min); });
-    slider.addEventListener('change', function(e){ apply(+e.target.value||min); });
-    slider.addEventListener('pointerdown', function(){ slider.focus(); });
-    slider.addEventListener('touchstart', function(){ slider.focus(); }, {passive:true});
-    apply(+slider.value||min);
+
+    slider.addEventListener('input', function(e){ apply(+e.target.value || min); });
+    slider.addEventListener('change', function(e){ apply(+e.target.value || min); });
+
+    // Nie przewijaj widoku przy fokusowaniu slidera
+    function safeFocus(){
+      try {
+        if(typeof slider.matches === 'function' && document.activeElement === slider) return;
+        if(slider.focus){
+          if(typeof slider.focus === 'function' && slider.focus.length === 1){
+            // focus(options) wspierany
+            slider.focus({ preventScroll: true });
+          } else {
+            // fallback; minimalizujemy skoki — wywołuj tylko gdy nie ma focusu
+            slider.focus();
+          }
+        }
+      } catch(_) {}
+    }
+
+    slider.addEventListener('pointerdown', function(e){
+      // zapobiegaj side-efektom pointerdown -> scroll
+      safeFocus();
+      // nie dopuszczaj do „text selection scroll”
+      e.preventDefault();
+    });
+
+    slider.addEventListener('touchstart', function(){
+      // passive:true zachowujemy, ale bez scrolla na focus
+      safeFocus();
+    }, { passive: true });
+
+    // Zablokuj scroll strony nad suwakiem (kółko myszy)
+    slider.addEventListener('wheel', function(e){
+      // Jeśli kursor jest nad suwakiem — nie przewijaj dokumentu
+      e.preventDefault();
+      // (opcjonalnie) delikatna zmiana wartości kółkiem
+      var step = Number(slider.step || 1) || 1;
+      var dir  = (e.deltaY || e.deltaX || 0) > 0 ? 1 : -1;
+      var next = Number(slider.value) + (dir * step);
+      apply(next);
+      slider.value = String(next);
+    }, { passive: false });
+
+    // Zablokuj scroll dokumentu dla klawiszy sterujących
+    slider.addEventListener('keydown', function(e){
+      var k = e.key;
+      if(k === ' ' || k === 'Spacebar' || k === 'ArrowUp' || k === 'ArrowDown' ||
+         k === 'ArrowLeft' || k === 'ArrowRight' || k === 'PageUp' || k === 'PageDown' ||
+         k === 'Home' || k === 'End'){
+        e.preventDefault(); // nie przewijaj strony
+        // pozwól przeglądarce/mnie zmienić wartość — obsłużmy pojedyncze klawisze:
+        var step = Number(slider.step || 1) || 1;
+        var cur  = Number(slider.value) || min;
+        var next = cur;
+        if(k === 'ArrowRight' || k === 'ArrowUp' || k === 'PageUp') next = cur + step;
+        else if(k === 'ArrowLeft' || k === 'ArrowDown' || k === 'PageDown') next = cur - step;
+        else if(k === 'Home') next = min;
+        else if(k === 'End') next = max;
+        else if(k === ' ' || k === 'Spacebar') next = cur + step;
+
+        apply(next);
+        slider.value = String(next);
+      }
+    });
+
+    apply(+slider.value || min);
   }
   hookSlider('sp-txt-rise','sp-slider-rise', updateSunWeather);
   hookSlider('sp-txt-set','sp-slider-set', updateSunWeather);
