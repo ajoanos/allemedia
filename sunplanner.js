@@ -6,7 +6,7 @@
   var GMAPS_KEY    = CFG.GMAPS_KEY || '';
   var CSE_ID       = CFG.CSE_ID || '';
   var UNSPLASH_KEY = CFG.UNSPLASH_KEY || '';
-  var TZ           = CFG.TZ || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw');
+  var TZ           = CFG.TZ || 'Europe/Warsaw';
   var REST_URL     = CFG.REST_URL || '';
   var CONTACT_URL  = CFG.CONTACT_URL || '';
   var SITE_ORIGIN  = CFG.SITE_ORIGIN || '';
@@ -691,7 +691,7 @@
 
   // === Open-Meteo Daily (16 dni) ===
   async function fetchOpenMeteoDaily16(lat, lon, tz) {
-    var tzParam = encodeURIComponent(tz || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw'));
+    var tzParam = encodeURIComponent(tz || 'Europe/Warsaw');
     // Dobierz pola daily — minimalny zestaw + wschód/zachód:
     var daily = [
       'weathercode',
@@ -742,7 +742,7 @@
 
   // === HOURLY: fetch ===
   async function fetchOpenMeteoHourly(lat, lon, dateISO, tz){
-    var tzParam = encodeURIComponent(tz || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Warsaw'));
+    var tzParam = encodeURIComponent(tz || 'Europe/Warsaw');
     var d = String(dateISO || '').slice(0,10);
     if(!(typeof lat === 'number' && isFinite(lat)) || !(typeof lon === 'number' && isFinite(lon)) || !d){ return []; }
 
@@ -950,6 +950,108 @@
     }
   }
 
+  function findDaily16ByDate(dateISO){
+    if(!Array.isArray(weatherState.daily16) || !weatherState.daily16.length) return null;
+    var target = (dateISO || '').slice(0,10);
+    for(var i=0;i<weatherState.daily16.length;i++){
+      var day = weatherState.daily16[i];
+      if(day && typeof day.dateISO === 'string' && day.dateISO === target){
+        return day;
+      }
+    }
+    return null;
+  }
+
+  function applySunTimesFromDaily(dateISO){
+    var dest = points[points.length-1];
+    if(!dest) return;
+    var day = findDaily16ByDate(dateISO);
+    if(!day) return;
+    var sunrise = (typeof day.sunrise === 'string') ? parseLocalISO(day.sunrise) : null;
+    var sunset = (typeof day.sunset === 'string') ? parseLocalISO(day.sunset) : null;
+    var hasSunrise = isValidDate(sunrise);
+    var hasSunset = isValidDate(sunset);
+    if(!hasSunrise && !hasSunset){ return; }
+    if(!hasSunrise){ sunrise = lastSunData && isValidDate(lastSunData.rise) ? lastSunData.rise : null; }
+    if(!hasSunset){ sunset = lastSunData && isValidDate(lastSunData.set) ? lastSunData.set : null; }
+    setSunMeta(dest, sunrise, sunset);
+    updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
+    fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
+    fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+    var derivedBands = deriveBandsFromSun(sunrise, sunset);
+    if(derivedBands) applyBands(derivedBands);
+    updateRiseSetWeatherPanels();
+  }
+
+  function buildSummaryDataFromState(dateISO){
+    var dailySource = Array.isArray(weatherState.daily16) ? weatherState.daily16 : [];
+    var hourlySource = Array.isArray(hourlyState.hours) ? hourlyState.hours : [];
+    var daily = {
+      time: [],
+      precipitation_sum: [],
+      precipitation_probability_max: [],
+      temperature_2m_min: [],
+      temperature_2m_max: [],
+      sunrise: [],
+      sunset: [],
+      sunshine_duration: [],
+      cloudcover_mean: []
+    };
+    dailySource.forEach(function(day){
+      if(!day) return;
+      daily.time.push(typeof day.dateISO === 'string' ? day.dateISO : null);
+      daily.precipitation_sum.push((typeof day.rain === 'number' && Number.isFinite(day.rain)) ? day.rain : null);
+      daily.precipitation_probability_max.push((typeof day.pop === 'number' && Number.isFinite(day.pop)) ? day.pop : null);
+      daily.temperature_2m_min.push((typeof day.tMin === 'number' && Number.isFinite(day.tMin)) ? day.tMin : null);
+      daily.temperature_2m_max.push((typeof day.tMax === 'number' && Number.isFinite(day.tMax)) ? day.tMax : null);
+      daily.sunrise.push(day.sunrise || null);
+      daily.sunset.push(day.sunset || null);
+      if(typeof day.sunshineHours === 'number' && Number.isFinite(day.sunshineHours)){
+        daily.sunshine_duration.push(day.sunshineHours * 3600);
+      } else {
+        daily.sunshine_duration.push(null);
+      }
+      daily.cloudcover_mean.push(null);
+    });
+
+    var hourly = {
+      time: [],
+      temperature_2m: [],
+      precipitation: [],
+      sunshine_duration: [],
+      cloudcover: []
+    };
+    hourlySource.forEach(function(hour){
+      if(!hour) return;
+      var iso = (typeof hour.iso === 'string' && hour.iso) ? hour.iso : null;
+      if(!iso){
+        var base = (typeof hour.dateISO === 'string' && hour.dateISO) ? hour.dateISO : (dateISO || '');
+        if(base){
+          var hh = (typeof hour.hh === 'string' && hour.hh) ? hour.hh : '00';
+          iso = base.slice(0,10)+'T'+hh+':00';
+        }
+      }
+      if(!iso) return;
+      hourly.time.push(iso);
+      hourly.temperature_2m.push((typeof hour.temp === 'number' && Number.isFinite(hour.temp)) ? hour.temp : null);
+      hourly.precipitation.push((typeof hour.precip === 'number' && Number.isFinite(hour.precip)) ? hour.precip : null);
+      hourly.sunshine_duration.push((typeof hour.sunshineSec === 'number' && Number.isFinite(hour.sunshineSec)) ? hour.sunshineSec : null);
+      hourly.cloudcover.push((typeof hour.cloud === 'number' && Number.isFinite(hour.cloud)) ? hour.cloud : null);
+    });
+
+    return { daily: daily, hourly: hourly };
+  }
+
+  function updateRiseSetWeatherPanels(){
+    if(!Array.isArray(hourlyState.hours) || !hourlyState.hours.length){
+      return;
+    }
+    var sunrise = (lastSunData && isValidDate(lastSunData.rise)) ? lastSunData.rise : null;
+    var sunset = (lastSunData && isValidDate(lastSunData.set)) ? lastSunData.set : null;
+    if(isValidDate(sunrise)){ setWeatherOnly('rise', hourlyState.hours, sunrise); }
+    if(isValidDate(sunset)){ setWeatherOnly('set', hourlyState.hours, sunset); }
+  }
+
   // === HOURLY: main loader ===
   async function loadHourlyForecast(lat, lon, dateISO){
     try{
@@ -959,20 +1061,30 @@
       var hasLon = (typeof lon === 'number' && isFinite(lon));
       if(!hasLat || !hasLon || !hourlyState.dateISO){
         hourlyState.hours = [];
-        // brak danych – wyczyść wykresy
         renderHourlyTempRain([]);
         renderSunshine([]);
+        clearWeatherPanels();
         return;
       }
       var hours = await fetchOpenMeteoHourly(lat, lon, hourlyState.dateISO, tz);
       hourlyState.hours = hours;
       renderHourlyTempRain(hours);
       renderSunshine(hours);
+      if(!hours || !hours.length){
+        toast('Brak danych prognozy godzinowej (Open-Meteo).');
+        clearWeatherPanels();
+      } else {
+        updateRiseSetWeatherPanels();
+      }
+      renderSessionSummary(buildSummaryDataFromState(hourlyState.dateISO), hourlyState.dateISO);
     }catch(e){
       try{ console.error(e); }catch(_){ }
+      hourlyState.hours = [];
       toast('Brak danych prognozy godzinowej (Open-Meteo).');
       renderHourlyTempRain([]);
       renderSunshine([]);
+      clearWeatherPanels();
+      renderSessionSummary(null, hourlyState.dateISO || null);
     }
   }
 
@@ -986,6 +1098,7 @@
       currentCoords.lon = (typeof lon === 'number' && isFinite(lon)) ? lon : null;
       var dateInput = document.getElementById('sp-date');
       var chosen = dateInput && dateInput.value ? dateInput.value : (weatherState.daily16?.[0]?.dateISO || null);
+      applySunTimesFromDaily(chosen);
       loadHourlyForecast(currentCoords.lat, currentCoords.lon, chosen);
       renderDaily16Chart(data, getDaily16HighlightDate());
     } catch (e) {
@@ -997,6 +1110,7 @@
       hourlyState.hours = [];
       renderHourlyTempRain([]);
       renderSunshine([]);
+      clearWeatherPanels();
       renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
       if (typeof sessionSummaryNoData === 'function') sessionSummaryNoData();
       toast('Brak danych prognozy (Open-Meteo).');
@@ -1662,7 +1776,6 @@
   var currentRoutes = [];
   var activeRouteIndex = 0;
   var sunDirectionLines = [];
-  var forecastCache = {};
   var shortLinkValue = null;
   var shortLinkState = null;
   var lastSunData = {rise:null,set:null,lat:null,lng:null,label:'',date:null};
@@ -2246,6 +2359,36 @@
     setText('sp-'+pref+'-bed', fmt(bed));
   }
   function setWeatherOnly(pref, hourly, when){
+    if(Array.isArray(hourly)){
+      if(!(when instanceof Date) || isNaN(when)) return;
+      var best=null, bestDiff=Infinity;
+      for(var i=0;i<hourly.length;i++){
+        var entry=hourly[i];
+        if(!entry) continue;
+        var d=null;
+        if(entry.date instanceof Date && !isNaN(entry.date)){ d=entry.date; }
+        else if(typeof entry.iso==='string' && entry.iso){
+          d=new Date(entry.iso);
+        }
+        if(!(d instanceof Date) || isNaN(d)) continue;
+        var diff=Math.abs(d.getTime()-when.getTime());
+        if(diff<bestDiff){ bestDiff=diff; best=entry; }
+      }
+      if(!best) return;
+      var temp=(typeof best.temp==='number' && Number.isFinite(best.temp)) ? Math.round(best.temp)+'°C' : '—';
+      var cloud=(typeof best.cloud==='number' && Number.isFinite(best.cloud)) ? Math.round(best.cloud)+'%' : '—';
+      var wind=(typeof best.wind==='number' && Number.isFinite(best.wind)) ? Math.round(best.wind)+' km/h' : '—';
+      var hum=(typeof best.humidity==='number' && Number.isFinite(best.humidity)) ? Math.round(best.humidity)+'%' : '—';
+      var vis=(typeof best.visibility==='number' && Number.isFinite(best.visibility)) ? Math.round(best.visibility/1000)+' km' : '—';
+      var prec=(typeof best.precip==='number' && Number.isFinite(best.precip)) ? Number(best.precip).toFixed(1)+' mm' : '—';
+      setText('sp-'+pref+'-t', temp);
+      setText('sp-'+pref+'-c', cloud);
+      setText('sp-'+pref+'-w', wind);
+      setText('sp-'+pref+'-h', hum);
+      setText('sp-'+pref+'-v', vis);
+      setText('sp-'+pref+'-p', prec);
+      return;
+    }
     if(!hourly || !hourly.time || !hourly.time.length || !(when instanceof Date)) return;
     var idx=closestHourIndex(hourly, when);
     function pick(arr){ return (arr && typeof arr[idx] !== 'undefined') ? arr[idx] : null; }
@@ -3395,96 +3538,6 @@
     addLine(sunrise,'#fbbf24');
     addLine(sunset,'#fb923c');
   }
-  function forecastKey(lat,lng,dateStr,startStr){
-    var latKey = (typeof lat === 'number') ? lat.toFixed(3) : String(lat||'');
-    var lngKey = (typeof lng === 'number') ? lng.toFixed(3) : String(lng||'');
-    return latKey+','+lngKey+'|'+(dateStr||'')+'|'+(startStr||'');
-  }
-  function getForecast(lat,lng,dateStr){
-    var endRange=dateStr;
-    var baseDate=dateFromInput(dateStr);
-    if(baseDate instanceof Date && !isNaN(baseDate)){
-      var endDate=new Date(baseDate);
-      endDate.setUTCDate(endDate.getUTCDate()+FORECAST_WINDOW_DAYS);
-      endRange=endDate.toISOString().slice(0,10);
-    }
-    var startRange=dateStr;
-    if(!startRange){ startRange=endRange; }
-    // Pozostaw zakres prognozy oparty na wybranej dacie, aby nie wykraczać poza limit 16 dni
-    // udostępniany przez Open-Meteo. Wcześniej przesuwaliśmy start na "dziś", co powodowało
-    // zapytania dłuższe niż dozwolone i błąd 400 przy wyborze przyszłych dni.
-    if(startRange && endRange && startRange>endRange){ startRange=endRange; }
-    var key=forecastKey(lat,lng,dateStr,startRange);
-    var entry=forecastCache[key];
-    var now=Date.now();
-    if(entry && entry.data && now-entry.time<30*60*1000){ return Promise.resolve(entry.data); }
-    if(entry && entry.promise){ return entry.promise; }
-    entry = forecastCache[key] = entry || {};
-    entry.promise=new Promise(function(resolve,reject){
-      clearTimeout(entry.timer);
-      entry.timer=setTimeout(function(){
-        var tz = TZ || 'Europe/Warsaw';
-        var tzEnc = encodeURIComponent(tz);
-        var dailyFields='sunrise,sunset,precipitation_probability_max,precipitation_sum,cloudcover_mean,temperature_2m_max,temperature_2m_min';
-        var dailyUrl='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&daily='+dailyFields+'&timezone='+tzEnc+'&start_date='+startRange+'&end_date='+endRange;
-        var dailyPromise = fetch(dailyUrl).then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); });
-        var hourlyPromise = fetchOpenMeteoHourly(lat, lng, dateStr, tz).catch(function(err){
-          try{ console.warn('SunPlanner hourly fallback', err); }catch(_){ }
-          return [];
-        });
-
-        function buildHourlyBlock(list){
-          if(!list || !list.length){ return null; }
-          var block={
-            time: [],
-            temperature_2m: [],
-            precipitation: [],
-            sunshine_duration: [],
-            cloudcover: [],
-            wind_speed_10m: [],
-            relative_humidity_2m: [],
-            visibility: []
-          };
-          list.forEach(function(item){
-            if(!item) return;
-            var iso = (typeof item.iso === 'string' && item.iso) ? item.iso : null;
-            if(!iso){
-              var hh = (typeof item.hh === 'string' && item.hh) ? item.hh : '00';
-              var base = item.dateISO || dateStr || '';
-              if(base){ iso = base.slice(0,10)+'T'+hh+':00'; }
-            }
-            if(!iso) return;
-            block.time.push(iso);
-            block.temperature_2m.push((typeof item.temp === 'number' && Number.isFinite(item.temp)) ? item.temp : null);
-            block.precipitation.push((typeof item.precip === 'number' && Number.isFinite(item.precip)) ? item.precip : null);
-            block.sunshine_duration.push((typeof item.sunshineSec === 'number' && Number.isFinite(item.sunshineSec)) ? item.sunshineSec : null);
-            block.cloudcover.push(null);
-            block.wind_speed_10m.push(null);
-            block.relative_humidity_2m.push(null);
-            block.visibility.push(null);
-          });
-          return block.time.length ? block : null;
-        }
-
-        Promise.all([dailyPromise, hourlyPromise])
-          .then(function(results){
-            var dailyData = results[0];
-            var hoursList = results[1];
-            var combined = {
-              daily: dailyData && dailyData.daily ? dailyData.daily : null,
-              hourly: buildHourlyBlock(hoursList)
-            };
-            entry.data = combined;
-            entry.time = Date.now();
-            delete entry.promise;
-            resolve(combined);
-          })
-          .catch(function(err){ delete forecastCache[key]; reject(err); });
-      },250);
-    });
-    return entry.promise;
-  }
-
   function updateSunWeather(){
     var dest=points[points.length-1], dStr=dEl.value;
     setText('sp-rise-date', dStr||''); setText('sp-set-date', dStr||'');
@@ -3552,36 +3605,6 @@
       renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
     }
     sessionSummaryLoading();
-
-    getForecast(dest.lat, dest.lng, dStr)
-      .then(function(data){
-        if(!data){
-          renderHourlyTempRain([]);
-          renderSunshine([]);
-          sessionSummaryNoData();
-          return;
-        }
-        var sr = (data.daily && data.daily.sunrise && data.daily.sunrise[0]) ? parseLocalISO(data.daily.sunrise[0]) : null;
-        var ss = (data.daily && data.daily.sunset  && data.daily.sunset[0]) ? parseLocalISO(data.daily.sunset[0]) : null;
-        if(sr instanceof Date && !isNaN(sr)) sunrise=sr;
-        if(ss instanceof Date && !isNaN(ss)) sunset=ss;
-        setSunMeta(dest, sunrise, sunset);
-        updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
-        fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
-        fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
-        var derivedBands = deriveBandsFromSun(sunrise, sunset);
-        if(derivedBands) applyBands(derivedBands);
-        if(data.hourly){
-          setWeatherOnly('rise', data.hourly, sunrise);
-          setWeatherOnly('set' , data.hourly, sunset);
-        }
-        renderSessionSummary(data, dStr);
-      })
-      .catch(function(){
-        renderHourlyTempRain([]);
-        renderSunshine([]);
-        sessionSummaryNoData();
-      });
   }
 
   function assignRadarTemplate(template){
