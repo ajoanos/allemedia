@@ -418,16 +418,22 @@
                   '<span class="glow-adjuster__label">Długość snu</span>'+
                   '<strong id="sp-txt-rise" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
-                '<div class="glow-adjuster__slider">'+
+              '<div class="glow-adjuster__slider">'+
+                '<div class="glow-slider-field">'+
                   '<input id="sp-slider-rise"'+
                          ' class="glow-slider"'+
                          ' type="range"'+
                          ' min="1" max="8" step="1" value="6"'+
                          ' data-min="1" data-max="8" data-step="1" data-value="6"'+
+                         ' data-output="sp-slider-rise-output" data-unit="h" data-clock="1"'+
                          ' aria-label="Wybierz długość snu w godzinach">'+
-                  '<div class="glow-slider__scale" aria-hidden="true">'+
-                    '<span>1 h</span><span>4 h</span><span>8 h</span>'+
+                  '<div id="sp-slider-rise-output" class="glow-slider__output" aria-hidden="true">'+
+                    '<span class="glow-slider__output-value" data-role="value">6 h</span>'+
+                    '<span class="glow-slider__output-time" data-role="clock">06:00</span>'+
                   '</div>'+
+                '</div>'+
+                '<div class="glow-slider__scale" aria-hidden="true">'+
+                  '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                 '</div>'+
               '</div>'+
               '<div class="glow-info morning">'+
@@ -448,16 +454,22 @@
                   '<span class="glow-adjuster__label">Margines czasowy</span>'+
                   '<strong id="sp-txt-set" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
-                '<div class="glow-adjuster__slider">'+
+              '<div class="glow-adjuster__slider">'+
+                '<div class="glow-slider-field">'+
                   '<input id="sp-slider-set"'+
                          ' class="glow-slider"'+
                          ' type="range"'+
                          ' min="1" max="8" step="1" value="6"'+
                          ' data-min="1" data-max="8" data-step="1" data-value="6"'+
+                         ' data-output="sp-slider-set-output" data-unit="h" data-clock="1"'+
                          ' aria-label="Wybierz margines czasowy w godzinach">'+
-                  '<div class="glow-slider__scale" aria-hidden="true">'+
-                    '<span>1 h</span><span>4 h</span><span>8 h</span>'+
+                  '<div id="sp-slider-set-output" class="glow-slider__output" aria-hidden="true">'+
+                    '<span class="glow-slider__output-value" data-role="value">6 h</span>'+
+                    '<span class="glow-slider__output-time" data-role="clock">06:00</span>'+
                   '</div>'+
+                '</div>'+
+                '<div class="glow-slider__scale" aria-hidden="true">'+
+                  '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                 '</div>'+
               '</div>'+
               '<div class="glow-info align-right evening">'+
@@ -4390,6 +4402,16 @@
     var slider = document.getElementById(sliderId);
     if(!slider) return;
 
+    var sliderField = (slider.parentElement && slider.parentElement.classList && slider.parentElement.classList.contains('glow-slider-field')) ? slider.parentElement : null;
+    var outputId = slider.getAttribute('data-output');
+    var outputEl = outputId ? document.getElementById(outputId) : null;
+    var outputValueEl = outputEl ? outputEl.querySelector('[data-role="value"]') : null;
+    var outputClockEl = outputEl ? outputEl.querySelector('[data-role="clock"]') : null;
+    var unitRaw = slider.getAttribute('data-unit');
+    var unit = (typeof unitRaw === 'string' && unitRaw.trim()) ? unitRaw.trim() : '';
+    var clockRaw = slider.getAttribute('data-clock');
+    var showClock = clockRaw == null ? false : !/^(0|false)$/i.test(clockRaw);
+
     function getNumberAttr(el, names){
       for(var i=0;i<names.length;i++){
         var raw = el.getAttribute(names[i]);
@@ -4451,6 +4473,27 @@
       } catch(_) {}
     }
 
+    function formatValueLabel(v){
+      if(!Number.isFinite(v)) return unit ? '0 ' + unit : '0';
+      var rounded = Math.round(v * 100) / 100;
+      var str = String(rounded);
+      str = str.replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+      return unit ? str + ' ' + unit : str;
+    }
+
+    function pad2(num){
+      var abs = Math.abs(num);
+      return abs < 10 ? '0' + abs : String(abs);
+    }
+
+    function formatClock(v){
+      if(!Number.isFinite(v)) return '00:00';
+      var totalMinutes = Math.max(0, Math.round(v * 60));
+      var hours = Math.floor(totalMinutes / 60);
+      var minutes = totalMinutes % 60;
+      return pad2(hours) + ':' + pad2(minutes);
+    }
+
     function updateSlider(emitCb){
       var current = Number(slider.value);
       if(!Number.isFinite(current)) current = getNumberAttr(slider, ['value','data-value']);
@@ -4461,8 +4504,24 @@
       slider.setAttribute('value', String(current));
       slider.setAttribute('data-value', String(current));
       slider.setAttribute('aria-valuenow', String(current));
-      slider.style.setProperty('--slider-fill', toPct(current) + '%');
-      if(labelEl) labelEl.textContent = current + ' h';
+      var fillPct = toPct(current);
+      if(!Number.isFinite(fillPct)) fillPct = 0;
+      var fillStr = fillPct.toFixed(2) + '%';
+      slider.style.setProperty('--slider-fill', fillStr);
+      if(sliderField){ sliderField.style.setProperty('--slider-fill', fillStr); }
+      if(outputEl){ outputEl.style.setProperty('--slider-fill', fillStr); }
+      var valueLabel = formatValueLabel(current);
+      if(labelEl) labelEl.textContent = valueLabel;
+      slider.setAttribute('aria-valuetext', valueLabel);
+      if(outputValueEl) outputValueEl.textContent = valueLabel;
+      if(outputClockEl){
+        if(showClock){
+          outputClockEl.textContent = formatClock(current);
+          outputClockEl.hidden = false;
+        } else {
+          outputClockEl.hidden = true;
+        }
+      }
       if(emitCb && typeof cb === 'function'){ cb(); }
       if(typeof updateLink === 'function'){ updateLink(); }
     }
