@@ -3397,9 +3397,10 @@
       endRange=endDate.toISOString().slice(0,10);
     }
     var startRange=dateStr;
-    var todayIso=(new Date()).toISOString().slice(0,10);
     if(!startRange){ startRange=endRange; }
-    if(startRange && todayIso && startRange>todayIso){ startRange=todayIso; }
+    // Pozostaw zakres prognozy oparty na wybranej dacie, aby nie wykraczać poza limit 16 dni
+    // udostępniany przez Open-Meteo. Wcześniej przesuwaliśmy start na "dziś", co powodowało
+    // zapytania dłuższe niż dozwolone i błąd 400 przy wyborze przyszłych dni.
     if(startRange && endRange && startRange>endRange){ startRange=endRange; }
     var key=forecastKey(lat,lng,dateStr,startRange);
     var entry=forecastCache[key];
