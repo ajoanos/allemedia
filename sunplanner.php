@@ -24,6 +24,10 @@ add_action('after_setup_theme', function () {
 register_activation_hook(__FILE__, function () { flush_rewrite_rules(); });
 register_deactivation_hook(__FILE__, function () { flush_rewrite_rules(); });
 
+require_once plugin_dir_path(__FILE__) . 'includes/class-sunplanner-share-page.php';
+
+(new Sunplanner_Share_Page(plugin_dir_path(__FILE__)))->register_hooks();
+
 
 add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; });
 
@@ -107,160 +111,6 @@ wp_enqueue_script('sunplanner-app');
 <div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.5"></div>
 <?php return ob_get_clean();
 });
-
-add_filter('template_include', function ($template) {
-    if (get_query_var('sunplan')) {
-        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
-        if (file_exists($share_template)) {
-            return $share_template;
-        }
-    }
-    return $template;
-});
-
-add_action('template_redirect', function () {
-    if (get_query_var('sunplan')) {
-        status_header(200);
-        global $wp_query;
-        if ($wp_query) {
-            $wp_query->is_404 = false;
-            $wp_query->is_home = false;
-            $wp_query->is_singular = true;
-            $wp_query->is_page = true;
-        }
-    }
-});
-
-add_filter('document_title_parts', function ($parts) {
-    if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
-    }
-    return $parts;
-});
-
-add_filter('body_class', function ($classes) {
-    if (get_query_var('sunplan')) {
-        $classes[] = 'sunplanner-share-page';
-    }
-    return $classes;
-});
-
-
-add_filter('template_include', function ($template) {
-    if (get_query_var('sunplan')) {
-        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
-        if (file_exists($share_template)) {
-            return $share_template;
-        }
-    }
-    return $template;
-});
-
-add_action('template_redirect', function () {
-    if (get_query_var('sunplan')) {
-        status_header(200);
-        global $wp_query;
-        if ($wp_query) {
-            $wp_query->is_404 = false;
-            $wp_query->is_home = false;
-            $wp_query->is_singular = true;
-            $wp_query->is_page = true;
-        }
-    }
-});
-
-add_filter('document_title_parts', function ($parts) {
-    if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
-    }
-    return $parts;
-});
-
-add_filter('body_class', function ($classes) {
-    if (get_query_var('sunplan')) {
-        $classes[] = 'sunplanner-share-page';
-    }
-    return $classes;
-});
-
-
-add_filter('template_include', function ($template) {
-    if (get_query_var('sunplan')) {
-        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
-        if (file_exists($share_template)) {
-            return $share_template;
-        }
-    }
-    return $template;
-});
-
-add_action('template_redirect', function () {
-    if (get_query_var('sunplan')) {
-        status_header(200);
-        global $wp_query;
-        if ($wp_query) {
-            $wp_query->is_404 = false;
-            $wp_query->is_home = false;
-            $wp_query->is_singular = true;
-            $wp_query->is_page = true;
-        }
-    }
-});
-
-add_filter('document_title_parts', function ($parts) {
-    if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
-    }
-    return $parts;
-});
-
-add_filter('body_class', function ($classes) {
-    if (get_query_var('sunplan')) {
-        $classes[] = 'sunplanner-share-page';
-    }
-    return $classes;
-});
-
-
-add_filter('template_include', function ($template) {
-    if (get_query_var('sunplan')) {
-        $share_template = plugin_dir_path(__FILE__) . 'sunplanner-share.php';
-        if (file_exists($share_template)) {
-            return $share_template;
-        }
-    }
-    return $template;
-});
-
-add_action('template_redirect', function () {
-    if (get_query_var('sunplan')) {
-        status_header(200);
-        global $wp_query;
-        if ($wp_query) {
-            $wp_query->is_404 = false;
-
-            $wp_query->is_home = false;
-            $wp_query->is_singular = true;
-            $wp_query->is_page = true;
-        }
-    }
-});
-
-add_filter('document_title_parts', function ($parts) {
-    if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
-    }
-    return $parts;
-});
-
-add_filter('body_class', function ($classes) {
-    if (get_query_var('sunplan')) {
-        $classes[] = 'sunplanner-share-page';
-    }
-    return $classes;
-});
-
-
 
 /** === REST: create short link === */
 add_action('rest_api_init', function () {
