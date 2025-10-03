@@ -49,13 +49,41 @@
     }
   }
 
-  function debounce(fn, ms){
-    var t=null;
-    return function(){
-      var args=arguments, ctx=this;
-      clearTimeout(t);
-      t=setTimeout(function(){ fn.apply(ctx,args); }, ms||200);
-    };
+  function debounce(fn, ms){ var t=null; return function(){ clearTimeout(t); var a=arguments, ctx=this; t=setTimeout(function(){ fn.apply(ctx,a); }, ms||180); }; }
+
+  function attachNoScrollHandlers(rangeEl){
+    if(!rangeEl) return;
+
+    rangeEl.addEventListener('wheel', function(e){
+      e.preventDefault();
+    }, { passive:false });
+
+    var dragging=false;
+
+    function preventDocWheel(e){ e.preventDefault(); }
+    function preventDocTouch(e){ e.preventDefault(); }
+
+    rangeEl.addEventListener('pointerdown', function(){
+      dragging=true;
+      document.addEventListener('wheel', preventDocWheel, { passive:false });
+      document.addEventListener('touchmove', preventDocTouch, { passive:false });
+    }, { passive:true });
+
+    window.addEventListener('pointerup', function(){
+      if(!dragging) return;
+      dragging=false;
+      document.removeEventListener('wheel', preventDocWheel, { passive:false });
+      document.removeEventListener('touchmove', preventDocTouch, { passive:false });
+    }, { passive:true });
+  }
+
+  function applyRingProgress(ringCircleEl, hours){
+    if(!ringCircleEl) return;
+    var r = +ringCircleEl.getAttribute('r') || 24;
+    var perim = 2*Math.PI*r;
+    var pct = Math.max(0, Math.min(1, (hours-1)/7));
+    ringCircleEl.style.strokeDasharray = String(perim);
+    ringCircleEl.style.strokeDashoffset = String(perim*(1-pct));
   }
 
   var shareId = (typeof SHARE_ID === 'string' && SHARE_ID) ? SHARE_ID : null;
@@ -4426,50 +4454,44 @@
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
   // suwaki
-  var debouncedUpdateSunWeather = debounce(function(){
-    try { updateSunWeather(); } catch(e){}
+  var debouncedRecalc = debounce(function(){
+    try {
+      updateSunWeather && updateSunWeather();
+      updateLink && updateLink();
+    } catch(_) {}
   }, 180);
 
-  function hookSlider(ringId, txtId, sliderId, cb){
-    var r = document.getElementById(ringId);
-    var t = document.getElementById(txtId);
-    var s = document.getElementById(sliderId);
-    if(!r || !t || !s) return;
+  function bindHourSlider(ringId, txtId, sliderId){
+    var ring = document.getElementById(ringId);
+    var txt  = document.getElementById(txtId);
+    var inp  = document.getElementById(sliderId);
+    if(!inp || !txt || !ring) return;
+
+    attachNoScrollHandlers(inp);
 
     function apply(v){
-      var rr = +r.getAttribute('r') || 24;
-      var per = 2*Math.PI*rr;
-      var pct = (v-1)/7; // zakres 1..8h
-      r.style.strokeDasharray  = per;
-      r.style.strokeDashoffset = per*(1-pct);
-      t.textContent = v + ' h';
-      // Zamiast natychmiastowej ciężkiej aktualizacji – debounce:
-      if(cb) debouncedUpdateSunWeather();
-      // Aktualizuj link/storowanie:
-      updateLink();
+      var hours = Number(v) || 1;
+      applyRingProgress(ring, hours);
+      txt.textContent = hours + ' h';
+      debouncedRecalc();
     }
 
-    // Zapobieganie przewijaniu strony podczas interakcji:
-    var stopScroll = function(e){
-      // Nie pozwól kółku myszy przewijać dokumentu kiedy kursor jest nad suwakiem
-      e.preventDefault();
-    };
-    s.addEventListener('wheel', stopScroll, { passive: false });
-
-    // Podczas "drag" wyłącz przewijanie dotykowe:
-    var dragging = false;
-    s.addEventListener('pointerdown', function(){ dragging=true; }, { passive: true });
-    window.addEventListener('pointerup', function(){ dragging=false; }, { passive: true });
-    s.addEventListener('touchmove', function(e){ if(dragging){ e.preventDefault(); } }, { passive: false });
-
-    // Główna obsługa wartości (płynna, bez skoków strony):
-    s.addEventListener('input', function(e){ apply(+e.target.value); });
-
-    // Inicjalizacja:
-    apply(+s.value);
+    inp.addEventListener('input', function(e){ apply(e.target.value); }, { passive:true });
+    apply(inp.value);
   }
-  hookSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise', updateSunWeather);
-  hookSlider('sp-ring-set','sp-txt-set','sp-slider-set', updateSunWeather);
+
+  bindHourSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise');
+  bindHourSlider('sp-ring-set','sp-txt-set','sp-slider-set');
+
+  ['sp-txt-rise','sp-txt-set'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){
+      el.style.position='absolute';
+      el.style.top='50%';
+      el.style.left='50%';
+      el.style.transform='translate(-50%,-50%)';
+    }
+  });
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
