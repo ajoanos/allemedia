@@ -4543,7 +4543,14 @@
     if (sliderDragging) return;
     var encodedState = b64url.enc(packState());
     var url = buildPlannerUrlFromEncoded(encodedState, urlRoleParam ? {role:urlRoleParam} : null);
-    history.replaceState(null,'',url);
+    if(url !== location.href){
+      var scrollX = (typeof window.scrollX === 'number') ? window.scrollX : window.pageXOffset || 0;
+      var scrollY = (typeof window.scrollY === 'number') ? window.scrollY : window.pageYOffset || 0;
+      history.replaceState(null,'',url);
+      if(typeof window.scrollTo === 'function'){
+        window.scrollTo(scrollX, scrollY);
+      }
+    }
     var linkEl=$('#sp-link'); if(linkEl) linkEl.textContent = url;
     if(shortLinkValue){
       if(shareId){
