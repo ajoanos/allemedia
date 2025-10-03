@@ -49,29 +49,37 @@
     }
   }
 
-  function debounce(fn, ms){ var t=null; return function(){ clearTimeout(t); var a=arguments, ctx=this; t=setTimeout(function(){ fn.apply(ctx,a); }, ms||180); }; }
+  var sliderDragging = false;
+
+  function debounce(fn, ms){
+    var t;
+    return function(){
+      clearTimeout(t);
+      var ctx = this;
+      var args = arguments;
+      var delay = typeof ms === 'number' ? ms : 180;
+      t = setTimeout(function(){ fn.apply(ctx, args); }, delay);
+    };
+  }
 
   function attachNoScrollHandlers(rangeEl){
     if(!rangeEl) return;
+
+    function preventDocWheel(e){ e.preventDefault(); }
+    function preventDocTouch(e){ e.preventDefault(); }
 
     rangeEl.addEventListener('wheel', function(e){
       e.preventDefault();
     }, { passive:false });
 
-    var dragging=false;
-
-    function preventDocWheel(e){ e.preventDefault(); }
-    function preventDocTouch(e){ e.preventDefault(); }
-
     rangeEl.addEventListener('pointerdown', function(){
-      dragging=true;
+      sliderDragging = true;
       document.addEventListener('wheel', preventDocWheel, { passive:false });
       document.addEventListener('touchmove', preventDocTouch, { passive:false });
     }, { passive:true });
 
     window.addEventListener('pointerup', function(){
-      if(!dragging) return;
-      dragging=false;
+      sliderDragging = false;
       document.removeEventListener('wheel', preventDocWheel, { passive:false });
       document.removeEventListener('touchmove', preventDocTouch, { passive:false });
     }, { passive:true });
@@ -4532,6 +4540,7 @@
 
   // link
   function updateLink(){
+    if (sliderDragging) return;
     var encodedState = b64url.enc(packState());
     var url = buildPlannerUrlFromEncoded(encodedState, urlRoleParam ? {role:urlRoleParam} : null);
     history.replaceState(null,'',url);
