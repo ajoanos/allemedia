@@ -90,6 +90,8 @@
     daily16: []
   };
 
+  var weatherPanelDefaults = { rise: null, set: null };
+
   // === HOURLY: state ===
   var hourlyState = {
     dateISO: null,
@@ -436,6 +438,15 @@
                   '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                 '</div>'+
               '</div>'+
+              '<div class="glow-weather" id="sp-rise-weather" aria-live="polite">'+
+                '<p class="glow-weather__summary" id="sp-rise-weather-summary">Dodaj lokalizację, aby zobaczyć prognozę świtu.</p>'+
+                '<div class="glow-weather__details">'+
+                  '<div class="rowd"><span>Temperatura</span><strong id="sp-rise-weather-temp">—</strong></div>'+
+                  '<div class="rowd"><span>Opady</span><strong id="sp-rise-weather-rain">—</strong></div>'+
+                  '<div class="rowd"><span>Zachmurzenie</span><strong id="sp-rise-weather-cloud">—</strong></div>'+
+                  '<div class="rowd"><span>Słońce</span><strong id="sp-rise-weather-sunshine">—</strong></div>'+
+                '</div>'+
+              '</div>'+
               '<div class="glow-info morning">'+
                 '<h4>Poranek</h4>'+
                 '<p id="sp-gold-am" class="glow-line">☀️ Poranna złota godzina: — —</p>'+
@@ -470,6 +481,15 @@
                 '</div>'+
                 '<div class="glow-slider__scale" aria-hidden="true">'+
                   '<span>1 h</span><span>4 h</span><span>8 h</span>'+
+                '</div>'+
+              '</div>'+
+              '<div class="glow-weather" id="sp-set-weather" aria-live="polite">'+
+                '<p class="glow-weather__summary" id="sp-set-weather-summary">Dodaj lokalizację, aby zobaczyć prognozę zachodu.</p>'+
+                '<div class="glow-weather__details">'+
+                  '<div class="rowd"><span>Temperatura</span><strong id="sp-set-weather-temp">—</strong></div>'+
+                  '<div class="rowd"><span>Opady</span><strong id="sp-set-weather-rain">—</strong></div>'+
+                  '<div class="rowd"><span>Zachmurzenie</span><strong id="sp-set-weather-cloud">—</strong></div>'+
+                  '<div class="rowd"><span>Słońce</span><strong id="sp-set-weather-sunshine">—</strong></div>'+
                 '</div>'+
               '</div>'+
               '<div class="glow-info align-right evening">'+
@@ -729,7 +749,8 @@
       'sunrise',
       'sunset',
       'wind_speed_10m_max',
-      'sunshine_duration'
+      'sunshine_duration',
+      'cloudcover_mean'
     ].join(',');
 
     var url =
@@ -755,6 +776,7 @@
       sunrise: j.daily.sunrise?.[i] || null,
       sunset:  j.daily.sunset?.[i]  || null,
       windMax: num(j.daily.wind_speed_10m_max?.[i]),  // km/h (Open-Meteo zwraca m/s lub km/h zależnie od param., ale tu informacyjnie)
+      cloud: num(j.daily.cloudcover_mean?.[i]),
       sunshineHours: (function(){
         var sec = num(j.daily.sunshine_duration?.[i]);
         return sec!=null ? sec/3600 : null;
@@ -793,8 +815,8 @@
     }
 
     var builders = [
-      function(){ return buildUrl(['temperature_2m','precipitation','sunshine_duration']); },
-      function(){ return buildUrl(['temperature_2m','precipitation']); },
+      function(){ return buildUrl(['temperature_2m','precipitation','sunshine_duration','cloudcover']); },
+      function(){ return buildUrl(['temperature_2m','precipitation','cloudcover']); },
       function(){ return buildUrl(['temperature_2m','precipitation']); }
     ];
 
@@ -815,7 +837,8 @@
         iso: iso,
         temp: num(T.temperature_2m?.[i]),
         precip: num(T.precipitation?.[i]),      // mm/h
-        sunshineSec: num(T.sunshine_duration?.[i]) // sekundy słońca w tej godzinie
+        sunshineSec: num(T.sunshine_duration?.[i]), // sekundy słońca w tej godzinie
+        cloud: num(T.cloudcover?.[i])
       };
     });
 
@@ -1210,7 +1233,7 @@
       } else {
         daily.sunshine_duration.push(null);
       }
-      daily.cloudcover_mean.push(null);
+      daily.cloudcover_mean.push((typeof day.cloud === 'number' && Number.isFinite(day.cloud)) ? day.cloud : null);
     });
 
     var hourly = {
@@ -1242,7 +1265,69 @@
   }
 
   function updateRiseSetWeatherPanels(){
-    // Dane pogodowe dla sekcji świtu i zachodu zostały usunięte.
+    var dest = points[points.length-1];
+    var selectedDate = (dEl && dEl.value ? dEl.value : '') || hourlyState.dateISO || (lastSunData && lastSunData.date) || '';
+    var dateISO = (selectedDate || '').slice(0,10);
+    if(!dest || !dateISO){
+      clearWeatherPanels();
+      return;
+    }
+
+    var hours = Array.isArray(hourlyState.hours) ? hourlyState.hours : [];
+    var sunrise = (lastSunData && lastSunData.rise instanceof Date && !isNaN(lastSunData.rise)) ? lastSunData.rise : null;
+    var sunset = (lastSunData && lastSunData.set instanceof Date && !isNaN(lastSunData.set)) ? lastSunData.set : null;
+    var day = findDaily16ByDate(dateISO);
+
+    if(!hours.length){
+      if(day){
+        setWeatherPanel('rise', { loading: true });
+        setWeatherPanel('set', { loading: true });
+      } else {
+        clearWeatherPanels();
+      }
+      return;
+    }
+    var dailyProb = (day && typeof day.pop === 'number' && isFinite(day.pop)) ? clamp(day.pop, 0, 100) : null;
+    var dailyCloud = (day && typeof day.cloud === 'number' && isFinite(day.cloud)) ? day.cloud : null;
+
+    function nearestHour(when){
+      if(!(when instanceof Date) || isNaN(when)) return null;
+      var best = null;
+      var bestDiff = Infinity;
+      for(var i=0;i<hours.length;i++){
+        var hour = hours[i];
+        if(!hour) continue;
+        var dt = (hour.date instanceof Date && !isNaN(hour.date)) ? hour.date : (typeof hour.iso === 'string' ? new Date(hour.iso) : null);
+        if(!(dt instanceof Date) || isNaN(dt)) continue;
+        var diff = Math.abs(dt.getTime() - when.getTime());
+        if(diff < bestDiff){
+          bestDiff = diff;
+          best = hour;
+        }
+      }
+      return best;
+    }
+
+    function buildPayload(when){
+      if(!(when instanceof Date) || isNaN(when)) return null;
+      var hourData = nearestHour(when);
+      if(!hourData) return null;
+      var temp = (typeof hourData.temp === 'number' && isFinite(hourData.temp)) ? hourData.temp : null;
+      var precip = (typeof hourData.precip === 'number' && isFinite(hourData.precip)) ? Math.max(0, hourData.precip) : null;
+      var sunshine = (typeof hourData.sunshineSec === 'number' && isFinite(hourData.sunshineSec)) ? Math.max(0, hourData.sunshineSec) : null;
+      var cloud = (typeof hourData.cloud === 'number' && isFinite(hourData.cloud)) ? hourData.cloud : dailyCloud;
+
+      return {
+        summary: formatWeatherSummary(temp, precip, cloud, sunshine),
+        temp: formatWeatherTemp(temp),
+        rain: formatWeatherPrecip(precip, dailyProb),
+        cloud: formatWeatherCloud(cloud),
+        sunshine: formatWeatherSunshine(sunshine)
+      };
+    }
+
+    setWeatherPanel('rise', buildPayload(sunrise));
+    setWeatherPanel('set', buildPayload(sunset));
   }
 
   // === HOURLY: main loader ===
@@ -1259,6 +1344,9 @@
         clearWeatherPanels();
         return;
       }
+      hourlyState.hours = [];
+      setWeatherPanel('rise', { loading: true });
+      setWeatherPanel('set', { loading: true });
       var hours = await fetchOpenMeteoHourly(lat, lon, hourlyState.dateISO, tz);
       hourlyState.hours = hours;
       renderHourlyTempRain(hours);
@@ -1291,6 +1379,9 @@
       currentCoords.lon = (typeof lon === 'number' && isFinite(lon)) ? lon : null;
       var dateInput = document.getElementById('sp-date');
       var chosen = dateInput && dateInput.value ? dateInput.value : (weatherState.daily16?.[0]?.dateISO || null);
+      hourlyState.hours = [];
+      setWeatherPanel('rise', { loading: true });
+      setWeatherPanel('set', { loading: true });
       applySunTimesFromDaily(chosen);
       loadHourlyForecast(currentCoords.lat, currentCoords.lon, chosen);
       renderDaily16Chart(data, getDaily16HighlightDate());
@@ -2551,8 +2642,128 @@
     setText('sp-'+pref+'-wake', fmt(wake));
     setText('sp-'+pref+'-bed', fmt(bed));
   }
+  function getWeatherPanelElements(prefix){
+    return {
+      panel: document.getElementById('sp-'+prefix+'-weather'),
+      summary: document.getElementById('sp-'+prefix+'-weather-summary'),
+      temp: document.getElementById('sp-'+prefix+'-weather-temp'),
+      rain: document.getElementById('sp-'+prefix+'-weather-rain'),
+      cloud: document.getElementById('sp-'+prefix+'-weather-cloud'),
+      sunshine: document.getElementById('sp-'+prefix+'-weather-sunshine')
+    };
+  }
+
+  function getWeatherPanelDefault(prefix){
+    if(!weatherPanelDefaults.hasOwnProperty(prefix)){
+      weatherPanelDefaults[prefix] = null;
+    }
+    if(weatherPanelDefaults[prefix] == null){
+      var summaryEl = document.getElementById('sp-'+prefix+'-weather-summary');
+      weatherPanelDefaults[prefix] = summaryEl ? summaryEl.textContent : 'Brak danych pogodowych.';
+    }
+    return weatherPanelDefaults[prefix] || 'Brak danych pogodowych.';
+  }
+
+  function formatWeatherTemp(temp){
+    return (typeof temp === 'number' && isFinite(temp)) ? Math.round(temp)+'°C' : '—';
+  }
+
+  function formatNumberPL(value, digits){
+    if(!(typeof value === 'number' && isFinite(value))){ return '0'; }
+    try {
+      return new Intl.NumberFormat('pl-PL', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+    } catch(err){
+      var factor = Math.pow(10, digits);
+      return (Math.round(value * factor) / factor).toFixed(digits).replace('.', ',');
+    }
+  }
+
+  function formatWeatherPrecip(mm, prob){
+    var probText = (typeof prob === 'number' && isFinite(prob)) ? Math.round(clamp(prob, 0, 100))+'%' : null;
+    if(typeof mm === 'number' && isFinite(mm) && mm > 0){
+      var label;
+      if(mm < 0.1){
+        label = '<0,1 mm/h';
+      } else {
+        var digits = mm < 1 ? 1 : 0;
+        label = formatNumberPL(mm, digits)+' mm/h';
+      }
+      if(probText){ label += ' • '+probText; }
+      return label;
+    }
+    if(probText){ return probText+' ryzyko opadów'; }
+    return 'Brak opadów';
+  }
+
+  function formatWeatherCloud(cloud){
+    return (typeof cloud === 'number' && isFinite(cloud)) ? Math.round(cloud)+'%' : '—';
+  }
+
+  function formatWeatherSunshine(sec){
+    if(!(typeof sec === 'number' && isFinite(sec))){ return '—'; }
+    return formatSunshineValue(Math.max(0, sec));
+  }
+
+  function describeSunshineHourly(sec){
+    if(!(typeof sec === 'number' && isFinite(sec))){ return ''; }
+    if(sec <= 0){ return 'brak słońca'; }
+    if(sec >= 3300){ return 'pełne słońce'; }
+    if(sec >= 1800){ return 'częściowe słońce'; }
+    if(sec >= 900){ return 'krótkie przebłyski słońca'; }
+    return 'symboliczne słońce';
+  }
+
+  function formatWeatherSummary(temp, precip, cloud, sunshine){
+    var parts = [];
+    var precipDesc = describePrecipHourly(precip);
+    if(precipDesc){ parts.push(precipDesc); }
+    var cloudDesc = describeCloud(cloud);
+    if(cloudDesc){ parts.push(cloudDesc); }
+    var sunDesc = describeSunshineHourly(sunshine);
+    if(sunDesc){ parts.push(sunDesc); }
+    var tempDesc = describeTemp(temp);
+    if(tempDesc){ parts.push(tempDesc); }
+    var summary = parts.filter(Boolean).join(', ');
+    if(summary){ return summary.charAt(0).toUpperCase()+summary.slice(1); }
+    return 'Brak danych pogodowych.';
+  }
+
+  function setWeatherPanel(prefix, payload){
+    var els = getWeatherPanelElements(prefix);
+    if(!els.panel) return;
+    var defaultSummary = getWeatherPanelDefault(prefix);
+    var isLoading = payload && payload.loading;
+    var hasData = !!(payload && !payload.loading);
+
+    var summary = defaultSummary;
+    var temp = '—';
+    var rain = '—';
+    var cloud = '—';
+    var sunshine = '—';
+
+    if(isLoading){
+      summary = 'Ładuję prognozę...';
+    } else if(hasData){
+      summary = payload.summary || defaultSummary;
+      temp = payload.temp || temp;
+      rain = payload.rain || rain;
+      cloud = payload.cloud || cloud;
+      sunshine = payload.sunshine || sunshine;
+    }
+
+    if(els.summary) els.summary.textContent = summary;
+    if(els.temp) els.temp.textContent = temp;
+    if(els.rain) els.rain.textContent = rain;
+    if(els.cloud) els.cloud.textContent = cloud;
+    if(els.sunshine) els.sunshine.textContent = sunshine;
+
+    els.panel.classList.toggle('is-loading', !!isLoading);
+    els.panel.classList.toggle('is-empty', !hasData && !isLoading);
+  }
+
   function clearWeatherPanels(){
-    // Sekcje pogody zostały usunięte, więc nie ma czego czyścić.
+    setWeatherPanel('rise', null);
+    setWeatherPanel('set', null);
   }
   function prepareCanvas(canvas){
     if(!canvas) return null;
