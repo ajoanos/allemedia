@@ -49,7 +49,32 @@
     }
   }
 
-  var sliderDragging = false;
+  var hourDurationState = { rise: 6, set: 6 };
+  var hourDurationControls = {};
+
+  function clampHours(val){
+    var n = Math.round(Number(val));
+    if(!isFinite(n)) n = 6;
+    if(n < 1) n = 1;
+    if(n > 8) n = 8;
+    return n;
+  }
+
+  function getHourDuration(key){
+    if(!key || !Object.prototype.hasOwnProperty.call(hourDurationState, key)){
+      return 6;
+    }
+    return clampHours(hourDurationState[key]);
+  }
+
+  function setHourDurationState(key, hours, options){
+    var next = clampHours(hours);
+    hourDurationState[key] = next;
+    var control = hourDurationControls[key];
+    if(control && typeof control.syncFromState === 'function'){
+      control.syncFromState(next, options || {});
+    }
+  }
 
   function debounce(fn, ms){
     var t;
@@ -62,29 +87,6 @@
     };
   }
 
-  function attachNoScrollHandlers(rangeEl){
-    if(!rangeEl) return;
-
-    function preventDocWheel(e){ e.preventDefault(); }
-    function preventDocTouch(e){ e.preventDefault(); }
-
-    rangeEl.addEventListener('wheel', function(e){
-      e.preventDefault();
-    }, { passive:false });
-
-    rangeEl.addEventListener('pointerdown', function(){
-      sliderDragging = true;
-      document.addEventListener('wheel', preventDocWheel, { passive:false });
-      document.addEventListener('touchmove', preventDocTouch, { passive:false });
-    }, { passive:true });
-
-    window.addEventListener('pointerup', function(){
-      sliderDragging = false;
-      document.removeEventListener('wheel', preventDocWheel, { passive:false });
-      document.removeEventListener('touchmove', preventDocTouch, { passive:false });
-    }, { passive:true });
-  }
-
   function applyRingProgress(ringCircleEl, hours){
     if(!ringCircleEl) return;
     var r = +ringCircleEl.getAttribute('r') || 24;
@@ -92,6 +94,15 @@
     var pct = Math.max(0, Math.min(1, (hours-1)/7));
     ringCircleEl.style.strokeDasharray = String(perim);
     ringCircleEl.style.strokeDashoffset = String(perim*(1-pct));
+  }
+
+  function buildDurationOptions(defaultHours){
+    var html = '';
+    for(var h=1; h<=8; h++){
+      var isActive = h === defaultHours;
+      html += '<button type="button" class="glow-duration__option'+(isActive?' is-active':'')+'" data-duration-value="'+h+'" role="radio" aria-checked="'+(isActive?'true':'false')+'" tabindex="'+(isActive?'0':'-1')+'">'+h+' h</button>';
+    }
+    return html;
   }
 
   var shareId = (typeof SHARE_ID === 'string' && SHARE_ID) ? SHARE_ID : null;
@@ -458,12 +469,14 @@
               '<div class="rowd"><span>Wyjazd</span><strong id="sp-rise-wake">—</strong></div>'+
               '<div class="rowd"><span>Sen od</span><strong id="sp-rise-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Ile snu chcesz mieć?</p>'+
-              '<div style="display:flex;align-items:center;gap:.7rem">'+
+              '<div class="glow-duration" data-duration-group="rise" data-default-hours="6">'+
                 '<div class="ring">'+
                   '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-rise" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
                   '<div class="text" id="sp-txt-rise">6 h</div>'+
                 '</div>'+
-                '<input id="sp-slider-rise" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
+                '<div class="glow-duration__options" role="radiogroup" aria-label="Długość snu przed świtem">'+
+                  buildDurationOptions(6)+
+                '</div>'+
               '</div>'+
               '<div class="kpi">'+
                 '<div class="rowd"><span>Temp.</span><strong id="sp-rise-t">—</strong></div>'+
@@ -486,12 +499,14 @@
               '<div class="rowd"><span>Wyjazd</span><strong id="sp-set-wake">—</strong></div>'+
               '<div class="rowd"><span>Czas na przygotowania</span><strong id="sp-set-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Dopasuj czas, aby wszystko dopiąć.</p>'+
-              '<div style="display:flex;align-items:center;gap:.7rem">'+
+              '<div class="glow-duration" data-duration-group="set" data-default-hours="6">'+
                 '<div class="ring">'+
                   '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-set" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
                   '<div class="text" id="sp-txt-set">6 h</div>'+
                 '</div>'+
-                '<input id="sp-slider-set" class="slider" type="range" min="1" max="8" step="1" value="6" style="flex:1">'+
+                '<div class="glow-duration__options" role="radiogroup" aria-label="Czas na przygotowania wieczorem">'+
+                  buildDurationOptions(6)+
+                '</div>'+
               '</div>'+
               '<div class="kpi">'+
                 '<div class="rowd"><span>Temp.</span><strong id="sp-set-t">—</strong></div>'+
@@ -621,7 +636,7 @@
             '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
             '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
           '</div>'+
-          '<div class="muted" id="sp-link" style="margin-top:.25rem;word-break:break-all"></div>'+
+          '<div class="muted" id="sp-link" style="margin-top:.25rem"></div>'+
           '<div class="muted" id="sp-short-status"></div>'+
         '</div>'+
       '</div>'+
@@ -1204,8 +1219,8 @@
     if(!hasSunset){ sunset = lastSunData && isValidDate(lastSunData.set) ? lastSunData.set : null; }
     setSunMeta(dest, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
-    fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
-    fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+    fillCardTimes('rise', sunrise, RISE_OFF, getHourDuration('rise'));
+    fillCardTimes('set' , sunset , SET_OFF , getHourDuration('set'));
     var derivedBands = deriveBandsFromSun(sunrise, sunset);
     if(derivedBands) applyBands(derivedBands);
     updateRiseSetWeatherPanels();
@@ -2233,8 +2248,8 @@
     var radarEl=$('#sp-radar');
     return {
       date:dEl.value,
-      sr:$('#sp-slider-rise').value,
-      ss:$('#sp-slider-set').value,
+      sr:getHourDuration('rise'),
+      ss:getHourDuration('set'),
       rad:(radarEl && radarEl.checked)?1:0,
       pts:points.map(function(p){return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'};}),
       contact:{
@@ -2255,8 +2270,8 @@
   function unpackState(obj){
     if(!obj) return;
     if(obj.date) dEl.value=obj.date;
-    if(obj.sr) $('#sp-slider-rise').value=obj.sr;
-    if(obj.ss) $('#sp-slider-set').value=obj.ss;
+    if(typeof obj.sr !== 'undefined') setHourDurationState('rise', obj.sr, { skipLink:true, skipWeather:true });
+    if(typeof obj.ss !== 'undefined') setHourDurationState('set', obj.ss, { skipLink:true, skipWeather:true });
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
     if(Object.prototype.toString.call(obj.pts)==='[object Array]'){
       points = obj.pts.map(function(p){ return {lat:+p.lat,lng:+p.lng,label:p.label||'Punkt'}; });
@@ -3808,8 +3823,8 @@
     setSunMeta(dest, sunrise, sunset);
     updateSunDirection(dest.lat, dest.lng, sunrise, sunset);
 
-    fillCardTimes('rise', sunrise, RISE_OFF, +$('#sp-slider-rise').value);
-    fillCardTimes('set' , sunset , SET_OFF , +$('#sp-slider-set').value);
+    fillCardTimes('rise', sunrise, RISE_OFF, getHourDuration('rise'));
+    fillCardTimes('set' , sunset , SET_OFF , getHourDuration('set'));
 
     clearWeatherPanels();
     var ahead=daysAhead(base);
@@ -4462,13 +4477,14 @@
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
   // suwaki
-  function bindHourSlider(ringId, txtId, sliderId){
+  function bindHourPicker(group, ringId, txtId){
+    var container = document.querySelector('[data-duration-group="'+group+'"]');
     var ring = document.getElementById(ringId);
     var txt  = document.getElementById(txtId);
-    var inp  = document.getElementById(sliderId);
-    if(!inp || !txt || !ring) return;
+    if(!container || !ring || !txt) return;
 
-    attachNoScrollHandlers(inp);
+    var options = Array.prototype.slice.call(container.querySelectorAll('[data-duration-value]'));
+    if(!options.length) return;
 
     var debouncedWeather = debounce(function(){
       try {
@@ -4482,44 +4498,102 @@
       } catch(_) {}
     }, 900);
 
-    function updateUI(hours){
-      applyRingProgress(ring, hours);
-      txt.textContent = hours + ' h';
-      debouncedWeather();
-    }
+    var current = getHourDuration(group);
 
-    function applyChange(){
+    function commitLink(){
       try {
         updateLink && updateLink();
       } catch(_) {}
     }
 
-    inp.addEventListener('input', function(e){
-      var hours = Number(e.target.value) || 1;
-      updateUI(hours);
-      debouncedLink();
-    }, { passive:true });
+    function updateUI(hours){
+      applyRingProgress(ring, hours);
+      txt.textContent = hours + ' h';
+      var activeButton = null;
+      options.forEach(function(btn){
+        var val = clampHours(btn.getAttribute('data-duration-value'));
+        var isActive = val === hours;
+        if(isActive){ activeButton = btn; }
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+        btn.setAttribute('tabindex', isActive ? '0' : '-1');
+      });
+      return activeButton;
+    }
 
-    inp.addEventListener('change', applyChange);
-    inp.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
+    function setValue(hours, opts){
+      opts = opts || {};
+      var next = clampHours(hours);
+      var forceUpdate = !!opts.force;
+      if(!forceUpdate && current === next){
+        if(!opts.skipWeather){ debouncedWeather(); }
+        if(opts.immediateLink){ commitLink(); }
+        else if(!opts.skipLink){ debouncedLink(); }
+        return;
+      }
+      current = next;
+      hourDurationState[group] = next;
+      var active = updateUI(next);
+      if(opts.focusButton && active){
+        try { active.focus({ preventScroll:true }); }
+        catch(_) { active.focus(); }
+      }
+      if(!opts.skipWeather){ debouncedWeather(); }
+      if(opts.immediateLink){ commitLink(); }
+      else if(!opts.skipLink){ debouncedLink(); }
+    }
 
-    var initialHours = Number(inp.value) || 1;
-    updateUI(initialHours);
+    function syncFromState(hours, opts){
+      opts = opts || {};
+      current = clampHours(hours);
+      hourDurationState[group] = current;
+      updateUI(current);
+      if(opts.focusButton){
+        var active = container.querySelector('[data-duration-value][tabindex="0"]');
+        if(active){
+          try { active.focus({ preventScroll:true }); }
+          catch(_) { active.focus(); }
+        }
+      }
+      if(!opts.skipWeather){ debouncedWeather(); }
+      if(opts.immediateLink){ commitLink(); }
+      else if(!opts.skipLink){ debouncedLink(); }
+    }
+
+    options.forEach(function(btn, idx){
+      btn.addEventListener('click', function(){
+        var val = btn.getAttribute('data-duration-value');
+        setValue(val, { immediateLink:true });
+      });
+      btn.addEventListener('keydown', function(e){
+        var key = e.key;
+        if(key !== 'ArrowRight' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowUp') return;
+        e.preventDefault();
+        var delta = (key === 'ArrowRight' || key === 'ArrowDown') ? 1 : -1;
+        var nextIndex = idx + delta;
+        if(nextIndex < 0) nextIndex = options.length - 1;
+        if(nextIndex >= options.length) nextIndex = 0;
+        var target = options[nextIndex];
+        var val = target ? target.getAttribute('data-duration-value') : null;
+        if(val){
+          setValue(val, { immediateLink:true, focusButton:true });
+        }
+      });
+    });
+
+    hourDurationControls[group] = {
+      setValue: setValue,
+      getValue: function(){ return current; },
+      syncFromState: syncFromState
+    };
+
+    syncFromState(getHourDuration(group), { skipLink:true, skipWeather:true });
+    debouncedWeather();
     debouncedLink();
   }
 
-  bindHourSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise');
-  bindHourSlider('sp-ring-set','sp-txt-set','sp-slider-set');
-
-  ['sp-txt-rise','sp-txt-set'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el){
-      el.style.position='absolute';
-      el.style.top='50%';
-      el.style.left='50%';
-      el.style.transform='translate(-50%,-50%)';
-    }
-  });
+  bindHourPicker('rise','sp-ring-rise','sp-txt-rise');
+  bindHourPicker('set','sp-ring-set','sp-txt-set');
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
@@ -4540,7 +4614,6 @@
 
   // link
   function updateLink(){
-    if (sliderDragging) return;
     var encodedState = b64url.enc(packState());
     var url = buildPlannerUrlFromEncoded(encodedState, urlRoleParam ? {role:urlRoleParam} : null);
     if(url !== location.href){
