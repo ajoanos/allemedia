@@ -73,6 +73,12 @@ html,body{overflow-x:hidden}
 .route-card{margin-top:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:clamp(12px,2vw,20px)}
 .route-card .alt-heading{margin:0}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(16px,3vw,32px)}
+.glow-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,32px);align-items:stretch}
+.glow-grid>.card.inner{min-height:100%;align-self:stretch;display:flex;flex-direction:column}
+@media(max-width:640px){
+  .glow-grid{grid-auto-flow:column;grid-auto-columns:minmax(88vw,1fr);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .glow-grid>.card.inner{scroll-snap-align:start}
+}
 .golden-block{display:grid;gap:clamp(20px,3vw,36px);margin-top:clamp(20px,3vw,36px)}
 .glow-info{flex:none;width:100%;min-width:0;background:linear-gradient(135deg,rgba(253,230,138,.85),rgba(253,186,116,.85));border-radius:18px;padding:clamp(16px,3vw,24px);color:#78350f;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:clamp(8px,1.6vw,16px);box-shadow:0 4px 14px rgba(253,186,116,.25)}
 .glow-info.align-right{background:linear-gradient(135deg,rgba(191,219,254,.85),rgba(147,197,253,.85));color:#1e3a8a;text-align:right;align-items:flex-end}
@@ -115,6 +121,7 @@ html,body{overflow-x:hidden}
 .glow-adjuster__slider,
 .glow-slider{overscroll-behavior:contain;touch-action:none}
 .glow-slider{--slider-fill:50%;width:100%;-webkit-appearance:none;appearance:none;background:transparent;height:20px;margin:0;padding:0;cursor:pointer}
+.glow-adjuster__slider .glow-slider{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .glow-slider:focus-visible{outline:3px solid rgba(233,66,68,.35);outline-offset:4px}
 .glow-slider::-webkit-slider-runnable-track{height:10px;border-radius:999px;background:linear-gradient(90deg,var(--accent) var(--slider-fill),#e5e7eb var(--slider-fill));box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
 .glow-slider::-moz-range-track{height:10px;border-radius:999px;background:linear-gradient(90deg,var(--accent) var(--slider-fill),#e5e7eb var(--slider-fill));box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}

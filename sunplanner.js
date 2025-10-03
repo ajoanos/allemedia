@@ -421,6 +421,13 @@
                   '<strong id="sp-txt-rise" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
               '<div class="glow-adjuster__slider">'+
+                '<div class="ns-slider" data-for="sp-slider-rise" role="slider" aria-label="Długość snu">'+
+                  '<div class="ns-slider__track">'+
+                    '<div class="ns-slider__fill"></div>'+
+                    '<div class="ns-slider__thumb"></div>'+
+                  '</div>'+
+                  '<div class="ns-slider__scale" aria-hidden="true"><span>1 h</span><span>4 h</span><span>8 h</span></div>'+
+                '</div>'+
                 '<div class="glow-slider-field">'+
                   '<input id="sp-slider-rise"'+
                          ' class="glow-slider"'+
@@ -433,9 +440,6 @@
                     '<span class="glow-slider__output-value" data-role="value">6 h</span>'+
                     '<span class="glow-slider__output-time" data-role="clock">06:00</span>'+
                   '</div>'+
-                '</div>'+
-                '<div class="glow-slider__scale" aria-hidden="true">'+
-                  '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                 '</div>'+
               '</div>'+
               '<div class="glow-weather" id="sp-rise-weather" aria-live="polite">'+
@@ -466,6 +470,13 @@
                   '<strong id="sp-txt-set" class="glow-adjuster__value" aria-live="polite">6 h</strong>'+
                 '</div>'+
               '<div class="glow-adjuster__slider">'+
+                '<div class="ns-slider" data-for="sp-slider-set" role="slider" aria-label="Margines czasowy">'+
+                  '<div class="ns-slider__track">'+
+                    '<div class="ns-slider__fill"></div>'+
+                    '<div class="ns-slider__thumb"></div>'+
+                  '</div>'+
+                  '<div class="ns-slider__scale" aria-hidden="true"><span>1 h</span><span>4 h</span><span>8 h</span></div>'+
+                '</div>'+
                 '<div class="glow-slider-field">'+
                   '<input id="sp-slider-set"'+
                          ' class="glow-slider"'+
@@ -478,9 +489,6 @@
                     '<span class="glow-slider__output-value" data-role="value">6 h</span>'+
                     '<span class="glow-slider__output-time" data-role="clock">06:00</span>'+
                   '</div>'+
-                '</div>'+
-                '<div class="glow-slider__scale" aria-hidden="true">'+
-                  '<span>1 h</span><span>4 h</span><span>8 h</span>'+
                 '</div>'+
               '</div>'+
               '<div class="glow-weather" id="sp-set-weather" aria-live="polite">'+
@@ -4607,6 +4615,243 @@
   if(radarToggle){ radarToggle.addEventListener('change', function(e){ pendingRadar=!!e.target.checked; toggleRadar(pendingRadar); updateLink(); }); }
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
+  function mountNiceSlider(nsEl){
+    if(!nsEl || nsEl.__spMounted) return;
+    var rangeId = nsEl.getAttribute('data-for');
+    if(!rangeId) return;
+    var rangeEl = document.getElementById(rangeId);
+    if(!rangeEl) return;
+    var track = nsEl.querySelector('.ns-slider__track');
+    var fill = nsEl.querySelector('.ns-slider__fill');
+    var thumb = nsEl.querySelector('.ns-slider__thumb');
+    if(!track || !fill || !thumb) return;
+
+    nsEl.__spMounted = true;
+    nsEl.__spRange = rangeEl;
+    if(!nsEl.hasAttribute('tabindex')){ nsEl.setAttribute('tabindex', '0'); }
+    if(!nsEl.hasAttribute('role')){ nsEl.setAttribute('role', 'slider'); }
+    nsEl.setAttribute('aria-orientation', 'horizontal');
+
+    var unitRaw = rangeEl.getAttribute('data-unit');
+    var unit = (typeof unitRaw === 'string' && unitRaw.trim()) ? unitRaw.trim() : '';
+    var clockRaw = rangeEl.getAttribute('data-clock');
+    var showClock = clockRaw == null ? false : !/^(0|false)$/i.test(clockRaw);
+
+    function getNumberAttr(el, names){
+      for(var i=0;i<names.length;i++){
+        var raw = el.getAttribute(names[i]);
+        if(raw === null || raw === undefined || raw === '') continue;
+        var num = Number(raw);
+        if(Number.isFinite(num)) return num;
+      }
+      return null;
+    }
+
+    function getMin(){
+      if(typeof rangeEl.__spGetMin === 'function') return rangeEl.__spGetMin();
+      var fromProp = Number(rangeEl.min);
+      if(Number.isFinite(fromProp)) return fromProp;
+      var fromAttr = getNumberAttr(rangeEl, ['min','data-min']);
+      return Number.isFinite(fromAttr) ? fromAttr : 0;
+    }
+
+    function getMax(){
+      if(typeof rangeEl.__spGetMax === 'function') return rangeEl.__spGetMax();
+      var fromProp = Number(rangeEl.max);
+      if(Number.isFinite(fromProp)) return fromProp;
+      var fromAttr = getNumberAttr(rangeEl, ['max','data-max']);
+      if(Number.isFinite(fromAttr)) return fromAttr;
+      var minVal = getMin();
+      return Number.isFinite(minVal) ? minVal : 0;
+    }
+
+    function getStep(){
+      if(typeof rangeEl.__spGetStep === 'function') return rangeEl.__spGetStep();
+      var prop = rangeEl.step;
+      if(prop && prop !== 'any'){
+        var stepNum = Number(prop);
+        if(Number.isFinite(stepNum) && stepNum > 0) return stepNum;
+      }
+      var attr = getNumberAttr(rangeEl, ['step','data-step']);
+      if(Number.isFinite(attr) && attr > 0) return attr;
+      return 1;
+    }
+
+    function clamp(v){
+      var min = getMin();
+      var max = getMax();
+      if(Number.isFinite(min) && v < min) v = min;
+      if(Number.isFinite(max) && v > max) v = max;
+      return v;
+    }
+
+    function snap(v){
+      var step = getStep();
+      if(!Number.isFinite(step) || step <= 0) step = 1;
+      var min = getMin();
+      var steps = Math.round((v - min) / step);
+      return min + steps * step;
+    }
+
+    function toPct(v){
+      var min = getMin();
+      var max = getMax();
+      if(!Number.isFinite(min) || !Number.isFinite(max) || max === min) return 0;
+      return ((v - min) / (max - min)) * 100;
+    }
+
+    function formatValueLabel(v){
+      if(typeof rangeEl.__spFormatValueLabel === 'function') return rangeEl.__spFormatValueLabel(v);
+      if(!Number.isFinite(v)) return unit ? '0 ' + unit : '0';
+      var rounded = Math.round(v * 100) / 100;
+      var str = String(rounded);
+      str = str.replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+      return unit ? str + ' ' + unit : str;
+    }
+
+    function pad2(num){
+      var abs = Math.abs(num);
+      return abs < 10 ? '0' + abs : String(abs);
+    }
+
+    function formatClock(v){
+      if(typeof rangeEl.__spFormatClock === 'function') return rangeEl.__spFormatClock(v);
+      if(!Number.isFinite(v)) return '00:00';
+      var totalMinutes = Math.max(0, Math.round(v * 60));
+      var hours = Math.floor(totalMinutes / 60);
+      var minutes = totalMinutes % 60;
+      return pad2(hours) + ':' + pad2(minutes);
+    }
+
+    function updateAria(current){
+      var min = getMin();
+      var max = getMax();
+      nsEl.setAttribute('aria-valuemin', String(Number.isFinite(min) ? min : 0));
+      nsEl.setAttribute('aria-valuemax', String(Number.isFinite(max) ? max : 0));
+      nsEl.setAttribute('aria-valuenow', String(current));
+      nsEl.setAttribute('aria-valuetext', formatValueLabel(current));
+      if(showClock){
+        nsEl.setAttribute('data-clock-text', formatClock(current));
+      }
+    }
+
+    function updateVisual(){
+      var current = Number(rangeEl.value);
+      if(!Number.isFinite(current)) current = getNumberAttr(rangeEl, ['value','data-value']);
+      if(!Number.isFinite(current)) current = getMin();
+      if(!Number.isFinite(current)) current = 0;
+      current = clamp(current);
+      var pct = toPct(current);
+      if(!Number.isFinite(pct)) pct = 0;
+      fill.style.width = pct + '%';
+      thumb.style.left = pct + '%';
+      var fillStr = pct.toFixed(2) + '%';
+      nsEl.style.setProperty('--slider-fill', fillStr);
+      nsEl.__spCurrentValue = current;
+      updateAria(current);
+    }
+
+    function setRangeValue(value, emitInput, emitChange){
+      var next = clamp(snap(value));
+      rangeEl.value = String(next);
+      rangeEl.setAttribute('value', String(next));
+      rangeEl.setAttribute('data-value', String(next));
+      updateVisual();
+      if(emitInput){
+        rangeEl.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if(emitChange){
+        rangeEl.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+
+    function valueFromPointerEvent(e){
+      var rect = track.getBoundingClientRect();
+      var clientX = e.clientX;
+      if(typeof clientX !== 'number') return nsEl.__spCurrentValue || getMin();
+      var ratio = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
+      if(!Number.isFinite(ratio)) ratio = 0;
+      ratio = Math.min(1, Math.max(0, ratio));
+      var min = getMin();
+      var max = getMax();
+      return min + (max - min) * ratio;
+    }
+
+    var activePointerId = null;
+    function handlePointerDown(e){
+      if(e.button !== undefined && e.button !== 0) return;
+      activePointerId = e.pointerId;
+      try { track.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+      if(typeof nsEl.focus === 'function'){
+        try { nsEl.focus({ preventScroll: true }); } catch(err2){ try { nsEl.focus(); } catch(err3){} }
+      }
+      setRangeValue(valueFromPointerEvent(e), true, false);
+    }
+
+    function handlePointerMove(e){
+      if(activePointerId === null) return;
+      if(e.pointerId !== activePointerId) return;
+      e.preventDefault();
+      setRangeValue(valueFromPointerEvent(e), true, false);
+    }
+
+    function handlePointerUp(e){
+      if(activePointerId === null) return;
+      if(e.pointerId !== activePointerId) return;
+      e.preventDefault();
+      try { track.releasePointerCapture(e.pointerId); } catch(err){}
+      activePointerId = null;
+      setRangeValue(valueFromPointerEvent(e), false, true);
+    }
+
+    track.addEventListener('pointerdown', handlePointerDown);
+    track.addEventListener('pointermove', handlePointerMove);
+    track.addEventListener('pointerup', handlePointerUp);
+    track.addEventListener('pointercancel', handlePointerUp);
+    track.addEventListener('pointerleave', function(e){
+      if(activePointerId === null) return;
+      if(e.pointerId !== activePointerId) return;
+      e.preventDefault();
+    });
+
+    nsEl.addEventListener('wheel', function(e){
+      e.preventDefault();
+      var delta = e.deltaY;
+      if(delta === undefined || delta === 0){ delta = e.deltaX || 0; }
+      if(delta === 0) return;
+      var step = getStep();
+      var current = Number(rangeEl.value);
+      if(!Number.isFinite(current)) current = getMin();
+      if(!Number.isFinite(current)) current = 0;
+      current += delta < 0 ? step : -step;
+      setRangeValue(current, true, true);
+    }, { passive: false });
+
+    nsEl.addEventListener('keydown', function(e){
+      var key = e.key;
+      var step = getStep();
+      var next = Number(rangeEl.value);
+      if(!Number.isFinite(next)) next = getMin();
+      if(!Number.isFinite(next)) next = 0;
+      var handled = true;
+      if(key === 'ArrowRight' || key === 'ArrowUp'){ next += step; }
+      else if(key === 'ArrowLeft' || key === 'ArrowDown'){ next -= step; }
+      else if(key === 'PageUp'){ next += step * 2; }
+      else if(key === 'PageDown'){ next -= step * 2; }
+      else if(key === 'Home'){ next = getMin(); }
+      else if(key === 'End'){ next = getMax(); }
+      else { handled = false; }
+      if(!handled) return;
+      e.preventDefault();
+      setRangeValue(next, true, true);
+    });
+
+    rangeEl.__spSyncNiceSlider = updateVisual;
+
+    updateVisual();
+  }
+
   // === Suwaki (Świt/Zachód) ===
   function hookSlider(txtId, sliderId, cb){
     var labelEl = document.getElementById(txtId);
@@ -4712,6 +4957,7 @@
       slider.style.setProperty('--slider-fill', fillStr);
       if(sliderField){ sliderField.style.setProperty('--slider-fill', fillStr); }
       if(outputEl){ outputEl.style.setProperty('--slider-fill', fillStr); }
+      if(typeof slider.__spSyncNiceSlider === 'function') slider.__spSyncNiceSlider();
       var valueLabel = formatValueLabel(current);
       if(labelEl) labelEl.textContent = valueLabel;
       slider.setAttribute('aria-valuetext', valueLabel);
@@ -4729,6 +4975,13 @@
     }
 
     slider.__spUpdateSlider = function(emitCb){ updateSlider(!!emitCb); };
+    slider.__spGetMin = getMin;
+    slider.__spGetMax = getMax;
+    slider.__spGetStep = getStep;
+    slider.__spClamp = clamp;
+    slider.__spToPct = toPct;
+    slider.__spFormatValueLabel = formatValueLabel;
+    slider.__spFormatClock = formatClock;
 
     slider.addEventListener('input', function(){ updateSlider(true); });
     slider.addEventListener('change', function(){ updateSlider(false); });
@@ -4807,6 +5060,9 @@
     if(typeof el.__spUpdateSlider === 'function'){
       el.__spUpdateSlider(false);
     }
+    if(typeof el.__spSyncNiceSlider === 'function'){
+      el.__spSyncNiceSlider();
+    }
     if(emit){
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -4816,6 +5072,7 @@
   // Zainicjuj suwaki (Świt/Zachód)
   hookSlider('sp-txt-rise', 'sp-slider-rise', updateSunWeather);
   hookSlider('sp-txt-set',  'sp-slider-set',  updateSunWeather);
+  document.querySelectorAll('.ns-slider[data-for]').forEach(mountNiceSlider);
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
