@@ -97,9 +97,9 @@ html,body{overflow-x:hidden}
 
 
 .waypoint{display:flex;justify-content:space-between;align-items:center;border:1px dashed #d1d5db;border-radius:10px;padding:.45rem .6rem;margin:.35rem 0}
-.ring{width:clamp(52px,10vw,68px);aspect-ratio:1/1;position:relative;flex:0 0 auto}
+.ring{position:relative;display:inline-block;width:clamp(52px,10vw,68px);aspect-ratio:1/1;flex:0 0 auto}
 .ring svg{width:100%;height:100%}
-.ring .text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:clamp(.8rem,1.6vw,.95rem);line-height:1;text-align:center}
+.ring .text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-weight:600;font-size:clamp(.8rem,1.6vw,.95rem);line-height:1;text-align:center;pointer-events:none}
 .slider{
   -webkit-appearance:none;
   appearance:none;
@@ -109,6 +109,8 @@ html,body{overflow-x:hidden}
   border-radius:2px;
   cursor:pointer;
   margin:0;
+  touch-action:none;
+  overscroll-behavior:contain;
 }
 .slider::-webkit-slider-thumb{
   -webkit-appearance:none;
