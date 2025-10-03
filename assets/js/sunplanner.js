@@ -470,21 +470,10 @@
               '<div class="rowd"><span>Sen od</span><strong id="sp-rise-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Ile snu chcesz mieć?</p>'+
               '<div class="glow-duration" data-duration-group="rise" data-default-hours="6">'+
-                '<div class="ring">'+
-                  '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-rise" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
-                  '<div class="text" id="sp-txt-rise">6 h</div>'+
-                '</div>'+
+                '<div class="glow-duration__current" id="sp-txt-rise" aria-live="polite">6 h</div>'+
                 '<div class="glow-duration__options" role="radiogroup" aria-label="Długość snu przed świtem">'+
                   buildDurationOptions(6)+
                 '</div>'+
-              '</div>'+
-              '<div class="kpi">'+
-                '<div class="rowd"><span>Temp.</span><strong id="sp-rise-t">—</strong></div>'+
-                '<div class="rowd"><span>Wiatr</span><strong id="sp-rise-w">—</strong></div>'+
-                '<div class="rowd"><span>Chmury</span><strong id="sp-rise-c">—</strong></div>'+
-                '<div class="rowd"><span>Wilg.</span><strong id="sp-rise-h">—</strong></div>'+
-                '<div class="rowd"><span>Widocz.</span><strong id="sp-rise-v">—</strong></div>'+
-                '<div class="rowd"><span>Opady</span><strong id="sp-rise-p">—</strong></div>'+
               '</div>'+
               '<div class="glow-info morning">'+
                 '<h4>Poranek</h4>'+
@@ -500,21 +489,10 @@
               '<div class="rowd"><span>Czas na przygotowania</span><strong id="sp-set-bed">—</strong></div>'+
               '<p class="muted" style="margin:.25rem 0 .4rem">Dopasuj czas, aby wszystko dopiąć.</p>'+
               '<div class="glow-duration" data-duration-group="set" data-default-hours="6">'+
-                '<div class="ring">'+
-                  '<svg width="56" height="56"><circle cx="28" cy="28" r="24" stroke="#e5e7eb" stroke-width="4" fill="none"></circle><circle id="sp-ring-set" cx="28" cy="28" r="24" stroke="#e94244" stroke-width="4" fill="none" stroke-linecap="round"></circle></svg>'+
-                  '<div class="text" id="sp-txt-set">6 h</div>'+
-                '</div>'+
+                '<div class="glow-duration__current" id="sp-txt-set" aria-live="polite">6 h</div>'+
                 '<div class="glow-duration__options" role="radiogroup" aria-label="Czas na przygotowania wieczorem">'+
                   buildDurationOptions(6)+
                 '</div>'+
-              '</div>'+
-              '<div class="kpi">'+
-                '<div class="rowd"><span>Temp.</span><strong id="sp-set-t">—</strong></div>'+
-                '<div class="rowd"><span>Wiatr</span><strong id="sp-set-w">—</strong></div>'+
-                '<div class="rowd"><span>Chmury</span><strong id="sp-set-c">—</strong></div>'+
-                '<div class="rowd"><span>Wilg.</span><strong id="sp-set-h">—</strong></div>'+
-                '<div class="rowd"><span>Widocz.</span><strong id="sp-set-v">—</strong></div>'+
-                '<div class="rowd"><span>Opady</span><strong id="sp-set-p">—</strong></div>'+
               '</div>'+
               '<div class="glow-info align-right evening">'+
                 '<h4>Wieczór</h4>'+
@@ -627,19 +605,15 @@
     '</div>'+
     '<div class="card share-card">'+
       '<h3>Udostępnij / Eksport</h3>'+
-      '<div class="row share-row" style="align-items:flex-start">'+
-        '<div class="col" style="flex:1">'+
-          '<div class="row" style="gap:.35rem;flex-wrap:wrap">'+
-            '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
-            '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
-            '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
-            '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
-            '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
-          '</div>'+
-          '<div class="muted" id="sp-link" style="margin-top:.25rem"></div>'+
-          '<div class="muted" id="sp-short-status"></div>'+
-        '</div>'+
+      '<div class="share-actions">'+
+        '<button id="sp-copy" class="btn secondary" type="button">Kopiuj link</button>'+
+        '<button id="sp-short" class="btn secondary" type="button">Krótki link</button>'+
+        '<button id="sp-ics" class="btn secondary" type="button">Eksport do kalendarza</button>'+
+        '<button id="sp-client-card" class="btn secondary" type="button">Karta klienta</button>'+
+        '<button id="sp-print" class="btn secondary" type="button">Drukuj / PDF</button>'+
       '</div>'+
+      '<div class="muted" id="sp-link" style="margin-top:.25rem"></div>'+
+      '<div class="muted" id="sp-short-status"></div>'+
     '</div>'+
   '</div>';
   var galleryTrack=document.querySelector('#sp-gallery');
@@ -4479,9 +4453,9 @@
   // suwaki
   function bindHourPicker(group, ringId, txtId){
     var container = document.querySelector('[data-duration-group="'+group+'"]');
-    var ring = document.getElementById(ringId);
-    var txt  = document.getElementById(txtId);
-    if(!container || !ring || !txt) return;
+    var ring = ringId ? document.getElementById(ringId) : null;
+    var txt  = txtId ? document.getElementById(txtId) : null;
+    if(!container || !txt) return;
 
     var options = Array.prototype.slice.call(container.querySelectorAll('[data-duration-value]'));
     if(!options.length) return;
@@ -4507,7 +4481,9 @@
     }
 
     function updateUI(hours){
-      applyRingProgress(ring, hours);
+      if(ring){
+        applyRingProgress(ring, hours);
+      }
       txt.textContent = hours + ' h';
       var activeButton = null;
       options.forEach(function(btn){
@@ -4592,8 +4568,8 @@
     debouncedLink();
   }
 
-  bindHourPicker('rise','sp-ring-rise','sp-txt-rise');
-  bindHourPicker('set','sp-ring-set','sp-txt-set');
+  bindHourPicker('rise', null, 'sp-txt-rise');
+  bindHourPicker('set', null, 'sp-txt-set');
 
   var daily16Slider=document.getElementById('sp-daily16-slider');
   if(daily16Slider){
