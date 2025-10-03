@@ -4332,17 +4332,91 @@
     geocoder=new google.maps.Geocoder();
     dirService=new google.maps.DirectionsService();
 
-    dragMarker=new google.maps.Marker({position:DEF,map:map,draggable:true,visible:false});
+    // MIGRACJA: AdvancedMarkerElement
+    var AdvancedMarkerElement=(google.maps.marker&&google.maps.marker.AdvancedMarkerElement)||null;
+    if(AdvancedMarkerElement){
+      dragMarker=new AdvancedMarkerElement({map:map,position:DEF,gmpDraggable:true});
+      dragMarker.__sunplannerMapRef=map;
+      dragMarker.setPosition=function(pos){ this.position=pos; };
+      dragMarker.getPosition=function(){ return this.position||null; };
+      dragMarker.setVisible=function(visible){ this.map=visible?this.__sunplannerMapRef:null; };
+      dragMarker.getVisible=function(){ return !!this.map; };
+      dragMarker.setVisible(false);
+    } else {
+      dragMarker=new google.maps.Marker({position:DEF,map:map,draggable:true,visible:false});
+    }
     google.maps.event.addListener(map,'click',function(e){ dragMarker.setPosition(e.latLng); dragMarker.setVisible(true); });
 
-    placesAutocomplete=new google.maps.places.Autocomplete($('#sp-place'),{fields:['geometry','name']});
-    placesAutocomplete.addListener('place_changed',function(){
-      var pl=placesAutocomplete.getPlace(); if(!pl || !pl.geometry) return;
-      var pos=pl.geometry.location;
-      points.push({lat:pos.lat(),lng:pos.lng(),label:pl.name||$('#sp-place').value||'Punkt'});
-      $('#sp-place').value='';
-      renderList(); recalcRoute(false); updateDerived(); loadGallery();
-    });
+    var placeInput=$('#sp-place');
+    var placeLib=(google.maps.places&&google.maps.places.PlaceAutocompleteElement)||null;
+    if(placeLib&&placeInput){
+      // MIGRACJA: PlaceAutocompleteElement
+      var pacEl=document.createElement('gmp-place-autocomplete');
+      pacEl.id='sp-place-autocomplete';
+      pacEl.className='sp-place-autocomplete';
+      var placeholder=placeInput.getAttribute('placeholder')||'';
+      if(placeholder){ pacEl.setAttribute('placeholder',placeholder); }
+      var ariaLabel=placeInput.getAttribute('aria-label')||placeholder||'Dodaj punkt';
+      pacEl.setAttribute('aria-label',ariaLabel);
+      if(placeInput.parentNode){
+        placeInput.parentNode.replaceChild(pacEl,placeInput);
+        pacEl.appendChild(placeInput);
+      }
+      if(typeof pacEl.inputElement!=='undefined'){ pacEl.inputElement=placeInput; }
+      placesAutocomplete=pacEl;
+      pacEl.addEventListener('gmp-select',function(event){
+        if(!event||!event.placePrediction||typeof event.placePrediction.toPlace!=='function') return;
+        Promise.resolve(event.placePrediction.toPlace())
+          .then(function(place){
+            if(!place) return null;
+            if(typeof place.fetchFields==='function'){
+              return Promise.resolve(place.fetchFields({fields:['displayName','formattedAddress','location','viewport']}))
+                .then(function(){ return place; })
+                .catch(function(){ return place; });
+            }
+            return place;
+          })
+          .then(function(place){
+            if(!place) return;
+            var location=place.location||null;
+            if(!location) return;
+            var latFn=location.lat;
+            var lngFn=location.lng;
+            var lat=(typeof latFn==='function')?latFn.call(location):latFn;
+            var lng=(typeof lngFn==='function')?lngFn.call(location):lngFn;
+            if(typeof lat!=='number'||typeof lng!=='number') return;
+            var label='';
+            var displayName=place.displayName;
+            if(displayName&&typeof displayName==='object'&&displayName.text){ label=displayName.text; }
+            else if(displayName&&typeof displayName==='string'){ label=displayName; }
+            if(!label&&place.formattedAddress){ label=place.formattedAddress; }
+            if(!label&&placeInput&&typeof placeInput.value==='string'){ label=placeInput.value; }
+            points.push({lat:lat,lng:lng,label:label||'Punkt'});
+            if(placeInput&&typeof placeInput.value==='string'){ placeInput.value=''; }
+            if(place.viewport&&map&&typeof map.fitBounds==='function'){
+              try{ map.fitBounds(place.viewport); }catch(e){}
+            } else if(map&&typeof map.setCenter==='function'){
+              map.setCenter({lat:lat,lng:lng});
+            }
+            renderList(); recalcRoute(false); updateDerived(); loadGallery();
+          })
+          .catch(function(err){ try{ console.warn('SunPlanner: gmp-select failed',err); }catch(e){} });
+      });
+    } else if(placeInput&&google.maps.places&&google.maps.places.Autocomplete){
+      placesAutocomplete=new google.maps.places.Autocomplete(placeInput,{fields:['geometry','name']});
+      placesAutocomplete.addListener('place_changed',function(){
+        var pl=placesAutocomplete.getPlace(); if(!pl||!pl.geometry) return;
+        var pos=pl.geometry.location;
+        points.push({lat:pos.lat(),lng:pos.lng(),label:pl.name||placeInput.value||'Punkt'});
+        if(pl.geometry.viewport&&map&&typeof map.fitBounds==='function'){
+          try{ map.fitBounds(pl.geometry.viewport); }catch(e){}
+        } else if(map&&typeof map.setCenter==='function'){
+          map.setCenter(pos);
+        }
+        placeInput.value='';
+        renderList(); recalcRoute(false); updateDerived(); loadGallery();
+      });
+    }
 
     renderList(); updateDerived(); renderRouteOptions();
     if(points.length>=2) recalcRoute(false); else updateSunWeather();
