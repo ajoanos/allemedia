@@ -74,7 +74,11 @@ html,body{overflow-x:hidden}
 .route-card .alt-heading{margin:0}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(16px,3vw,32px)}
 .golden-block{display:grid;gap:clamp(20px,3vw,36px);margin-top:clamp(20px,3vw,36px)}
-.sun-section,.golden-block,.twilight-block{overscroll-behavior:contain}
+.sun-section,
+.golden-block,
+.twilight-block{
+  overscroll-behavior:contain
+}
 .glow-info{flex:none;width:100%;min-width:0;background:linear-gradient(135deg,rgba(253,230,138,.85),rgba(253,186,116,.85));border-radius:18px;padding:clamp(16px,3vw,24px);color:#78350f;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:clamp(8px,1.6vw,16px);box-shadow:0 4px 14px rgba(253,186,116,.25)}
 .glow-info.align-right{background:linear-gradient(135deg,rgba(191,219,254,.85),rgba(147,197,253,.85));color:#1e3a8a;text-align:right;align-items:flex-end}
 .glow-info h4{margin:0;font-size:clamp(1rem,2.2vw,1.15rem);font-weight:600}
@@ -165,7 +169,13 @@ html,body{overflow-x:hidden}
 #sp-short-status{margin-top:.75rem;font-size:.95rem;font-weight:700;color:#111}
 #sp-short-status strong{margin-right:.35rem}
 .share-row .btn{flex:1;min-width:160px}
-#sp-link{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#sp-link{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%
+}
 #sp-short-status a{color:var(--accent);font-weight:700;text-decoration:none}
 #sp-short-status a:hover{color:#b91c1c;text-decoration:underline}
 .toolbar{justify-content:space-between;margin:.4rem 0 1rem}
