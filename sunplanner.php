@@ -95,7 +95,7 @@ wp_add_inline_script('sunplanner-app', $stub, 'before');
 $key = 'AIzaSyDP0vhFiZV_yDB8urPJtQ4UdKQpAzmuOcU';
 $gmaps_src = 'https://maps.googleapis.com/maps/api/js?key='
 . rawurlencode($key)
-. '&libraries=places&language=pl&region=PL&v=weekly&loading=async&callback=initSunPlannerMap';
+. '&libraries=marker,places&language=pl&region=PL&v=weekly&loading=async&callback=initSunPlannerMap';
 
 
 wp_register_script('sunplanner-gmaps', $gmaps_src, [], null, true);
