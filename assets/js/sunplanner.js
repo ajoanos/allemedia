@@ -4323,7 +4323,8 @@
     var DEF={lat:49.2992,lng:19.9496};
     map=new google.maps.Map(mapEl,{
       center:DEF, zoom:11, disableDefaultUI:false,
-      gestureHandling:'greedy', zoomControl:true, mapTypeControl:false, streetViewControl:false
+      gestureHandling:'greedy', zoomControl:true, mapTypeControl:false, streetViewControl:false,
+      mapId:'7e5fca445ea445cf948fbf2e' // MIGRACJA: dodany mapId
     });
 
     // blokada scrolla strony nad mapa (zoom zostaje)
@@ -4343,6 +4344,7 @@
       dragMarker.getVisible=function(){ return !!this.map; };
       dragMarker.setVisible(false);
     } else {
+      // MIGRACJA: AdvancedMarkerElement fallback
       dragMarker=new google.maps.Marker({position:DEF,map:map,draggable:true,visible:false});
     }
     google.maps.event.addListener(map,'click',function(e){ dragMarker.setPosition(e.latLng); dragMarker.setVisible(true); });
