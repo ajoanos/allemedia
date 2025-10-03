@@ -4454,13 +4454,6 @@
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
   // suwaki
-  var debouncedRecalc = debounce(function(){
-    try {
-      updateSunWeather && updateSunWeather();
-      updateLink && updateLink();
-    } catch(_) {}
-  }, 180);
-
   function bindHourSlider(ringId, txtId, sliderId){
     var ring = document.getElementById(ringId);
     var txt  = document.getElementById(txtId);
@@ -4469,15 +4462,42 @@
 
     attachNoScrollHandlers(inp);
 
-    function apply(v){
-      var hours = Number(v) || 1;
+    var debouncedWeather = debounce(function(){
+      try {
+        updateSunWeather && updateSunWeather();
+      } catch(_) {}
+    }, 180);
+
+    var debouncedLink = debounce(function(){
+      try {
+        updateLink && updateLink();
+      } catch(_) {}
+    }, 900);
+
+    function updateUI(hours){
       applyRingProgress(ring, hours);
       txt.textContent = hours + ' h';
-      debouncedRecalc();
+      debouncedWeather();
     }
 
-    inp.addEventListener('input', function(e){ apply(e.target.value); }, { passive:true });
-    apply(inp.value);
+    function applyChange(){
+      try {
+        updateLink && updateLink();
+      } catch(_) {}
+    }
+
+    inp.addEventListener('input', function(e){
+      var hours = Number(e.target.value) || 1;
+      updateUI(hours);
+      debouncedLink();
+    }, { passive:true });
+
+    inp.addEventListener('change', applyChange);
+    inp.addEventListener('touchstart', function(e){ e.preventDefault(); }, { passive:false });
+
+    var initialHours = Number(inp.value) || 1;
+    updateUI(initialHours);
+    debouncedLink();
   }
 
   bindHourSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise');
