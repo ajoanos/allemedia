@@ -49,6 +49,15 @@
     }
   }
 
+  function debounce(fn, ms){
+    var t=null;
+    return function(){
+      var args=arguments, ctx=this;
+      clearTimeout(t);
+      t=setTimeout(function(){ fn.apply(ctx,args); }, ms||200);
+    };
+  }
+
   var shareId = (typeof SHARE_ID === 'string' && SHARE_ID) ? SHARE_ID : null;
   var shareBaseUrl = shareId ? normalizeShareBase(SHARE_URL || BASE_URL) : '';
   var shareSyncTimeout = null;
@@ -4417,10 +4426,47 @@
   dEl.addEventListener('change', function(){ updateDerived(); updateSunWeather(); });
 
   // suwaki
-  function hookSlider(ringId,txtId,sliderId,cb){
-    var r=document.getElementById(ringId), t=document.getElementById(txtId), s=document.getElementById(sliderId);
-    function apply(v){ var rr=+r.getAttribute('r'), per=2*Math.PI*rr, pct=(v-1)/7; r.style.strokeDasharray=per; r.style.strokeDashoffset=per*(1-pct); t.textContent=v+' h'; if(cb) cb(); updateLink(); }
-    s.addEventListener('input', function(e){ apply(+e.target.value); }); apply(+s.value);
+  var debouncedUpdateSunWeather = debounce(function(){
+    try { updateSunWeather(); } catch(e){}
+  }, 180);
+
+  function hookSlider(ringId, txtId, sliderId, cb){
+    var r = document.getElementById(ringId);
+    var t = document.getElementById(txtId);
+    var s = document.getElementById(sliderId);
+    if(!r || !t || !s) return;
+
+    function apply(v){
+      var rr = +r.getAttribute('r') || 24;
+      var per = 2*Math.PI*rr;
+      var pct = (v-1)/7; // zakres 1..8h
+      r.style.strokeDasharray  = per;
+      r.style.strokeDashoffset = per*(1-pct);
+      t.textContent = v + ' h';
+      // Zamiast natychmiastowej ciężkiej aktualizacji – debounce:
+      if(cb) debouncedUpdateSunWeather();
+      // Aktualizuj link/storowanie:
+      updateLink();
+    }
+
+    // Zapobieganie przewijaniu strony podczas interakcji:
+    var stopScroll = function(e){
+      // Nie pozwól kółku myszy przewijać dokumentu kiedy kursor jest nad suwakiem
+      e.preventDefault();
+    };
+    s.addEventListener('wheel', stopScroll, { passive: false });
+
+    // Podczas "drag" wyłącz przewijanie dotykowe:
+    var dragging = false;
+    s.addEventListener('pointerdown', function(){ dragging=true; }, { passive: true });
+    window.addEventListener('pointerup', function(){ dragging=false; }, { passive: true });
+    s.addEventListener('touchmove', function(e){ if(dragging){ e.preventDefault(); } }, { passive: false });
+
+    // Główna obsługa wartości (płynna, bez skoków strony):
+    s.addEventListener('input', function(e){ apply(+e.target.value); });
+
+    // Inicjalizacja:
+    apply(+s.value);
   }
   hookSlider('sp-ring-rise','sp-txt-rise','sp-slider-rise', updateSunWeather);
   hookSlider('sp-ring-set','sp-txt-set','sp-slider-set', updateSunWeather);

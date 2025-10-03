@@ -100,7 +100,37 @@ html,body{overflow-x:hidden}
 .ring{width:clamp(52px,10vw,68px);aspect-ratio:1/1;position:relative;flex:0 0 auto}
 .ring svg{width:100%;height:100%}
 .ring .text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:clamp(.8rem,1.6vw,.95rem);line-height:1;text-align:center}
-.slider{width:100%}
+.slider{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:4px;
+  background:#d1d5db;
+  border-radius:2px;
+  cursor:pointer;
+  margin:0;
+}
+.slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  height:22px;
+  width:22px;
+  border-radius:50%;
+  background:var(--accent,#e94244);
+  border:none;
+}
+.slider::-moz-range-thumb{
+  height:22px;
+  width:22px;
+  border-radius:50%;
+  background:var(--accent,#e94244);
+  border:none;
+}
+.slider::-moz-range-track{
+  background:#d1d5db;
+  height:4px;
+  border-radius:2px;
+}
 .smallcanvas{width:100%;height:130px;border:1px solid #e5e7eb;border-radius:8px}
 
 .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
