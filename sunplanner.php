@@ -9,6 +9,50 @@ Author URI: https://allemedia.pl/
 License: GPLv2 or later
 Text Domain: sunplanner
 */
+
+namespace {
+    if (!defined('SUNPLANNER_FILE')) {
+        define('SUNPLANNER_FILE', __FILE__);
+    }
+}
+
+namespace SunPlanner {
+
+final class Templates
+{
+    public static function locate(string $template): string
+    {
+        $template = ltrim($template, '/');
+
+        if ($template === '') {
+            return '';
+        }
+
+        $theme_template = \locate_template([
+            'sunplanner/' . $template,
+            'sunplanner-' . $template,
+            $template,
+        ]);
+
+        if (is_string($theme_template) && $theme_template !== '') {
+            return $theme_template;
+        }
+
+        $plugin_template = \plugin_dir_path(SUNPLANNER_FILE) . 'templates/' . $template;
+
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
+
+        return '';
+    }
+}
+
+}
+
+namespace {
+
+use SunPlanner\Templates;
 add_action('init', function () {
     add_rewrite_tag('%sunplan%', '([A-Za-z0-9_-]+)');
     add_rewrite_rule('^sp/([A-Za-z0-9_-]+)/?$', 'index.php?sunplan=$matches[1]', 'top');
@@ -21,12 +65,10 @@ add_action('after_setup_theme', function () {
     add_image_size('insp-md', 900, 0, false);
     add_image_size('insp-sm', 600, 0, false);
 });
-register_activation_hook(__FILE__, function () { flush_rewrite_rules(); });
-register_deactivation_hook(__FILE__, function () { flush_rewrite_rules(); });
 
-require_once plugin_dir_path(__FILE__) . 'includes/class-sunplanner-share-page.php';
+register_activation_hook(SUNPLANNER_FILE, function () { flush_rewrite_rules(); });
+register_deactivation_hook(SUNPLANNER_FILE, function () { flush_rewrite_rules(); });
 
-(new Sunplanner_Share_Page(plugin_dir_path(__FILE__)))->register_hooks();
 
 
 add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; });
@@ -36,8 +78,10 @@ add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; }
 
 add_action('wp_enqueue_scripts', function () {
 $ver = '1.7.5';
-wp_register_style('sunplanner-css', plugins_url('sunplanner.css', __FILE__), [], $ver);
-wp_register_script('sunplanner-app', plugins_url('sunplanner.js', __FILE__), [], $ver, true);
+
+wp_register_style('sunplanner-css', plugins_url('assets/css/sunplanner.css', SUNPLANNER_FILE), [], $ver);
+wp_register_script('sunplanner-app', plugins_url('assets/js/sunplanner.js', SUNPLANNER_FILE), [], $ver, true);
+
 
 
 // Stub Google callback
@@ -111,6 +155,46 @@ wp_enqueue_script('sunplanner-app');
 <div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.5"></div>
 <?php return ob_get_clean();
 });
+
+
+add_filter('template_include', function ($template) {
+    if (get_query_var('sunplan')) {
+        $share_template = Templates::locate('share.php');
+        if ($share_template !== '') {
+            return $share_template;
+        }
+    }
+    return $template;
+});
+
+add_action('template_redirect', function () {
+    if (get_query_var('sunplan')) {
+        status_header(200);
+        global $wp_query;
+        if ($wp_query) {
+            $wp_query->is_404 = false;
+            $wp_query->is_home = false;
+            $wp_query->is_singular = true;
+            $wp_query->is_page = true;
+        }
+    }
+});
+
+add_filter('document_title_parts', function ($parts) {
+    if (get_query_var('sunplan')) {
+        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+    }
+    return $parts;
+});
+
+add_filter('body_class', function ($classes) {
+    if (get_query_var('sunplan')) {
+        $classes[] = 'sunplanner-share-page';
+    }
+    return $classes;
+});
+
+
 
 /** === REST: create short link === */
 add_action('rest_api_init', function () {
@@ -357,6 +441,125 @@ function sunplanner_resolve_radar_template()
     return '';
 }
 
+function sunplanner_filter_radar_template($template)
+{
+    if (!is_string($template)) {
+        return '';
+    }
+
+    $template = trim($template);
+    if ($template === '') {
+        return '';
+    }
+
+    if (strpos($template, 'https://tilecache.rainviewer.com/') !== 0) {
+        return '';
+    }
+
+    if (strpos($template, '{z}') === false || strpos($template, '{x}') === false || strpos($template, '{y}') === false) {
+        return '';
+    }
+
+    return $template;
+}
+
+function sunplanner_build_radar_template($base, $path)
+{
+    if (empty($path)) {
+        return '';
+    }
+
+    $raw = trim((string) $path);
+    if ($raw === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $raw)) {
+        $candidate = $raw;
+    } else {
+        $host = rtrim((string) $base, '/') . '/';
+        $clean_path = ltrim($raw, '/');
+        $candidate = $host . $clean_path;
+    }
+
+    if (strpos($candidate, 'https://tilecache.rainviewer.com/') !== 0) {
+        $candidate = 'https://tilecache.rainviewer.com/' . ltrim($candidate, '/');
+    }
+
+    if (strpos($candidate, '{z}') !== false && strpos($candidate, '{x}') !== false && strpos($candidate, '{y}') !== false) {
+        return sunplanner_filter_radar_template($candidate);
+    }
+
+    $candidate = rtrim($candidate, '/');
+
+    return sunplanner_filter_radar_template($candidate . '/256/{z}/{x}/{y}/2/1_1.png');
+}
+
+function sunplanner_resolve_radar_template()
+{
+    $cache_key = 'sunplanner_radar_template';
+    $cached = get_transient($cache_key);
+    if (is_string($cached) && $cached !== '') {
+        $valid = sunplanner_filter_radar_template($cached);
+        if ($valid !== '') {
+            return $valid;
+        }
+    }
+
+    $fallbacks = [
+        'https://tilecache.rainviewer.com/v4/composite/latest/256/{z}/{x}/{y}/2/1_1.png',
+        'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/2/1_1.png',
+        'https://tilecache.rainviewer.com/v3/radar/nowcast/latest/256/{z}/{x}/{y}/3/1_1.png',
+        'https://tilecache.rainviewer.com/v2/radar/last/256/{z}/{x}/{y}/2/1_1.png',
+    ];
+
+    $response = wp_remote_get('https://api.rainviewer.com/public/weather-maps.json', [
+        'timeout' => 8,
+        'headers' => [
+            'Accept' => 'application/json',
+            'User-Agent' => 'SunPlanner/1.7.2',
+        ],
+    ]);
+
+    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        if (is_array($data) && isset($data['radar'])) {
+            $nowcast = isset($data['radar']['nowcast']) && is_array($data['radar']['nowcast']) ? $data['radar']['nowcast'] : [];
+            $past = isset($data['radar']['past']) && is_array($data['radar']['past']) ? $data['radar']['past'] : [];
+            $frames = array_merge($nowcast, $past);
+            $frames = array_reverse($frames);
+            foreach ($frames as $frame) {
+                if (!is_array($frame)) {
+                    continue;
+                }
+                $host = isset($frame['host']) ? $frame['host'] : 'https://tilecache.rainviewer.com/';
+                $path = isset($frame['path']) ? $frame['path'] : '';
+                if ($path === '' && isset($frame['time'])) {
+                    $path = 'v2/radar/' . $frame['time'];
+                }
+                $template = sunplanner_build_radar_template($host, $path);
+                if ($template === '' && isset($frame['url'])) {
+                    $template = sunplanner_build_radar_template('', $frame['url']);
+                }
+                if ($template !== '') {
+                    set_transient($cache_key, $template, 10 * MINUTE_IN_SECONDS);
+                    return $template;
+                }
+            }
+        }
+    }
+
+    foreach ($fallbacks as $fallback) {
+        $valid = sunplanner_filter_radar_template($fallback);
+        if ($valid !== '') {
+            return $valid;
+        }
+    }
+
+    return '';
+}
+
 add_action('rest_api_init', function () {
     register_rest_route('sunplanner/v1', '/radar', [
         'methods' => WP_REST_Server::READABLE,
@@ -373,3 +576,7 @@ add_action('rest_api_init', function () {
         },
     ]);
 });
+
+
+}
+
