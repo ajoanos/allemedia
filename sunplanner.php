@@ -53,6 +53,7 @@ final class Templates
 namespace {
 
 use SunPlanner\Templates;
+use Allemedia\SunPlanner\Rest\Contact_Controller;
 add_action('init', function () {
     add_rewrite_tag('%sunplan%', '([A-Za-z0-9_-]+)');
     add_rewrite_rule('^sp/([A-Za-z0-9_-]+)/?$', 'index.php?sunplan=$matches[1]', 'top');
@@ -280,6 +281,30 @@ add_action('rest_api_init', function () {
         'callback' => 'sunplanner_handle_contact_request',
     ]);
 });
+
+/**
+ * Proxy the legacy REST callback to the modern controller implementation.
+ *
+ * The route was still pointing to this function name, but the underlying
+ * implementation was refactored into a namespaced controller class. When the
+ * callback function went missing the REST request triggered a fatal error,
+ * which bubbled up to the front-end as a generic "Nie udało się wysłać
+ * powiadomień" message. By forwarding the call we keep backward compatibility
+ * and make sure notifications can be sent again.
+ *
+ * @param \WP_REST_Request $request
+ * @return \WP_REST_Response
+ */
+function sunplanner_handle_contact_request(\WP_REST_Request $request)
+{
+    static $controller = null;
+
+    if (!$controller instanceof Contact_Controller) {
+        $controller = new Contact_Controller();
+    }
+
+    return $controller->handle_request($request);
+}
 
 function sunplanner_contact_clean_slot($slot)
 {
