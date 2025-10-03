@@ -917,7 +917,8 @@
     ctx.save();
     ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = 'middle';
+    var textHalfHeight = 6; // przybliżona połowa wysokości tekstu (11px font)
     hours.forEach(function(h, i){
       if(h.precip==null || !Number.isFinite(h.precip)) return;
       var label = formatPrecipValue(h.precip);
@@ -925,19 +926,28 @@
       var barH = barHeights[i] || 0;
       var x = xAt(i);
       var yTop = padT + (plotH - barH);
-      var textY = yTop - 4;
+      var textBaselineY = yTop - 4;
       var color = '#1e3a8a';
       if(barH >= 26){
-        textY = yTop + Math.min(barH - 6, 18);
+        textBaselineY = yTop + Math.min(barH - 6, 18);
         color = '#ffffff';
-      } else if(textY < 12){
-        textY = Math.max(12, yTop + Math.min(barH + 8, 18));
+      } else if(textBaselineY < 12){
+        textBaselineY = Math.max(12, yTop + Math.min(barH + 8, 18));
       }
       var maxY = padT + plotH - 4;
-      if(textY > maxY){ textY = maxY; }
-      if(textY < 10){ textY = 10; }
+      if(textBaselineY > maxY){ textBaselineY = maxY; }
+      if(textBaselineY < 10){ textBaselineY = 10; }
+      var textCenterY = textBaselineY - textHalfHeight;
+      var minCenter = padT + textHalfHeight;
+      var maxCenter = padT + plotH - textHalfHeight;
+      if(textCenterY < minCenter){ textCenterY = minCenter; }
+      if(textCenterY > maxCenter){ textCenterY = maxCenter; }
+      ctx.save();
+      ctx.translate(x, textCenterY);
+      ctx.rotate(-Math.PI/2);
       ctx.fillStyle = color;
-      ctx.fillText(label, x, textY);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
     });
     ctx.restore();
 
@@ -1092,7 +1102,8 @@
     ctx.save();
     ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = 'middle';
+    var textHalfHeight = 6;
     hours.forEach(function(h, i){
       if(h.sunshineSec==null || !Number.isFinite(h.sunshineSec)) return;
       var label = formatSunshineValue(h.sunshineSec);
@@ -1100,19 +1111,28 @@
       var barH = barHeights[i] || 0;
       var x = xAt(i);
       var yTop = padT + (plotH - barH);
-      var textY = yTop - 4;
+      var textBaselineY = yTop - 4;
       var color = '#92400e';
       if(barH >= 26){
-        textY = yTop + Math.min(barH - 6, 18);
+        textBaselineY = yTop + Math.min(barH - 6, 18);
         color = '#ffffff';
-      } else if(textY < 12){
-        textY = Math.max(12, yTop + Math.min(barH + 8, 18));
+      } else if(textBaselineY < 12){
+        textBaselineY = Math.max(12, yTop + Math.min(barH + 8, 18));
       }
       var maxY = padT + plotH - 4;
-      if(textY > maxY){ textY = maxY; }
-      if(textY < 10){ textY = 10; }
+      if(textBaselineY > maxY){ textBaselineY = maxY; }
+      if(textBaselineY < 10){ textBaselineY = 10; }
+      var textCenterY = textBaselineY - textHalfHeight;
+      var minCenter = padT + textHalfHeight;
+      var maxCenter = padT + plotH - textHalfHeight;
+      if(textCenterY < minCenter){ textCenterY = minCenter; }
+      if(textCenterY > maxCenter){ textCenterY = maxCenter; }
+      ctx.save();
+      ctx.translate(x, textCenterY);
+      ctx.rotate(-Math.PI/2);
       ctx.fillStyle = color;
-      ctx.fillText(label, x, textY);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
     });
     ctx.restore();
 
