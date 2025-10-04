@@ -1035,22 +1035,14 @@
       var barH = barHeights[i] || 0;
       var x = xAt(i);
       var yTop = padT + (plotH - barH);
-      var textBaselineY = yTop - 4;
+      var barCenterY = yTop + barH/2;
       var color = '#1e3a8a';
       if(barH >= 26){
-        textBaselineY = yTop + Math.min(barH - 6, 18);
         color = '#ffffff';
-      } else if(textBaselineY < 12){
-        textBaselineY = Math.max(12, yTop + Math.min(barH + 8, 18));
       }
-      var maxY = padT + plotH - 4;
-      if(textBaselineY > maxY){ textBaselineY = maxY; }
-      if(textBaselineY < 10){ textBaselineY = 10; }
-      var textCenterY = textBaselineY - textHalfHeight;
       var minCenter = padT + textHalfHeight;
       var maxCenter = padT + plotH - textHalfHeight;
-      if(textCenterY < minCenter){ textCenterY = minCenter; }
-      if(textCenterY > maxCenter){ textCenterY = maxCenter; }
+      var textCenterY = Math.min(Math.max(barCenterY, minCenter), maxCenter);
       ctx.save();
       ctx.translate(x, textCenterY);
       ctx.rotate(-Math.PI/2);
@@ -1245,22 +1237,14 @@
       var barH = barHeights[i] || 0;
       var x = xAt(i);
       var yTop = padT + (plotH - barH);
-      var textBaselineY = yTop - 4;
+      var barCenterY = yTop + barH/2;
       var color = '#92400e';
       if(barH >= 26){
-        textBaselineY = yTop + Math.min(barH - 6, 18);
         color = '#ffffff';
-      } else if(textBaselineY < 12){
-        textBaselineY = Math.max(12, yTop + Math.min(barH + 8, 18));
       }
-      var maxY = padT + plotH - 4;
-      if(textBaselineY > maxY){ textBaselineY = maxY; }
-      if(textBaselineY < 10){ textBaselineY = 10; }
-      var textCenterY = textBaselineY - textHalfHeight;
       var minCenter = padT + textHalfHeight;
       var maxCenter = padT + plotH - textHalfHeight;
-      if(textCenterY < minCenter){ textCenterY = minCenter; }
-      if(textCenterY > maxCenter){ textCenterY = maxCenter; }
+      var textCenterY = Math.min(Math.max(barCenterY, minCenter), maxCenter);
       ctx.save();
       ctx.translate(x, textCenterY);
       ctx.rotate(-Math.PI/2);
