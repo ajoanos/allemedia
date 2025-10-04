@@ -290,7 +290,8 @@ gmp-place-autocomplete input{flex:1}
 td .gallery-inspirations,th .gallery-inspirations{width:100%!important;max-width:100%!important;margin:0;padding:0}
 .gallery-track{position:relative}
 .inspiration-viewport{overflow:hidden;position:relative}
-.inspiration-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:6px 4px}
+.inspiration-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:6px 4px;scrollbar-width:none}
+.inspiration-track::-webkit-scrollbar{display:none}
 .inspiration-track:focus-visible{outline:2px solid rgba(15,23,42,.35);outline-offset:4px}
 .inspiration-track>.gallery-item{flex:0 0 auto;width:clamp(220px,30vw,360px);scroll-snap-align:start;border-radius:10px;overflow:hidden;margin:0}
 .gallery-item{min-width:0;margin:0}
