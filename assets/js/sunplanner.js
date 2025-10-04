@@ -507,12 +507,12 @@
           '<div class="card inner plan-day-gallery gallery-inspirations">'+
             '<div class="plan-day-gallery__header">'+
               '<h3>Galeria inspiracji – zdjęcia</h3>'+
-              '<div class="plan-day-gallery__nav">'+
-                '<button type="button" class="gallery-nav" data-gallery-prev aria-controls="sp-gallery" aria-label="Poprzednie zdjęcia">&#8249;</button>'+
-                '<button type="button" class="gallery-nav" data-gallery-next aria-controls="sp-gallery" aria-label="Następne zdjęcia">&#8250;</button>'+
-              '</div>'+
             '</div>'+
-            '<div id="sp-gallery" class="gallery-track gallery-inspirations-grid" tabindex="0" aria-live="polite"></div>'+
+            '<div class="inspiration-viewport">'+
+              '<button type="button" class="insp-nav insp-prev" data-gallery-prev aria-controls="sp-gallery" aria-label="Poprzednie zdjęcia">&#8249;</button>'+
+              '<div id="sp-gallery" class="gallery-track inspiration-track" tabindex="0" aria-live="polite"></div>'+
+              '<button type="button" class="insp-nav insp-next" data-gallery-next aria-controls="sp-gallery" aria-label="Następne zdjęcia">&#8250;</button>'+
+            '</div>'+
           '</div>'+
           '<div id="sp-location-insights" class="location-insights">'+
             '<h3>Zasady na miejscu</h3>'+
@@ -616,64 +616,96 @@
       '<div class="muted" id="sp-short-status"></div>'+
     '</div>'+
   '</div>';
+
+  // MIGRACJA: opis kontaktów
+  (function injectContactSubtitle(){
+    var section=document.querySelector('.contact-card');
+    if(!section) return;
+    var heading=section.querySelector('h3, .section-title, [role="heading"]');
+    if(!heading) return;
+    if(section.querySelector('.contact-subtitle')) return;
+    var p=document.createElement('p');
+    p.className='contact-subtitle';
+    p.textContent='Podaj Wasze dane i ułatw kontakt między Wami.';
+    p.style.marginTop='6px';
+    p.style.opacity='.9';
+    section.insertBefore(p, heading.nextSibling);
+  })();
+
+  var inspirationRoot=document.querySelector('.gallery-inspirations');
   var galleryTrack=document.querySelector('#sp-gallery');
-  var galleryPrev=document.querySelector('[data-gallery-prev]');
-  var galleryNext=document.querySelector('[data-gallery-next]');
-  var galleryPage=0;
 
-  function galleryItemsPerPage(){
-    if(typeof window!=='undefined' && typeof window.matchMedia==='function'){
-      if(window.matchMedia('(max-width: 640px)').matches){ return 1; }
-      if(window.matchMedia('(max-width: 900px)').matches){ return 2; }
+  function updateInspirationNav(root){
+    if(!root) return;
+    var track=root.querySelector('.inspiration-track');
+    if(!track) return;
+    var prev=root.querySelector('.insp-prev');
+    var next=root.querySelector('.insp-next');
+    var total=track.querySelectorAll('.gallery-item').length;
+    var maxScroll=Math.max(0, track.scrollWidth - track.clientWidth - 1);
+    var atStart=track.scrollLeft<=0;
+    var atEnd=track.scrollLeft>=maxScroll;
+    if(prev){
+      var disablePrev=!total || atStart;
+      prev.disabled=disablePrev;
+      if(disablePrev){ prev.setAttribute('aria-disabled','true'); }
+      else { prev.removeAttribute('aria-disabled'); }
     }
-    return 3;
+    if(next){
+      var disableNext=!total || atEnd;
+      next.disabled=disableNext;
+      if(disableNext){ next.setAttribute('aria-disabled','true'); }
+      else { next.removeAttribute('aria-disabled'); }
+    }
+    track.setAttribute('data-gallery-page', total ? '1' : '0');
+    track.setAttribute('data-gallery-pages', total ? '1' : '0');
   }
 
-  function updateGalleryPagination(){
-    if(!galleryTrack) return;
-    var items=galleryTrack.querySelectorAll('.gallery-item');
-    var total=items.length;
-    var perPage=galleryItemsPerPage();
-    if(perPage<1){ perPage=1; }
-    var maxPage=Math.max(0, Math.ceil(total/perPage)-1);
-    if(galleryPage>maxPage){ galleryPage=maxPage; }
-    if(galleryPage<0){ galleryPage=0; }
-    items.forEach(function(item,idx){
-      if(Math.floor(idx/perPage)===galleryPage){ item.classList.remove('is-hidden'); }
-      else { item.classList.add('is-hidden'); }
-    });
-    if(galleryPrev){
-      var disablePrev = !total || galleryPage<=0;
-      galleryPrev.disabled=disablePrev;
-      if(disablePrev){ galleryPrev.setAttribute('aria-disabled','true'); }
-      else { galleryPrev.removeAttribute('aria-disabled'); }
+  // MIGRACJA: Inspiracje – płynne przewijanie
+  function initInspirationCarousel(root){
+    if(!root) return;
+    var viewport=root.querySelector('.inspiration-viewport');
+    var track=root.querySelector('.inspiration-track');
+    if(!track) return;
+    var prev=root.querySelector('.insp-prev');
+    var next=root.querySelector('.insp-next');
+    var step=function(){
+      return (viewport && viewport.clientWidth) || track.clientWidth || 600;
+    };
+    if(!root.__inspCarouselInit){
+      root.__inspCarouselInit=true;
+      if(prev){
+        prev.addEventListener('click', function(){
+          track.scrollBy({ left:-step(), behavior:'smooth' });
+        });
+      }
+      if(next){
+        next.addEventListener('click', function(){
+          track.scrollBy({ left:step(), behavior:'smooth' });
+        });
+      }
+      track.addEventListener('keydown', function(e){
+        if(e.key==='ArrowLeft'){
+          e.preventDefault();
+          track.scrollBy({ left:-step(), behavior:'smooth' });
+        } else if(e.key==='ArrowRight'){
+          e.preventDefault();
+          track.scrollBy({ left:step(), behavior:'smooth' });
+        }
+      });
+      track.addEventListener('scroll', debounce(function(){
+        updateInspirationNav(root);
+      }, 120));
     }
-    if(galleryNext){
-      var disableNext = !total || galleryPage>=maxPage;
-      galleryNext.disabled=disableNext;
-      if(disableNext){ galleryNext.setAttribute('aria-disabled','true'); }
-      else { galleryNext.removeAttribute('aria-disabled'); }
-    }
-    galleryTrack.setAttribute('data-gallery-page', total ? String(galleryPage+1) : '0');
-    galleryTrack.setAttribute('data-gallery-pages', total ? String(maxPage+1) : '0');
+    updateInspirationNav(root);
   }
 
-  function shiftGalleryPage(delta){
-    if(!galleryTrack) return;
-    var items=galleryTrack.querySelectorAll('.gallery-item');
-    if(!items.length) return;
-    galleryPage+=delta;
-    updateGalleryPagination();
+  if(inspirationRoot){
+    initInspirationCarousel(inspirationRoot);
+    if(typeof window!=='undefined'){
+      window.addEventListener('resize', function(){ updateInspirationNav(inspirationRoot); });
+    }
   }
-
-  galleryPrev && galleryPrev.addEventListener('click',function(){ shiftGalleryPage(-1); });
-  galleryNext && galleryNext.addEventListener('click',function(){ shiftGalleryPage(1); });
-  galleryTrack && galleryTrack.addEventListener('keydown',function(e){
-    if(e.key==='ArrowLeft'){ e.preventDefault(); shiftGalleryPage(-1); }
-    else if(e.key==='ArrowRight'){ e.preventDefault(); shiftGalleryPage(1); }
-  });
-  if(typeof window!=='undefined'){ window.addEventListener('resize', updateGalleryPagination); }
-  updateGalleryPagination();
   removeLegacyDaily16Strip();
   sessionSummaryDefault();
   renderDaily16Chart(weatherState.daily16, getDaily16HighlightDate());
@@ -4131,9 +4163,16 @@
   // galeria (tylko cel, 6 zdjęć, link w nowym oknie)
   function loadGallery(){
     var dest=points[points.length-1]; var label=dest? (dest.label||'') : ''; var gal=$('#sp-gallery');
-    if(!label){ gal.innerHTML=''; if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); } return; }
+    if(!label){
+      gal.innerHTML='';
+      if(gal===galleryTrack){
+        gal.scrollLeft=0;
+        if(inspirationRoot){ initInspirationCarousel(inspirationRoot); }
+      }
+      return;
+    }
     gal.innerHTML='<div class="muted">Ładuję zdjęcia...</div>';
-    if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
+    if(gal===galleryTrack && inspirationRoot){ initInspirationCarousel(inspirationRoot); }
 
     var sizeAttr='(min-width:1200px) 18vw, (min-width:1024px) 20vw, (min-width:768px) 33vw, (max-width:480px) 48vw, 100vw';
 
@@ -4149,7 +4188,7 @@
       items.forEach(function(item){
         if(!item || !item.src) return;
         var figure=document.createElement('figure');
-        figure.className='gallery-item';
+        figure.className='gallery-item insp-item';
 
         var wrapper=figure;
         if(item.href){
@@ -4181,18 +4220,18 @@
 
       if(!frag.childNodes.length){
         gal.innerHTML='<div class="muted">Brak zdjęć.</div>';
-        if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
+        if(gal===galleryTrack && inspirationRoot){ initInspirationCarousel(inspirationRoot); }
         return;
       }
 
       gal.appendChild(frag);
       gal.scrollLeft=0;
-      if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
+      if(gal===galleryTrack && inspirationRoot){ initInspirationCarousel(inspirationRoot); }
     }
 
     function showGalleryError(){
       gal.innerHTML='<div class="muted">Błąd galerii.</div>';
-      if(gal===galleryTrack){ galleryPage=0; updateGalleryPagination(); }
+      if(gal===galleryTrack && inspirationRoot){ initInspirationCarousel(inspirationRoot); }
     }
 
     function buildCseItems(items){
@@ -4227,6 +4266,7 @@
       if(!url || !width) return null;
       var parts=String(url).split('?');
       var base=parts[0];
+      if(/^data:/i.test(base) || /^blob:/i.test(base)){ return String(url); }
       var extras=[];
       if(parts[1]){
         parts[1].split('&').forEach(function(seg){
@@ -4249,12 +4289,16 @@
         if(!p || !p.urls) return;
         var base=p.urls.raw || p.urls.full || p.urls.regular || p.urls.small;
         if(!base) return;
-        var src=unsplashVariant(base,1024) || base;
-        var srcsetWidths=[768,1024,1600,2200];
-        var srcset=srcsetWidths.map(function(w){
-          var variant=unsplashVariant(base,w);
-          return variant ? variant+' '+w+'w' : null;
-        }).filter(Boolean).join(', ');
+        var isDataUrl=/^data:/i.test(String(base));
+        var src=isDataUrl ? String(base) : (unsplashVariant(base,1024) || base);
+        var srcset='';
+        if(!isDataUrl){
+          var srcsetWidths=[768,1024,1600,2200];
+          srcset=srcsetWidths.map(function(w){
+            var variant=unsplashVariant(base,w);
+            return variant ? variant+' '+w+'w' : null;
+          }).filter(Boolean).join(', ');
+        }
         var href=(p.links && (p.links.html || p.links.download)) || src;
         var altText=p.alt_description || p.description || label;
         out.push({
@@ -4270,11 +4314,48 @@
       return out.slice(0,6);
     }
 
+    // MIGRACJA: Inspiracje → PL query "sesja ślubna", limit 6, header auth
+    function fetchInspirationPhotos(searchLabel){
+      var base='https://api.unsplash.com/search/photos';
+      var trimmed=(searchLabel||'').trim();
+      var params=new URLSearchParams({
+        per_page:'6',
+        query: trimmed ? trimmed+' sesja ślubna' : 'sesja ślubna',
+        orientation:'landscape',
+        order_by:'relevant',
+        content_filter:'high'
+      });
+      var headers={};
+      if(UNSPLASH_KEY){
+        headers.Authorization='Client-ID '+UNSPLASH_KEY;
+      }
+      function makePlaceholder(){
+        return {
+          urls:{ small:'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=' },
+          alt_description:'Inspiracja'
+        };
+      }
+      return fetch(base+'?'+params.toString(),{ headers:headers })
+        .then(function(res){
+          if(!res.ok){ throw new Error('Unsplash '+res.status); }
+          return res.json();
+        })
+        .then(function(data){
+          var results=(data && data.results) ? data.results.slice(0,6) : [];
+          var output=results.slice(0,6);
+          while(output.length<6){ output.push(makePlaceholder()); }
+          if(output.length){ return output; }
+          throw new Error('Unsplash empty');
+        })
+        .catch(function(err){
+          try{ console.warn('Unsplash error:', err); }catch(e){}
+          return Array.from({length:6}).map(makePlaceholder);
+        });
+    }
+
     function fetchUnsplashItems(){
-      return fetch('https://api.unsplash.com/search/photos?per_page=12&query='+encodeURIComponent(label+' wedding shoot')+'&orientation=landscape&client_id='+UNSPLASH_KEY)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          var arr=(d && d.results)? d.results : [];
+      return fetchInspirationPhotos(label)
+        .then(function(arr){
           var prepared=buildUnsplashItems(arr);
           if(prepared.length){ return prepared; }
           throw new Error('no-unsplash');
