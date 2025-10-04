@@ -105,6 +105,41 @@
     return html;
   }
 
+  var ASSETS_URL = (function(){
+    var src = typeof CFG.ASSETS_URL === 'string' ? CFG.ASSETS_URL.trim() : '';
+    if(!src){ return ''; }
+    try {
+      var url = new URL(src, location.origin || undefined);
+      return url.toString().replace(/\/?$/, '/');
+    } catch (e) {
+      return src.replace(/\/?$/, '/');
+    }
+  })();
+
+  var inspirationFallbacks = (function(){
+    if(!ASSETS_URL){ return []; }
+    var items = [
+      { path: 'img/inspiration/fallback-01.svg', alt: 'Golden Hour – inspiracja fotograficzna' },
+      { path: 'img/inspiration/fallback-02.svg', alt: 'Mountain Views – inspiracja fotograficzna' },
+      { path: 'img/inspiration/fallback-03.svg', alt: 'Forest Session – inspiracja fotograficzna' },
+      { path: 'img/inspiration/fallback-04.svg', alt: 'City Sunset – inspiracja fotograficzna' },
+      { path: 'img/inspiration/fallback-05.svg', alt: 'Lakeside Love – inspiracja fotograficzna' },
+      { path: 'img/inspiration/fallback-06.svg', alt: 'Foggy Morning – inspiracja fotograficzna' }
+    ];
+    return items.map(function(item){
+      var src = ASSETS_URL + item.path.replace(/^\/+/, '');
+      return {
+        href: src,
+        src: src,
+        srcset: src + ' 1200w',
+        sizes: '',
+        alt: item.alt,
+        width: 1200,
+        height: 800
+      };
+    });
+  })();
+
   var shareId = (typeof SHARE_ID === 'string' && SHARE_ID) ? SHARE_ID : null;
   var shareBaseUrl = shareId ? normalizeShareBase(SHARE_URL || BASE_URL) : '';
   var shareSyncTimeout = null;
@@ -4268,7 +4303,45 @@
       return 'Inspiracja fotograficzna';
     }
 
+    function ensureGalleryItemsCount(items, desired){
+      var limit = typeof desired === 'number' && desired > 0 ? desired : 6;
+      var list = Array.isArray(items) ? items.filter(function(entry){
+        return entry && entry.src;
+      }) : [];
+      if(list.length >= limit){
+        return list.slice(0, limit);
+      }
+      var seen = {};
+      list.forEach(function(entry){
+        if(entry && entry.src){
+          seen[entry.src] = true;
+        }
+      });
+      if(inspirationFallbacks && inspirationFallbacks.length){
+        for(var i=0;i<inspirationFallbacks.length && list.length<limit;i++){
+          var fb = inspirationFallbacks[i];
+          if(!fb || !fb.src || seen[fb.src]){ continue; }
+          var clone = {
+            href: fb.href || fb.src,
+            src: fb.src,
+            srcset: fb.srcset || '',
+            sizes: fb.sizes || sizeAttr,
+            alt: fb.alt || normalizeAlt(''),
+            width: fb.width,
+            height: fb.height
+          };
+          list.push(clone);
+          seen[fb.src] = true;
+        }
+      }
+      if(list.length>limit){
+        list = list.slice(0, limit);
+      }
+      return list;
+    }
+
     function renderItems(items){
+      items = ensureGalleryItemsCount(items, 6);
       gal.innerHTML='';
       var frag=document.createDocumentFragment();
       items.forEach(function(item){
@@ -4459,26 +4532,40 @@
               fetchUnsplashItems()
                 .then(function(extra){
                   if(!extra || !extra.length) return;
-                  var combined=prepared.concat(extra).slice(0,6);
+                  var combined=prepared.concat(extra);
                   renderItems(combined);
                 })
-                .catch(function(){ /* silent fallback */ });
+                .catch(function(){
+                  renderItems(prepared);
+                });
             }
           } else {
             fetchUnsplashItems()
               .then(function(items){ renderItems(items); })
-              .catch(function(){ showGalleryError(); });
+              .catch(function(){
+                var fallbackOnly = ensureGalleryItemsCount([], 6);
+                if(fallbackOnly.length){ renderItems(fallbackOnly); }
+                else { showGalleryError(); }
+              });
           }
         })
         .catch(function(){
           fetchUnsplashItems()
             .then(function(items){ renderItems(items); })
-            .catch(function(){ showGalleryError(); });
+            .catch(function(){
+              var fallbackOnly = ensureGalleryItemsCount([], 6);
+              if(fallbackOnly.length){ renderItems(fallbackOnly); }
+              else { showGalleryError(); }
+            });
         });
     } else {
       fetchUnsplashItems()
         .then(function(items){ renderItems(items); })
-        .catch(function(){ showGalleryError(); });
+        .catch(function(){
+          var fallbackOnly = ensureGalleryItemsCount([], 6);
+          if(fallbackOnly.length){ renderItems(fallbackOnly); }
+          else { showGalleryError(); }
+        });
     }
   }
 

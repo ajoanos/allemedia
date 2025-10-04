@@ -47,6 +47,7 @@ class Frontend
             'GMAPS_KEY' => $key,
             'CSE_ID' => 'b1d6737102d8e4107',
             'UNSPLASH_KEY' => 'OpKQ3jt1C2MKJW3v2U8jkhH0gWwBWj2w5BhoTxfa0tY',
+            'ASSETS_URL' => \trailingslashit(\plugins_url('assets/', SUNPLANNER_FILE)),
             'TZ' => \wp_timezone_string(),
             'SHARED_SP' => $shared_sp,
             'SHARE_ID' => $spid,
