@@ -431,11 +431,6 @@
                     '<canvas id="sp-hourly" class="smallcanvas" aria-label="Prognoza godzinowa"></canvas>'+
                     '<div id="sp-hourly-precip-values" class="hourly-values" role="list" aria-label="Godzinowe opady"></div>'+
                   '</div>'+
-                  '<div id="sp-hourly-temp-range" class="hourly-temp-scale" aria-live="polite">'+
-                    '<span class="hourly-temp-scale__value hourly-temp-scale__value--max" data-role="temp-max">—</span>'+
-                    '<span class="hourly-temp-scale__label">Zakres temperatur</span>'+
-                    '<span class="hourly-temp-scale__value hourly-temp-scale__value--min" data-role="temp-min">—</span>'+
-                  '</div>'+
                 '</div>'+
                 '<div class="weather-legend chart-legend">'+
 
@@ -911,7 +906,6 @@
     if(!canvas) return;
 
     updateHourlyPrecipValues(hours);
-    updateHourlyTempScale(hours);
 
     // Rozmiar widoczny
     var cssW = canvas.clientWidth || 600;
@@ -931,7 +925,7 @@
     }
 
     // Marginesy
-    var padL = 32, padR = 12, padT = 12, padB = 22;
+    var padL = 40, padR = 40, padT = 12, padB = 22;
     var plotW = Math.max(10, cssW - padL - padR);
     var plotH = Math.max(10, cssH - padT - padB);
 
@@ -954,6 +948,59 @@
     function xAt(i){ return padL + i*stepX; }
     function yForTemp(v){ return padT + (plotH - ( (v - minT)/tRange )*plotH ); }
     function hForRain(v){ return (v / maxR) * plotH; }
+
+    // Siatka temperatur (pozioma) + podpisy
+    var tempTicksData = buildTemperatureTicks(minT, maxT);
+    var tempTicks = tempTicksData.ticks;
+    ctx.save();
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2,4]);
+    tempTicks.forEach(function(tick){
+      var y = yForTemp(tick);
+      ctx.beginPath();
+      ctx.moveTo(padL, Math.round(y)+0.5);
+      ctx.lineTo(padL + plotW, Math.round(y)+0.5);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    tempTicks.forEach(function(tick){
+      var y = yForTemp(tick);
+      var label = formatTempTick(tick, tempTicksData.step);
+      ctx.textAlign = 'right';
+      ctx.fillText(label, padL - 6, Math.round(y));
+      ctx.textAlign = 'left';
+      ctx.fillText(label, padL + plotW + 6, Math.round(y));
+    });
+    ctx.restore();
+
+    // Siatka pionowa dla godzin
+    ctx.save();
+    ctx.strokeStyle = 'rgba(229,231,235,0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2,4]);
+    var vStep = Math.max(1, Math.round(n / 8));
+    for(var vi=0; vi<n; vi+=vStep){
+      var x = xAt(vi);
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x)+0.5, padT);
+      ctx.lineTo(Math.round(x)+0.5, padT + plotH);
+      ctx.stroke();
+    }
+    // upewnij się, że ostatnia linia (koniec zakresu) jest widoczna
+    if(n > 1 && ((n-1) % vStep !== 0)){
+      var xEnd = xAt(n-1);
+      ctx.beginPath();
+      ctx.moveTo(Math.round(xEnd)+0.5, padT);
+      ctx.lineTo(Math.round(xEnd)+0.5, padT + plotH);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     // Słupki opadów (na tle)
     var barW = Math.max(3, stepX*0.45);
@@ -1073,38 +1120,63 @@
     return value.toFixed(1)+' mm';
   }
 
-  function updateHourlyTempScale(hours){
-    var scale = document.getElementById('sp-hourly-temp-range');
-    if(!scale) return;
-    var minEl = scale.querySelector('[data-role="temp-min"]');
-    var maxEl = scale.querySelector('[data-role="temp-max"]');
-
-    if(!Array.isArray(hours) || !hours.length){
-      if(minEl) minEl.textContent = '—';
-      if(maxEl) maxEl.textContent = '—';
-      scale.classList.add('is-empty');
-      return;
+  function buildTemperatureTicks(minT, maxT){
+    if(!Number.isFinite(minT) || !Number.isFinite(maxT)){
+      return { ticks: [], step: 1 };
+    }
+    if(minT === maxT){
+      minT -= 1;
+      maxT += 1;
     }
 
-    var temps = hours.map(function(h){ return (h && typeof h.temp === 'number' && Number.isFinite(h.temp)) ? h.temp : null; })
-      .filter(function(v){ return v!=null; });
-    if(!temps.length){
-      if(minEl) minEl.textContent = '—';
-      if(maxEl) maxEl.textContent = '—';
-      scale.classList.add('is-empty');
-      return;
+    var range = Math.max(0.5, maxT - minT);
+    var niceRange = niceNumber(range, false);
+    var step = niceNumber(niceRange / 4, true);
+    if(step <= 0 || !Number.isFinite(step)){
+      step = 1;
     }
 
-    var minT = Math.min.apply(null, temps);
-    var maxT = Math.max.apply(null, temps);
-    if(minEl) minEl.textContent = formatTempValue(minT);
-    if(maxEl) maxEl.textContent = formatTempValue(maxT);
-    scale.classList.remove('is-empty');
+    var niceMin = Math.floor(minT / step) * step;
+    var niceMax = Math.ceil(maxT / step) * step;
+    var ticks = [];
+    var maxIterations = 100;
+    for(var value = niceMin, i = 0; value <= niceMax + step*0.5 && i < maxIterations; value += step, i++){
+      var decimals = step < 1 ? 1 : 0;
+      var tick = Number(value.toFixed(decimals));
+      if(ticks.length === 0 || Math.abs(ticks[ticks.length-1] - tick) > 0.0001){
+        ticks.push(tick);
+      }
+    }
+
+    return { ticks: ticks, step: step };
   }
 
-  function formatTempValue(value){
-    if(!Number.isFinite(value)){ return '—'; }
-    return Math.round(value)+'°C';
+  function niceNumber(range, round){
+    if(range === 0){ return 0; }
+    var exponent = Math.floor(Math.log10(Math.abs(range)));
+    var fraction = range / Math.pow(10, exponent);
+    var niceFraction;
+    if(round){
+      if(fraction < 1.5)      niceFraction = 1;
+      else if(fraction < 3)   niceFraction = 2;
+      else if(fraction < 7)   niceFraction = 5;
+      else                    niceFraction = 10;
+    } else {
+      if(fraction <= 1)       niceFraction = 1;
+      else if(fraction <= 2)  niceFraction = 2;
+      else if(fraction <= 5)  niceFraction = 5;
+      else                    niceFraction = 10;
+    }
+    return niceFraction * Math.pow(10, exponent);
+  }
+
+  function formatTempTick(value, step){
+    if(!Number.isFinite(value)){ return ''; }
+    var decimals = step < 1 ? 1 : 0;
+    var factor = Math.pow(10, decimals);
+    var rounded = Math.round(value * factor) / factor;
+    var text = decimals ? rounded.toFixed(decimals) : String(Math.round(rounded));
+    return text+'°C';
   }
 
   // === HOURLY: render sunshine ===
