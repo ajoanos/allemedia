@@ -4487,6 +4487,8 @@
       var headers={};
       if(UNSPLASH_KEY){
         headers.Authorization='Client-ID '+UNSPLASH_KEY;
+        headers['Accept-Version']='v1';
+        params.set('client_id', UNSPLASH_KEY);
       }
       function makePlaceholder(){
         return {
