@@ -54,6 +54,88 @@ namespace {
 
 use SunPlanner\Templates;
 use Allemedia\SunPlanner\Rest\Contact_Controller;
+
+if (!defined('SUNPLANNER_LANDING_OPTION')) {
+    define('SUNPLANNER_LANDING_OPTION', 'sunplanner_landing_page_id');
+}
+
+if (!defined('SUNPLANNER_LANDING_META')) {
+    define('SUNPLANNER_LANDING_META', '_sunplanner_landing');
+}
+
+function sunplanner_get_landing_page_id(): int
+{
+    return (int) get_option(SUNPLANNER_LANDING_OPTION, 0);
+}
+
+function sunplanner_is_landing_page(): bool
+{
+    $landing_id = sunplanner_get_landing_page_id();
+
+    return $landing_id > 0 && is_page($landing_id);
+}
+
+function sunplanner_ensure_landing_page(): int
+{
+    $page_id = sunplanner_get_landing_page_id();
+
+    if ($page_id > 0) {
+        $existing = get_post($page_id);
+
+        if ($existing instanceof \WP_Post && $existing->post_status !== 'trash') {
+            if (!metadata_exists('post', $existing->ID, SUNPLANNER_LANDING_META)) {
+                update_post_meta($existing->ID, SUNPLANNER_LANDING_META, '1');
+            }
+
+            return (int) $existing->ID;
+        }
+    }
+
+    $with_meta = get_posts([
+        'post_type'      => 'page',
+        'post_status'    => ['publish', 'draft', 'pending'],
+        'meta_key'       => SUNPLANNER_LANDING_META,
+        'meta_value'     => '1',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ]);
+
+    if (!empty($with_meta)) {
+        $found_id = (int) $with_meta[0];
+        update_option(SUNPLANNER_LANDING_OPTION, $found_id);
+
+        return $found_id;
+    }
+
+    $by_path = get_page_by_path('sunplanner-landing', OBJECT, 'page');
+
+    if ($by_path instanceof \WP_Post && $by_path->post_status !== 'trash') {
+        update_post_meta($by_path->ID, SUNPLANNER_LANDING_META, '1');
+        update_option(SUNPLANNER_LANDING_OPTION, (int) $by_path->ID);
+
+        return (int) $by_path->ID;
+    }
+
+    $page_data = [
+        'post_title'   => __('SunPlanner – zaplanuj plener ślubny', 'sunplanner'),
+        'post_name'    => 'sunplanner-landing',
+        'post_status'  => 'publish',
+        'post_type'    => 'page',
+        'post_content' => '<!-- SunPlanner landing page -->',
+        'meta_input'   => [SUNPLANNER_LANDING_META => '1'],
+    ];
+
+    $inserted = wp_insert_post($page_data, true);
+
+    if (!is_wp_error($inserted) && $inserted) {
+        $inserted_id = (int) $inserted;
+        update_option(SUNPLANNER_LANDING_OPTION, $inserted_id);
+
+        return $inserted_id;
+    }
+
+    return 0;
+}
 add_action('init', function () {
     add_rewrite_tag('%sunplan%', '([A-Za-z0-9_-]+)');
     add_rewrite_rule('^sp/([A-Za-z0-9_-]+)/?$', 'index.php?sunplan=$matches[1]', 'top');
@@ -67,69 +149,90 @@ add_action('after_setup_theme', function () {
     add_image_size('insp-sm', 600, 0, false);
 });
 
-register_activation_hook(SUNPLANNER_FILE, function () { flush_rewrite_rules(); });
+register_activation_hook(SUNPLANNER_FILE, function () {
+    sunplanner_ensure_landing_page();
+    flush_rewrite_rules();
+});
 register_deactivation_hook(SUNPLANNER_FILE, function () { flush_rewrite_rules(); });
 
 
 
 add_filter('query_vars', function ($vars) { $vars[] = 'sunplan'; return $vars; });
 
+add_action('init', function () {
+    $landing_id = sunplanner_get_landing_page_id();
+
+    if ($landing_id <= 0) {
+        sunplanner_ensure_landing_page();
+
+        return;
+    }
+
+    $page = get_post($landing_id);
+
+    if (!$page instanceof \WP_Post || $page->post_status === 'trash') {
+        sunplanner_ensure_landing_page();
+    }
+}, 20);
+
 
 /** === Assets === */
 
 add_action('wp_enqueue_scripts', function () {
-$ver = '1.7.5';
+    $ver = '1.7.5';
 
-wp_register_style('sunplanner-css', plugins_url('assets/css/sunplanner.css', SUNPLANNER_FILE), [], $ver);
-wp_register_script('sunplanner-app', plugins_url('assets/js/sunplanner.js', SUNPLANNER_FILE), [], $ver, true);
+    wp_register_style('sunplanner-css', plugins_url('assets/css/sunplanner.css', SUNPLANNER_FILE), [], $ver);
+    wp_register_style('sunplanner-landing-fonts', 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&display=swap', [], null);
+    wp_register_style('sunplanner-landing', plugins_url('assets/css/sunplanner-landing.css', SUNPLANNER_FILE), [], $ver);
+    wp_register_script('sunplanner-app', plugins_url('assets/js/sunplanner.js', SUNPLANNER_FILE), [], $ver, true);
 
+    if (sunplanner_is_landing_page()) {
+        wp_enqueue_style('sunplanner-landing-fonts');
+        wp_enqueue_style('sunplanner-landing');
+    }
 
+    // Stub Google callback
+    $stub = 'window.initSunPlannerMap = function(){ window.dispatchEvent(new Event("sunplanner:gmaps-ready")); };';
 
-// Stub Google callback
-$stub = 'window.initSunPlannerMap = function(){ window.dispatchEvent(new Event("sunplanner:gmaps-ready")); };';
+    wp_add_inline_script('sunplanner-app', $stub, 'before');
 
-wp_add_inline_script('sunplanner-app', $stub, 'before');
+    // Google Maps SDK (async/defer + loading=async)
+    $key = 'AIzaSyDP0vhFiZV_yDB8urPJtQ4UdKQpAzmuOcU';
+    $gmaps_src = 'https://maps.googleapis.com/maps/api/js?key='
+        . rawurlencode($key)
+        . '&libraries=marker,places&language=pl&region=PL&v=weekly&loading=async&callback=initSunPlannerMap';
 
+    wp_register_script('sunplanner-gmaps', $gmaps_src, [], null, true);
+    if (function_exists('wp_script_add_data')) {
+        wp_script_add_data('sunplanner-gmaps', 'async', true);
+        wp_script_add_data('sunplanner-gmaps', 'defer', true);
+    }
 
-// Google Maps SDK (async/defer + loading=async)
-$key = 'AIzaSyDP0vhFiZV_yDB8urPJtQ4UdKQpAzmuOcU';
-$gmaps_src = 'https://maps.googleapis.com/maps/api/js?key='
-. rawurlencode($key)
-. '&libraries=marker,places&language=pl&region=PL&v=weekly&loading=async&callback=initSunPlannerMap';
+    // If /sp/<id> or ?sunplan=<id> present — fetch stored packed state
+    $shared_sp = '';
+    $spid = get_query_var('sunplan');
+    if ($spid) {
+        $opt_key = 'sunplanner_share_' . sanitize_key($spid);
+        $val = get_option($opt_key, '');
+        if (is_string($val) && $val !== '') {
+            $shared_sp = $val;
+        }
+    }
 
-
-wp_register_script('sunplanner-gmaps', $gmaps_src, [], null, true);
-if (function_exists('wp_script_add_data')) {
-wp_script_add_data('sunplanner-gmaps', 'async', true);
-wp_script_add_data('sunplanner-gmaps', 'defer', true);
-}
-
-
-// If /sp/<id> or ?sunplan=<id> present — fetch stored packed state
-$shared_sp = '';
-$spid = get_query_var('sunplan');
-if ($spid) {
-$opt_key = 'sunplanner_share_' . sanitize_key($spid);
-$val = get_option($opt_key, '');
-if (is_string($val) && $val !== '') {
-$shared_sp = $val;
-}
-}
-
-wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
-'GMAPS_KEY' => $key,
-'CSE_ID' => 'b1d6737102d8e4107',
-'UNSPLASH_KEY' => 'OpKQ3jt1C2MKJW3v2U8jkhH0gWwBWj2w5BhoTxfa0tY',
-'ASSETS_URL' => trailingslashit(plugins_url('assets/', SUNPLANNER_FILE)),
-'TZ' => wp_timezone_string(),
-'SHARED_SP' => $shared_sp,
-'SHARE_ID' => $spid,
-'SHARE_URL' => $spid ? esc_url_raw(home_url(trailingslashit('sp/' . rawurlencode($spid)))) : '',
-'REST_URL' => esc_url_raw( rest_url('sunplanner/v1/share') ),
-'CONTACT_URL' => esc_url_raw( rest_url('sunplanner/v1/contact') ),
-'SITE_ORIGIN' => esc_url_raw( home_url('/') ),
-'RADAR_URL' => esc_url_raw( rest_url('sunplanner/v1/radar') ),
-]);
+    wp_localize_script('sunplanner-app', 'SUNPLANNER_CFG', [
+        'GMAPS_KEY' => $key,
+        'CSE_ID' => 'b1d6737102d8e4107',
+        'UNSPLASH_KEY' => 'OpKQ3jt1C2MKJW3v2U8jkhH0gWwBWj2w5BhoTxfa0tY',
+        'ASSETS_URL' => trailingslashit(plugins_url('assets/', SUNPLANNER_FILE)),
+        'TZ' => wp_timezone_string(),
+        'SHARED_SP' => $shared_sp,
+        'SHARE_ID' => $spid,
+        'SHARE_URL' => $spid ? esc_url_raw(home_url(trailingslashit('sp/' . rawurlencode($spid)))) : '',
+        'REST_URL' => esc_url_raw(rest_url('sunplanner/v1/share')),
+        'CONTACT_URL' => esc_url_raw(rest_url('sunplanner/v1/contact')),
+        'SITE_ORIGIN' => esc_url_raw(home_url('/')),
+        'RADAR_URL' => esc_url_raw(rest_url('sunplanner/v1/radar')),
+    ]);
 });
 
 // Ensure enqueued assets are explicitly marked as UTF-8 for proper character rendering
@@ -141,7 +244,7 @@ return $tag;
 }, 10, 3);
 
 add_filter('style_loader_tag', function ($html, $handle, $href, $media) {
-if ($handle === 'sunplanner-css' && strpos($html, ' charset=') === false) {
+if (in_array($handle, ['sunplanner-css', 'sunplanner-landing'], true) && strpos($html, ' charset=') === false) {
 $html = str_replace('<link ', '<link charset="utf-8" ', $html);
 }
 return $html;
@@ -166,6 +269,14 @@ add_filter('template_include', function ($template) {
             return $share_template;
         }
     }
+
+    if (sunplanner_is_landing_page()) {
+        $landing_template = Templates::locate('landing.php');
+        if ($landing_template !== '') {
+            return $landing_template;
+        }
+    }
+
     return $template;
 });
 
@@ -185,7 +296,10 @@ add_action('template_redirect', function () {
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
         $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+    } elseif (sunplanner_is_landing_page()) {
+        $parts['title'] = __('SunPlanner – zaplanuj plener ślubny', 'sunplanner');
     }
+
     return $parts;
 });
 
@@ -193,6 +307,11 @@ add_filter('body_class', function ($classes) {
     if (get_query_var('sunplan')) {
         $classes[] = 'sunplanner-share-page';
     }
+
+    if (sunplanner_is_landing_page()) {
+        $classes[] = 'sunplanner-landing-page';
+    }
+
     return $classes;
 });
 

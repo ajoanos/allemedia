@@ -1,0 +1,323 @@
+:root {
+    color-scheme: light;
+    --bg: #f7f6fb;
+    --bg-contrast: #ffffff;
+    --accent: #f28db7;
+    --accent-dark: #ea6599;
+    --text: #2d2a3b;
+    --muted: #6c6782;
+    --divider: rgba(108, 103, 130, 0.15);
+    --shadow: 0 24px 60px rgba(45, 42, 59, 0.08);
+    --radius-xl: 32px;
+    --radius-lg: 24px;
+    font-size: 16px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.sunplanner-landing {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+}
+
+body.sunplanner-landing img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+body.sunplanner-landing a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.sunplanner-landing .page-shell {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 4rem);
+}
+
+.sunplanner-landing .hero {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: clamp(2rem, 5vw, 4rem);
+    padding: clamp(4rem, 10vw, 8rem) 0 clamp(3rem, 8vw, 6rem);
+    align-items: center;
+}
+
+.sunplanner-landing .hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(242, 141, 183, 0.15);
+    color: var(--accent-dark);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+}
+
+.sunplanner-landing .hero__title {
+    font-family: 'Playfair Display', 'Inter', serif;
+    font-size: clamp(2.8rem, 6vw, 3.9rem);
+    line-height: 1.05;
+    margin: 1rem 0 1.5rem;
+}
+
+.sunplanner-landing .hero__subtitle {
+    font-size: 1.15rem;
+    max-width: 34ch;
+    color: var(--muted);
+    margin-bottom: 2.5rem;
+}
+
+.sunplanner-landing .hero__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.95rem 1.9rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sunplanner-landing .hero__cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 28px 60px rgba(234, 101, 153, 0.25);
+}
+
+.sunplanner-landing .hero__media {
+    position: relative;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border-radius: var(--radius-xl);
+    background: var(--bg-contrast);
+    box-shadow: var(--shadow);
+}
+
+.sunplanner-landing .hero__media::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(140deg, rgba(242, 141, 183, 0.35), rgba(121, 99, 255, 0.15));
+    z-index: -1;
+    filter: blur(20px);
+}
+
+.sunplanner-landing .hero__card {
+    border-radius: var(--radius-lg);
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    padding: 1.5rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.sunplanner-landing .hero__card h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+
+.sunplanner-landing .hero__card strong {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4rem;
+}
+
+.sunplanner-landing .split-section {
+    margin: clamp(3.5rem, 8vw, 6rem) 0;
+}
+
+.sunplanner-landing .split-section__grid {
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.sunplanner-landing .split-section header {
+    max-width: 42ch;
+}
+
+.sunplanner-landing .eyebrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--accent-dark);
+    background: rgba(242, 141, 183, 0.15);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+}
+
+.sunplanner-landing .split-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.1rem, 4.5vw, 3rem);
+    line-height: 1.15;
+    margin: 1rem 0;
+}
+
+.sunplanner-landing .split-section p {
+    color: var(--muted);
+    margin: 0 0 1.1rem;
+}
+
+.sunplanner-landing .feature-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.sunplanner-landing .feature {
+    background: var(--bg-contrast);
+    border-radius: 22px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease;
+}
+
+.sunplanner-landing .feature:hover {
+    transform: translateY(-4px);
+}
+
+.sunplanner-landing .feature__icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: rgba(242, 141, 183, 0.18);
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    font-size: 1.35rem;
+}
+
+.sunplanner-landing .feature h3 {
+    margin: 0 0 0.65rem;
+    font-size: 1.15rem;
+}
+
+.sunplanner-landing .how-it-works {
+    padding: clamp(3rem, 8vw, 5rem);
+    border-radius: var(--radius-xl);
+    background: linear-gradient(120deg, rgba(242, 141, 183, 0.16), rgba(142, 123, 255, 0.12));
+    box-shadow: var(--shadow);
+    margin-bottom: clamp(3.5rem, 8vw, 6rem);
+}
+
+.sunplanner-landing .steps {
+    counter-reset: step;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+}
+
+.sunplanner-landing .step {
+    position: relative;
+    padding-top: 2rem;
+}
+
+.sunplanner-landing .step::before {
+    counter-increment: step;
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--accent-dark);
+    background: #fff;
+    border-radius: 16px;
+    padding: 0.4rem 0.9rem;
+    box-shadow: var(--shadow);
+}
+
+.sunplanner-landing .step h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.2rem;
+}
+
+.sunplanner-landing .step p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.sunplanner-landing .inspiration {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.sunplanner-landing .inspiration__card {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 220px;
+    background: #ccc;
+    box-shadow: var(--shadow);
+}
+
+.sunplanner-landing .inspiration__card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(24, 22, 37, 0) 40%, rgba(24, 22, 37, 0.65));
+}
+
+.sunplanner-landing .inspiration__content {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.75rem;
+    color: #fff;
+    z-index: 1;
+}
+
+.sunplanner-landing .inspiration__content h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.3rem;
+}
+
+.sunplanner-landing footer {
+    padding: 3rem 0 4rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.sunplanner-landing .footer-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sunplanner-landing .footer-shell span {
+    opacity: 0.9;
+}
+
+@media (max-width: 720px) {
+    .sunplanner-landing .hero__subtitle {
+        max-width: 100%;
+    }
+
+    .sunplanner-landing .hero__media::after {
+        display: none;
+    }
+
+    .sunplanner-landing .hero__media {
+        padding: 1.25rem;
+    }
+}
