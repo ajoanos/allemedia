@@ -4393,6 +4393,16 @@
       if(gal===galleryTrack && inspirationRoot){ initInspirationCarousel(inspirationRoot); }
     }
 
+    function isInsecureHttp(url){
+      return typeof url === 'string' && /^http:\/\//i.test(url);
+    }
+
+    function toSecureUrl(url){
+      if(!isInsecureHttp(url)){ return url; }
+      var upgraded = url.replace(/^http:\/\//i, 'https://');
+      return isInsecureHttp(upgraded) ? '' : upgraded;
+    }
+
     function buildCseItems(items){
       if(!Array.isArray(items) || !items.length) return [];
       var out=[];
@@ -4403,11 +4413,15 @@
         if(width && width<960) return;
         var height=meta.height ? Number(meta.height) : null;
         var thumb=meta.thumbnailLink || '';
-        var src=it.link;
+        var src=toSecureUrl(it.link || '');
+        if(!src){ return; }
+        var href=toSecureUrl(it.link || '');
+        if(!href){ href=src; }
+        if(isInsecureHttp(src)){ return; }
+        if(isInsecureHttp(thumb)){ thumb=toSecureUrl(thumb); }
         var srcsetParts=[];
         if(thumb){ srcsetParts.push(thumb+' 320w'); }
         if(width){ srcsetParts.push(src+' '+width+'w'); }
-        var href=it.link;
         out.push({
           href:href,
           src:src,
@@ -4449,15 +4463,14 @@
         var base=p.urls.raw || p.urls.full || p.urls.regular || p.urls.small;
         if(!base) return;
         var isDataUrl=/^data:/i.test(String(base));
-        var src=isDataUrl ? String(base) : (unsplashVariant(base,1024) || base);
+        if(isDataUrl){ return; }
+        var src=unsplashVariant(base,1024) || base;
         var srcset='';
-        if(!isDataUrl){
-          var srcsetWidths=[768,1024,1600,2200];
-          srcset=srcsetWidths.map(function(w){
-            var variant=unsplashVariant(base,w);
-            return variant ? variant+' '+w+'w' : null;
-          }).filter(Boolean).join(', ');
-        }
+        var srcsetWidths=[768,1024,1600,2200];
+        srcset=srcsetWidths.map(function(w){
+          var variant=unsplashVariant(base,w);
+          return variant ? variant+' '+w+'w' : null;
+        }).filter(Boolean).join(', ');
         var href=(p.links && (p.links.html || p.links.download)) || src;
         var altText=p.alt_description || p.description || label;
         out.push({
