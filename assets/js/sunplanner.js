@@ -635,16 +635,43 @@
   var inspirationRoot=document.querySelector('.gallery-inspirations');
   var galleryTrack=document.querySelector('#sp-gallery');
 
+  function getGalleryStep(track, viewport){
+    if(!track) return 0;
+    var item = track.querySelector('.gallery-item:not(.is-hidden)');
+    if(!item){
+      item = track.querySelector('.gallery-item');
+    }
+    var base = 0;
+    if(item){
+      var rect = item.getBoundingClientRect();
+      base = rect && rect.width ? rect.width : item.offsetWidth || 0;
+    }
+    var gap = 0;
+    if(typeof window !== 'undefined' && window.getComputedStyle){
+      var styles = window.getComputedStyle(track);
+      var gapValue = styles.getPropertyValue('column-gap') || styles.getPropertyValue('gap');
+      if(gapValue && gapValue !== 'normal'){
+        var parsedGap = parseFloat(gapValue);
+        if(!isNaN(parsedGap)){ gap = parsedGap; }
+      }
+    }
+    if(!base){
+      base = (viewport && viewport.clientWidth) || track.clientWidth || 0;
+    }
+    return base + gap;
+  }
+
   function updateInspirationNav(root){
     if(!root) return;
     var track=root.querySelector('.inspiration-track');
     if(!track) return;
+    var viewport=root.querySelector('.inspiration-viewport');
     var prev=root.querySelector('.insp-prev');
     var next=root.querySelector('.insp-next');
     var total=track.querySelectorAll('.gallery-item').length;
     var maxScroll=Math.max(0, track.scrollWidth - track.clientWidth - 1);
-    var atStart=track.scrollLeft<=0;
-    var atEnd=track.scrollLeft>=maxScroll;
+    var atStart=track.scrollLeft<=1;
+    var atEnd=track.scrollLeft>=maxScroll-1;
     if(prev){
       var disablePrev=!total || atStart;
       prev.disabled=disablePrev;
@@ -657,8 +684,11 @@
       if(disableNext){ next.setAttribute('aria-disabled','true'); }
       else { next.removeAttribute('aria-disabled'); }
     }
-    track.setAttribute('data-gallery-page', total ? '1' : '0');
-    track.setAttribute('data-gallery-pages', total ? '1' : '0');
+    var stepSize = getGalleryStep(track, viewport);
+    var currentIndex = stepSize>0 ? Math.floor((track.scrollLeft + (stepSize/2))/stepSize) : 0;
+    var currentPage = total ? Math.min(total, currentIndex + 1) : 0;
+    track.setAttribute('data-gallery-page', total ? String(currentPage) : '0');
+    track.setAttribute('data-gallery-pages', total ? String(total) : '0');
   }
 
   // MIGRACJA: Inspiracje – płynne przewijanie
@@ -670,7 +700,7 @@
     var prev=root.querySelector('.insp-prev');
     var next=root.querySelector('.insp-next');
     var step=function(){
-      return (viewport && viewport.clientWidth) || track.clientWidth || 600;
+      return getGalleryStep(track, viewport) || 600;
     };
     if(!root.__inspCarouselInit){
       root.__inspCarouselInit=true;
