@@ -402,9 +402,11 @@
     '</div>'+
     '<div id="planner-map" aria-label="Mapa"></div>'+
     '<div class="card route-card">'+
-      '<h3>Punkty trasy (start, przystanki, cel podróży)</h3>'+
+      '<h3>Punkty trasy – dodaj je w kolejności przejazdu</h3>'+
+      '<p class="muted">Kolejność punktów decyduje o przebiegu proponowanej trasy.</p>'+
       '<div id="sp-list"></div>'+
-      '<h3 class="alt-heading">Alternatywne trasy przejazdu</h3>'+
+      '<h3 class="alt-heading">Wybierz preferowany wariant przejazdu</h3>'+
+      '<p class="muted">Kliknięcie przycisku ustawia trasę do dalszych obliczeń i planowania.</p>'+
       '<div id="sp-route-choices" class="route-options"></div>'+
     '</div>'+
     '<div class="cards">'+
