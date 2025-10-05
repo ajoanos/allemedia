@@ -81,7 +81,7 @@ class Rewrites
     public function filter_document_title(array $parts): array
     {
         if (\get_query_var('sunplan')) {
-            $parts['title'] = \__('Udostępniony plan – SunPlanner', 'sunplanner');
+            $parts['title'] = \__('Plan pleneru ślubnego – SunPlanner', 'sunplanner');
         }
 
         return $parts;

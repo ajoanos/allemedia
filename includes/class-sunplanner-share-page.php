@@ -53,7 +53,7 @@ class Sunplanner_Share_Page {
     public function filter_document_title_parts(array $parts): array
     {
         if ($this->is_share_request()) {
-            $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+            $parts['title'] = __('Plan pleneru ślubnego – SunPlanner', 'sunplanner');
         }
 
         return $parts;
