@@ -547,8 +547,8 @@
             '</div>'+
           '</div>'+
           '<div id="sp-location-insights" class="location-insights">'+
-            '<h3>Zasady na miejscu</h3>'+
-            '<p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>'+
+            '<h3>Zasady na miejscu – loty dronem</h3>'+
+            '<p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów. Wyświetlane dane dotyczą wyłącznie ograniczeń dla dronów.</p>'+
           '</div>'+
         '</div>'+
       '</div>'+
@@ -2292,15 +2292,15 @@
     }
     dest = dest || points[points.length-1];
     if(!dest){
-      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów.</p>';
+      box.innerHTML='<h3>Zasady na miejscu – loty dronem</h3><p class="muted">Dodaj cel podróży, aby sprawdzić zasady dla dronów. Wyświetlane dane dotyczą wyłącznie ograniczeń dla dronów.</p>';
       return;
     }
     var insight = computeLocationInsight(dest);
     if(!insight){
-      box.innerHTML='<h3>Zasady na miejscu</h3><p class="muted">Brak danych dla tej lokalizacji. Sprawdź regulaminy zarządcy terenu.</p>';
+      box.innerHTML='<h3>Zasady na miejscu – loty dronem</h3><p class="muted">Brak danych dla tej lokalizacji. Sprawdź regulaminy zarządcy terenu. Wyświetlane dane dotyczą wyłącznie ograniczeń dla dronów.</p>';
       return;
     }
-    var html='<h3>Zasady na miejscu</h3>';
+    var html='<h3>Zasady na miejscu – loty dronem</h3>';
     var drone=insight.drone;
     if(drone){
       var droneClass;
