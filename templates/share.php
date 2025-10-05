@@ -15,9 +15,9 @@ get_header();
 <main id="primary" class="sunplanner-share">
     <div class="sunplanner-share__inner">
         <header class="sunplanner-share__header">
-            <span class="sunplanner-share__badge">SunPlanner</span>
-            <h1 class="sunplanner-share__title">Udostępniony plan zdjęciowy</h1>
-            <p class="sunplanner-share__desc">Poniżej znajdziesz zapisany plan dnia wraz z mapą, pogodą i kluczowymi godzinami przygotowany w aplikacji SunPlanner.</p>
+            <span class="sunplanner-share__badge">SunPlanner – planer plenerów ślubnych</span>
+            <h1 class="sunplanner-share__title">Plan pleneru ślubnego przygotowany dla Waszej ekipy</h1>
+            <p class="sunplanner-share__desc">Znajdziesz tu harmonogram światła, pogodę, trasę i notatki zebrane w SunPlannerze. Korzystaj na dowolnym urządzeniu i miej pewność, że wszyscy widzą te same aktualne dane.</p>
         </header>
 
         <?php echo do_shortcode('[sunplanner]'); ?>

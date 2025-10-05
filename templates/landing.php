@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 <head>
     <meta charset="<?php bloginfo('charset'); ?>" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><?php echo esc_html__('SunPlanner – zaplanuj plener ślubny', 'sunplanner'); ?></title>
+    <title><?php echo esc_html__('SunPlanner – inteligentny planer plenerów ślubnych', 'sunplanner'); ?></title>
     <?php wp_head(); ?>
 </head>
 <body <?php body_class('sunplanner-landing'); ?>>
@@ -22,21 +22,21 @@ if (!defined('ABSPATH')) {
     <div class="page-shell">
         <section class="hero">
             <div>
-                <span class="hero__badge">Dla Młodych Par i ekip foto-video</span>
-                <h1 class="hero__title">Wasz plener ślubny, zaplanowany co do promyka słońca</h1>
-                <p class="hero__subtitle">SunPlanner pomaga zsynchronizować pogodę, światło i logistykę tak, by dzień pleneru był czystą przyjemnością – bez gonitwy, bez zgadywania.</p>
-                <a class="hero__cta" href="#jak-to-dziala">Zobacz jak działa SunPlanner →</a>
+                <span class="hero__badge">SunPlanner dla Par Młodych i ekip foto-video</span>
+                <h1 class="hero__title">Inteligentny planer plenerów ślubnych gotowy na każdą aurę</h1>
+                <p class="hero__subtitle">Od wyboru lokalizacji po złotą godzinę i logistykę dojazdu – SunPlanner prowadzi Was krok po kroku, aby plener był dopięty na ostatni promyk światła.</p>
+                <a class="hero__cta" href="#sunplanner-live">Przejdź do planera →</a>
             </div>
             <div class="hero__media">
                 <div class="hero__card">
-                    <h3>Wasz dzień w skrócie</h3>
+                    <h3>Plan dnia w skrócie</h3>
                     <strong>Plener 17:45</strong>
                     <div>
                         <p><strong>Złota godzina:</strong> 18:12 – 18:54</p>
                         <p><strong>Prognoza:</strong> Słonecznie, 22°C, wiatr 8 km/h</p>
                         <p><strong>Trasa:</strong> 42 min z Pałacu Czosnów do Kampinosu</p>
                     </div>
-                    <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">Plan udostępniony ekipie foto-video i kierowcy jednym kliknięciem.</p>
+                    <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">Plan udostępniony Parze, fotografowi, filmowcowi i kierowcy jednym kliknięciem.</p>
                 </div>
             </div>
         </section>
@@ -129,6 +129,26 @@ if (!defined('ABSPATH')) {
                         <p>Poranne mgły, wiatr we włosach i ciepłe pledy na plaży.</p>
                     </div>
                 </article>
+            </div>
+        </section>
+
+        <section class="planner-preview" id="sunplanner-live">
+            <div class="page-shell planner-preview__shell">
+                <div class="planner-preview__inner">
+                    <div class="planner-preview__content">
+                        <span class="eyebrow">Wypróbuj teraz</span>
+                        <h2>Ułóż pierwszy plan pleneru w kilku minutach</h2>
+                        <p>SunPlanner łączy prognozę pogody, złote i niebieskie godziny oraz logistykę przejazdów w jednym przejrzystym widoku. Poniżej działa w pełni funkcjonalna wersja planera gotowa do testów.</p>
+                        <ul class="planner-preview__list">
+                            <li>Sprawdź natychmiast prognozę 16-dniową, radar i warunki świetlne dla wybranej lokalizacji.</li>
+                            <li>Zbuduj trasę z kilkoma przystankami i zobacz, ile czasu naprawdę zajmie cała sesja.</li>
+                            <li>Udostępnij plan Parze, fotografowi i filmowcowi jako link, PDF lub zapis w kalendarzu.</li>
+                        </ul>
+                    </div>
+                    <div class="planner-preview__app">
+                        <?php echo do_shortcode('[sunplanner]'); ?>
+                    </div>
+                </div>
             </div>
         </section>
     </div>

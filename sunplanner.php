@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: SunPlanner
+Plugin Name: SunPlanner – planer plenerów ślubnych
 Plugin URI: https://allemedia.pl/
-Description: Planer plenerów (złota/niebieska godzina, trasy, pogoda, eksporty).
+Description: Inteligentny planer plenerów ślubnych, który łączy pogodę, światło, logistykę i inspiracje w jednym miejscu.
 Version: 1.7.0
 Author: Allemedia
 Author URI: https://allemedia.pl/
@@ -117,7 +117,7 @@ function sunplanner_ensure_landing_page(): int
     }
 
     $page_data = [
-        'post_title'   => __('SunPlanner – zaplanuj plener ślubny', 'sunplanner'),
+        'post_title'   => __('SunPlanner – inteligentny planer plenerów ślubnych', 'sunplanner'),
         'post_name'    => 'sunplanner-landing',
         'post_status'  => 'publish',
         'post_type'    => 'page',
@@ -295,9 +295,9 @@ add_action('template_redirect', function () {
 
 add_filter('document_title_parts', function ($parts) {
     if (get_query_var('sunplan')) {
-        $parts['title'] = __('Udostępniony plan – SunPlanner', 'sunplanner');
+        $parts['title'] = __('Plan pleneru ślubnego – SunPlanner', 'sunplanner');
     } elseif (sunplanner_is_landing_page()) {
-        $parts['title'] = __('SunPlanner – zaplanuj plener ślubny', 'sunplanner');
+        $parts['title'] = __('SunPlanner – inteligentny planer plenerów ślubnych', 'sunplanner');
     }
 
     return $parts;

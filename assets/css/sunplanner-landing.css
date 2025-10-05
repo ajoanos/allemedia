@@ -292,6 +292,93 @@ body.sunplanner-landing a {
     font-size: 1.3rem;
 }
 
+.sunplanner-landing .planner-preview {
+    margin: clamp(4rem, 9vw, 7rem) 0 clamp(4rem, 9vw, 7rem);
+    padding: 0;
+}
+
+.sunplanner-landing .planner-preview__shell {
+    position: relative;
+}
+
+.sunplanner-landing .planner-preview__shell::before {
+    content: '';
+    position: absolute;
+    inset: -8%;
+    background: radial-gradient(circle at top left, rgba(242, 141, 183, 0.22), transparent 60%),
+        radial-gradient(circle at bottom right, rgba(121, 99, 255, 0.18), transparent 55%);
+    filter: blur(12px);
+    z-index: -1;
+}
+
+.sunplanner-landing .planner-preview__inner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: clamp(2rem, 4vw, 3rem);
+    background: var(--bg-contrast);
+    border-radius: var(--radius-xl);
+    padding: clamp(2.5rem, 6vw, 3.5rem);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.sunplanner-landing .planner-preview__content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+    line-height: 1.1;
+    margin: 1.25rem 0 1rem;
+}
+
+.sunplanner-landing .planner-preview__content p {
+    color: var(--muted);
+    margin: 0 0 1.25rem;
+}
+
+.sunplanner-landing .planner-preview__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.9rem;
+}
+
+.sunplanner-landing .planner-preview__list li {
+    position: relative;
+    padding-left: 1.9rem;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.sunplanner-landing .planner-preview__list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    font-size: 0.75rem;
+    display: grid;
+    place-items: center;
+}
+
+.sunplanner-landing .planner-preview__app {
+    background: rgba(247, 246, 251, 0.65);
+    border-radius: var(--radius-lg);
+    padding: clamp(1.5rem, 4vw, 2rem);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.sunplanner-landing .planner-preview__app .sunplanner-wrap {
+    width: 100%;
+}
+
+.sunplanner-landing .planner-preview__app #sunplanner-app {
+    min-height: 640px;
+}
+
 .sunplanner-landing footer {
     padding: 3rem 0 4rem;
     color: var(--muted);
@@ -319,5 +406,17 @@ body.sunplanner-landing a {
 
     .sunplanner-landing .hero__media {
         padding: 1.25rem;
+    }
+
+    .sunplanner-landing .planner-preview__inner {
+        grid-template-columns: 1fr;
+    }
+
+    .sunplanner-landing .planner-preview__app {
+        padding: 1rem;
+    }
+
+    .sunplanner-landing .planner-preview__app #sunplanner-app {
+        min-height: 520px;
     }
 }
