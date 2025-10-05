@@ -4,6 +4,33 @@
 html,body{overflow-x:hidden}
 .sunplanner-wrap{width:100%}
 
+.sunplanner-intro{position:relative;margin:0 0 clamp(32px,6vw,56px);padding:clamp(28px,6vw,48px);border-radius:32px;background:linear-gradient(135deg,rgba(254,243,199,.92),rgba(255,255,255,.95));box-shadow:0 24px 55px rgba(15,23,42,.08);overflow:hidden}
+.sunplanner-intro::after{content:"";position:absolute;inset:auto -18% -40% auto;width:280px;height:280px;border-radius:999px;background:radial-gradient(circle at center,rgba(233,66,68,.16),transparent 70%);transform:rotate(18deg)}
+.sunplanner-intro__inner>.vc_column-inner>.wpb_wrapper{position:relative;z-index:1}
+.sunplanner-intro__badge{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .85rem;border-radius:999px;background:rgba(233,66,68,.08);color:#b91c1c;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}
+.sunplanner-intro__title{margin:clamp(12px,2vw,18px) 0 clamp(6px,1.2vw,10px);font-size:clamp(2.1rem,4vw,2.85rem);line-height:1.15;color:#0f172a;font-weight:700}
+.sunplanner-intro__lead{margin:0 0 clamp(10px,1.8vw,16px);font-size:clamp(1.05rem,2.3vw,1.25rem);color:#1f2937;font-weight:500;max-width:760px}
+.sunplanner-intro__text{margin:0 0 clamp(22px,4vw,32px);font-size:clamp(.95rem,1.9vw,1.05rem);color:#475569;max-width:820px}
+.sunplanner-intro__features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:clamp(18px,3.8vw,28px);margin:clamp(22px,4vw,32px) 0 clamp(10px,2vw,18px)}
+.sunplanner-intro__feature{display:flex;flex-direction:column;gap:clamp(10px,2vw,16px);padding:clamp(20px,4vw,28px);border-radius:24px;background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.08);min-height:0}
+.sunplanner-intro__icon{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,rgba(233,66,68,.15),rgba(233,66,68,.05));color:var(--accent);box-shadow:0 12px 26px rgba(233,66,68,.18)}
+.sunplanner-intro__icon svg{width:32px;height:32px}
+.sunplanner-intro__feature h3{margin:0;font-size:clamp(1.05rem,2.1vw,1.35rem);color:#0f172a;font-weight:600}
+.sunplanner-intro__feature p{margin:0;font-size:clamp(.92rem,1.8vw,1.02rem);color:#4b5563;line-height:1.55}
+.sunplanner-intro__cta-wrapper{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(12px,2.5vw,20px);margin-top:clamp(12px,2vw,20px)}
+.sunplanner-intro__cta{padding:.75rem 1.7rem;border-radius:999px;font-size:1.05rem;font-weight:600;box-shadow:0 10px 22px rgba(233,66,68,.2)}
+.sunplanner-intro__hint{font-size:.95rem;color:#475569}
+.sunplanner-intro__hint strong{color:#111}
+@media(max-width:767px){
+  .sunplanner-intro{padding:clamp(24px,7vw,36px);border-radius:26px}
+  .sunplanner-intro__cta{width:100%;text-align:center}
+  .sunplanner-intro__hint{width:100%;text-align:center}
+}
+@media(max-width:560px){
+  .sunplanner-intro__icon{width:56px;height:56px;border-radius:16px}
+  .sunplanner-intro__icon svg{width:28px;height:28px}
+}
+
 .sunplanner{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#111;line-height:1.45}
 .sunplanner-share{min-height:60vh}
 @supports (min-height: 60svh){

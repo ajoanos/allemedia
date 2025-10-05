@@ -95,6 +95,7 @@ class Frontend
         \wp_enqueue_script('sunplanner-gmaps');
 
         \ob_start();
+        echo \sunplanner_get_intro_block();
         ?>
         <div id="sunplanner-app" class="sunplanner-wrap" data-version="<?php echo \esc_attr(defined('SUNPLANNER_VERSION') ? SUNPLANNER_VERSION : ''); ?>"></div>
         <?php

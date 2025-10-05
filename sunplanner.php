@@ -251,14 +251,82 @@ return $html;
 }, 10, 4);
 
 
+if (!function_exists('sunplanner_get_intro_block')) {
+    function sunplanner_get_intro_block(): string
+    {
+        ob_start();
+        ?>
+        <div class="sunplanner-intro vc_row wpb_row vc_row-fluid">
+            <div class="sunplanner-intro__inner wpb_column vc_column_container vc_col-sm-12">
+                <div class="vc_column-inner">
+                    <div class="wpb_wrapper">
+                        <span class="sunplanner-intro__badge"><?php echo esc_html__('Poznaj SunPlanner', 'sunplanner'); ?></span>
+                        <h2 class="sunplanner-intro__title"><?php echo esc_html__('Zaplanuj swoje plenerowe sesje z SunPlannerem', 'sunplanner'); ?></h2>
+                        <p class="sunplanner-intro__lead"><?php echo esc_html__('SunPlanner zbiera w jednym miejscu prognozy światła, pogodę i logistykę, dzięki czemu w kilka minut przygotujesz kompletny scenariusz pleneru ślubnego.', 'sunplanner'); ?></p>
+                        <p class="sunplanner-intro__text"><?php echo esc_html__('Wypełnij planer poniżej, aby dobrać najlepsze lokalizacje, godziny „złotej godziny” oraz listę zadań do współdzielenia z zespołem.', 'sunplanner'); ?></p>
+                        <div class="sunplanner-intro__features vc_row wpb_row vc_row-fluid">
+                            <div class="sunplanner-intro__feature">
+                                <span class="sunplanner-intro__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="14" width="30" height="24" rx="4"></rect>
+                                        <path d="M16 10v8M32 10v8"></path>
+                                        <path d="M9 20h30"></path>
+                                        <circle cx="24" cy="30" r="5"></circle>
+                                    </svg>
+                                </span>
+                                <h3><?php echo esc_html__('Harmonogram światła i pogody', 'sunplanner'); ?></h3>
+                                <p><?php echo esc_html__('Zestaw prognozę światła, zachmurzenie i temperaturę, aby znaleźć idealne okno na sesję.', 'sunplanner'); ?></p>
+                            </div>
+                            <div class="sunplanner-intro__feature">
+                                <span class="sunplanner-intro__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="10" y="10" width="28" height="28" rx="6"></rect>
+                                        <path d="M17 20h14"></path>
+                                        <path d="M17 26h10"></path>
+                                        <path d="M17 32h6"></path>
+                                        <path d="M15 20l2.6 2.6 4.4-4.4"></path>
+                                    </svg>
+                                </span>
+                                <h3><?php echo esc_html__('Lista zadań i przypomnienia', 'sunplanner'); ?></h3>
+                                <p><?php echo esc_html__('Notuj logistykę, akcesoria i punkty programu, aby nic nie umknęło w dniu sesji.', 'sunplanner'); ?></p>
+                            </div>
+                            <div class="sunplanner-intro__feature">
+                                <span class="sunplanner-intro__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="18" cy="20" r="6"></circle>
+                                        <circle cx="32" cy="18" r="5"></circle>
+                                        <path d="M8 36c0-5.5 4.5-10 10-10s10 4.5 10 10"></path>
+                                        <path d="M30 30c1.5-2.4 4.4-4 7.5-4 3.5 0 6.5 1.9 8.5 4.9"></path>
+                                    </svg>
+                                </span>
+                                <h3><?php echo esc_html__('Współdzielone notatki i eksport', 'sunplanner'); ?></h3>
+                                <p><?php echo esc_html__('Udostępnij gotowy plan parze i ekipie, eksportuj PDF lub link, by wszyscy byli na bieżąco.', 'sunplanner'); ?></p>
+                            </div>
+                        </div>
+                        <div class="sunplanner-intro__cta-wrapper">
+                            <a class="btn sunplanner-intro__cta" href="<?php echo esc_url('#sunplanner-app'); ?>"><?php echo esc_html__('Rozpocznij planowanie', 'sunplanner'); ?></a>
+                            <span class="sunplanner-intro__hint"><?php echo esc_html__('Zacznij od sekcji poniżej lub przewiń, aby sprawdzić zapisane inspiracje.', 'sunplanner'); ?></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+}
+
+
 /** === Shortcode === */
 add_shortcode('sunplanner', function () {
-wp_enqueue_style('sunplanner-css');
-wp_enqueue_script('sunplanner-app');
+    wp_enqueue_style('sunplanner-css');
+    wp_enqueue_script('sunplanner-app');
     wp_enqueue_script('sunplanner-gmaps');
-    ob_start(); ?>
-<div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.5"></div>
-<?php return ob_get_clean();
+    ob_start();
+    echo sunplanner_get_intro_block();
+    ?>
+    <div id="sunplanner-app" class="sunplanner-wrap" data-version="1.7.5"></div>
+    <?php return ob_get_clean();
 });
 
 
