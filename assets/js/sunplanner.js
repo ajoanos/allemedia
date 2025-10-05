@@ -588,7 +588,9 @@
       '</div>'+
       '<div class="contact-schedule">'+
         '<h4>Terminy</h4>'+
+        '<p class="muted">Dodawaj propozycje wspólnych spotkań, a reszta zespołu może je szybko potwierdzać lub odrzucać.</p>'+
         '<div id="sp-slot-list" class="slot-list"></div>'+
+        '<div class="slot-legend muted">Legenda: <strong>Proponowany</strong> – oczekuje na decyzję, <strong>Potwierdzony</strong> – termin zaakceptowany, <strong>Odrzucony</strong> – termin nieaktualny.</div>'+
         '<div class="slot-form">'+
           '<div class="slot-form-row">'+
             '<label class="slot-field">'+
@@ -656,7 +658,7 @@
     if(section.querySelector('.contact-subtitle')) return;
     var p=document.createElement('p');
     p.className='contact-subtitle';
-    p.textContent='Podaj Wasze dane i ułatw kontakt między Wami.';
+    p.textContent='Podaj Wasze dane, dodawajcie propozycje i szybko potwierdzajcie terminy sesji.';
     p.style.marginTop='6px';
     p.style.opacity='.9';
     section.insertBefore(p, heading.nextSibling);
