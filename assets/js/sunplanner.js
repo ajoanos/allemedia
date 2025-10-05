@@ -436,7 +436,7 @@
             '<div id="sp-daily16" class="card inner daily16-block daily-forecast-card">'+
                 '<div class="chart-header">'+
                   '<h3>Prognoza dzienna (do 16 dni)</h3>'+
-                  '<p class="chart-description">Przewiń wykres, aby zobaczyć pełen zakres. Pokazujemy temperatury, opady i czas ze słońcem.</p>'+
+                  '<p class="chart-description">Przesuń, aby przejrzeć 16 dni. Linie pokazują maksimum i minimum temperatury, a słupki – godziny słońca oraz sumę opadów.</p>'+
                 '</div>'+
                 '<div id="sp-daily16-scroll" class="daily16-chart-container daily-forecast-chart">'+
                   '<canvas id="sp-daily16-canvas" class="daily16-canvas daily-forecast-canvas" aria-label="Prognoza dzienna do 16 dni"></canvas>'+
