@@ -409,10 +409,10 @@
     '</div>'+
     '<div class="cards">'+
       '<div class="card plan-day">'+
-        '<h3>Plan dnia – przebieg zdjęć</h3>'+
+        '<h3>Plan sesji w wybranym dniu</h3>'+
         '<div class="session-meta" aria-label="Kluczowe informacje o planie dnia">'+
           '<div class="session-meta__item">'+
-            '<span class="session-meta__label">Cel podróży</span>'+
+            '<span class="session-meta__label">Docelowe miejsce sesji (ostatni punkt trasy)</span>'+
             '<strong id="sp-loc" class="session-meta__value">—</strong>'+
           '</div>'+
           '<div class="session-meta__item">'+
@@ -420,11 +420,11 @@
             '<strong id="sp-date-label" class="session-meta__value">—</strong>'+
           '</div>'+
           '<div class="session-meta__item">'+
-            '<span class="session-meta__label">Czas jazdy</span>'+
+            '<span class="session-meta__label">Szacowany czas przejazdu</span>'+
             '<strong id="sp-t-time" class="session-meta__value">—</strong>'+
           '</div>'+
           '<div class="session-meta__item">'+
-            '<span class="session-meta__label">Dystans trasy</span>'+
+            '<span class="session-meta__label">Łączny dystans przejazdu</span>'+
             '<strong id="sp-t-dist" class="session-meta__value">—</strong>'+
           '</div>'+
         '</div>'+
