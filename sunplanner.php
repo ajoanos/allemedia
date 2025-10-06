@@ -352,7 +352,7 @@ if (!function_exists('sunplanner_get_intro_block')) {
             <div style="display:grid; gap:36px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); align-items:start;">
               <div>
                 <p style="margin:0; text-transform:uppercase; letter-spacing:0.12em; font-weight:600; color:#9a3412; font-size:13px;">Integracje &amp; automatyzacje</p>
-                <h2 style="margin:16px 0 14px; font-size:clamp(30px,4.4vw,44px); color:#7c2d12;">Całe studio plenerowe w jednym miejscu</h2>
+                <h2 style="margin:16px 0 14px; font-size:clamp(30px,4.4vw,44px); color:#7c2d12;">Zaplanuj swój wymarzony plener</h2>
                 <p style="margin:0; color:rgba(67,20,7,0.7);">Łączymy dane pogodowe, mapy i listy zadań z notatkami kreatywnymi, więc każdy etap sesji masz pod ręką.</p>
                 <ul style="padding:0; margin:26px 0 0; list-style:none; display:grid; gap:16px;">
                   <li style="display:flex; gap:12px; align-items:flex-start;">
@@ -403,79 +403,14 @@ if (!function_exists('sunplanner_get_intro_block')) {
           </div>
         </section>
 
-        <section class="sp-timeline" style="padding:76px 0; background:linear-gradient(145deg,#fff1d6 0%,#fed7aa 45%,#fecdd3 100%); color:#431407;">
-          <div class="sp-container" style="max-width:1180px; margin:0 auto; padding:0 24px; display:grid; gap:40px;">
-            <div style="max-width:520px;">
-              <p style="margin:0; text-transform:uppercase; letter-spacing:0.12em; font-weight:600; color:#9a3412; font-size:13px;">Plan dnia w skrócie</p>
-              <h2 style="margin:18px 0 16px; font-size:clamp(30px,4vw,44px); color:#7c2d12;">Od pierwszego kadru do zachodu</h2>
-              <p style="margin:0; color:rgba(67,20,7,0.74);">Zobacz, jak SunPlanner układa harmonogram sesji. Każda scena ma przypisane światło, pogodę i zadania.</p>
+        <section class="sp-cta" style="padding:72px 0; background:linear-gradient(150deg,rgba(254,249,195,0.6) 0%,rgba(253,230,138,0.65) 45%,rgba(254,215,170,0.7) 100%); color:#431407;">
+          <div class="sp-container" style="max-width:720px; margin:0 auto; padding:0 24px; text-align:center; display:grid; gap:20px;">
+            <h3 style="margin:0; font-size:clamp(30px,4vw,40px); color:#7c2d12;">Zobacz jak to działa</h3>
+            <p style="margin:0; color:rgba(67,20,7,0.72);">Przejdź przez przykładowy plan i sprawdź, jak łatwo zaplanujesz plener z całą ekipą.</p>
+            <div style="display:flex; justify-content:center; gap:18px; flex-wrap:wrap;">
+              <a href="#sunplanner-app" style="background:#f97316; color:#431407; padding:16px 32px; border-radius:18px; font-weight:700; text-decoration:none; box-shadow:0 18px 36px rgba(249,115,22,0.28);">Uruchom SunPlanner</a>
+              <a href="#sp-integrations" style="background:#fff; color:#9a3412; padding:16px 30px; border-radius:18px; border:1px solid rgba(234,88,12,0.22); font-weight:600; text-decoration:none; box-shadow:0 16px 34px rgba(124,45,18,0.16);">Poznaj funkcje</a>
             </div>
-            <ol style="margin:0; padding:0; list-style:none; display:grid; gap:20px;">
-              <li style="display:grid; grid-template-columns:120px 1fr; gap:20px; align-items:start; background:rgba(255,255,255,0.55); border-radius:22px; padding:20px; box-shadow:0 24px 48px rgba(180,83,9,0.18);">
-                <div style="font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#9a3412;">05:30</div>
-                <div>
-                  <h3 style="margin:0 0 8px; font-size:18px; color:#7c2d12;">Golden hour nad jeziorem</h3>
-                  <p style="margin:0; color:rgba(67,20,7,0.72);">Sprawdź temperaturę, wiatr i ułożenie słońca, by ustawić parę we właściwym miejscu.</p>
-                </div>
-              </li>
-              <li style="display:grid; grid-template-columns:120px 1fr; gap:20px; align-items:start; background:rgba(255,255,255,0.55); border-radius:22px; padding:20px; box-shadow:0 24px 48px rgba(190,18,60,0.16);">
-                <div style="font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#9a3412;">09:45</div>
-                <div>
-                  <h3 style="margin:0 0 8px; font-size:18px; color:#7c2d12;">Spacer po ogrodzie</h3>
-                  <p style="margin:0; color:rgba(67,20,7,0.72);">Lista kadrów, notatki rekwizytów i trasa między punktami robią różnicę.</p>
-                </div>
-              </li>
-              <li style="display:grid; grid-template-columns:120px 1fr; gap:20px; align-items:start; background:rgba(255,255,255,0.55); border-radius:22px; padding:20px; box-shadow:0 24px 48px rgba(202,138,4,0.16);">
-                <div style="font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#9a3412;">12:30</div>
-                <div>
-                  <h3 style="margin:0 0 8px; font-size:18px; color:#7c2d12;">Przerwa i logistyka</h3>
-                  <p style="margin:0; color:rgba(67,20,7,0.72);">Synchronizujesz zadania w zespole, żeby każdy wiedział, co przygotować.</p>
-                </div>
-              </li>
-              <li style="display:grid; grid-template-columns:120px 1fr; gap:20px; align-items:start; background:rgba(255,255,255,0.55); border-radius:22px; padding:20px; box-shadow:0 24px 48px rgba(34,197,94,0.16);">
-                <div style="font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#9a3412;">18:10</div>
-                <div>
-                  <h3 style="margin:0 0 8px; font-size:18px; color:#7c2d12;">Golden hour 2.0</h3>
-                  <p style="margin:0; color:rgba(67,20,7,0.72);">Powtórka z ulubionych kadrów przy idealnym świetle — odhacz to, co gotowe.</p>
-                </div>
-              </li>
-            </ol>
-            <div style="background:rgba(255,255,255,0.68); color:#431407; border-radius:28px; padding:40px; display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); align-items:center; box-shadow:0 30px 60px rgba(147,51,16,0.2);">
-              <div>
-                <h3 style="margin:0 0 10px; font-size:24px; color:#7c2d12;">Gotowy, żeby zaplanować kolejny plener?</h3>
-                <p style="margin:0; color:rgba(67,20,7,0.72);">Uruchom SunPlanner i zbuduj harmonogram, który łatwo udostępnisz całej ekipie.</p>
-              </div>
-              <div style="display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-end;">
-                <a href="#sunplanner-app" style="background:#f97316; color:#431407; padding:16px 30px; border-radius:18px; font-weight:700; text-decoration:none; box-shadow:0 18px 36px rgba(249,115,22,0.28);">Otwórz planer</a>
-                <a href="#sp-integrations" style="background:#fff; color:#9a3412; padding:16px 28px; border-radius:18px; border:1px solid rgba(234,88,12,0.22); font-weight:600; text-decoration:none; box-shadow:0 16px 34px rgba(124,45,18,0.16);">Zobacz funkcje</a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="sp-faq" style="padding:78px 0 44px; background:#fff; color:#431407;">
-          <div class="sp-container" style="max-width:960px; margin:0 auto; padding:0 24px;">
-            <header style="text-align:center; max-width:540px; margin:0 auto 36px;">
-              <p style="margin:0; text-transform:uppercase; letter-spacing:0.12em; font-weight:600; color:#9a3412; font-size:13px;">FAQ</p>
-              <h2 style="margin:16px 0 14px; font-size:clamp(28px,3.5vw,38px); color:#7c2d12;">Najczęstsze pytania</h2>
-              <p style="margin:0; color:rgba(67,20,7,0.68);">Krótkie odpowiedzi, które uspokoją Twoją parę i ekipę przed sesją.</p>
-            </header>
-            <details style="background:#fff7ed; border:1px solid rgba(234,88,12,0.2); border-radius:18px; padding:20px 24px; margin-bottom:16px; box-shadow:0 20px 40px rgba(180,83,9,0.12);">
-              <summary style="cursor:pointer; color:#7c2d12; font-weight:600; font-size:18px;">Czy muszę się logować?</summary>
-              <div style="opacity:.85; margin-top:12px; color:rgba(67,20,7,0.75);">Nie — otwierasz planer i od razu ustawiasz trasę, światło i zadania.</div>
-            </details>
-            <details style="background:#fff7ed; border:1px solid rgba(234,88,12,0.2); border-radius:18px; padding:20px 24px; margin-bottom:16px; box-shadow:0 20px 40px rgba(180,83,9,0.12);">
-              <summary style="cursor:pointer; color:#7c2d12; font-weight:600; font-size:18px;">Czy działa na telefonie?</summary>
-              <div style="opacity:.85; margin-top:12px; color:rgba(67,20,7,0.75);">Tak — interfejs projektowaliśmy pod mobilne planowanie w terenie.</div>
-            </details>
-            <details style="background:#fff7ed; border:1px solid rgba(234,88,12,0.2); border-radius:18px; padding:20px 24px; margin-bottom:16px; box-shadow:0 20px 40px rgba(180,83,9,0.12);">
-              <summary style="cursor:pointer; color:#7c2d12; font-weight:600; font-size:18px;">Czy mogę udostępnić plan?</summary>
-              <div style="opacity:.85; margin-top:12px; color:rgba(67,20,7,0.75);">Tak — skopiuj link, wyślij PDF lub zduplikuj plan dla kolejnej sesji.</div>
-            </details>
-            <details style="background:#fff7ed; border:1px solid rgba(234,88,12,0.2); border-radius:18px; padding:20px 24px; box-shadow:0 20px 40px rgba(180,83,9,0.12);">
-              <summary style="cursor:pointer; color:#7c2d12; font-weight:600; font-size:18px;">Czy mogę powielić harmonogram?</summary>
-              <div style="opacity:.85; margin-top:12px; color:rgba(67,20,7,0.75);">Jasne — duplikujesz plan jednym kliknięciem i dopasowujesz szczegóły w minutę.</div>
-            </details>
           </div>
         </section>
         <?php
