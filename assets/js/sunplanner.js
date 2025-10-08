@@ -384,20 +384,22 @@
 
   root.innerHTML =
   '<div class="sunplanner">'+
-    '<div id="sp-toast" class="banner" style="display:none"></div>'+
-    '<div class="row">'+
+    '<div class="sunplanner__controls">'+
+      '<div id="sp-toast" class="banner" style="display:none"></div>'+
+      '<div class="row">'+
       '<input id="sp-place" class="input" placeholder="Dodaj punkt: start / przystanek / cel">'+
       '<button id="sp-add" class="btn" type="button">Dodaj</button>'+
       '<button id="sp-geo" class="btn secondary" type="button">Skąd jadę?</button>'+
       '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
       '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
-    '</div>'+
-    '<div class="toolbar">'+
+      '</div>'+
+      '<div class="toolbar">'+
       '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
       '<div class="legend">'+
         '<span class="c1"><i></i>Najlepsza</span>'+
         '<span class="c2"><i></i>Alternatywa</span>'+
         '<span class="c3"><i></i>Opcja</span>'+
+      '</div>'+
       '</div>'+
     '</div>'+
     '<div id="planner-map" aria-label="Mapa"></div>'+
