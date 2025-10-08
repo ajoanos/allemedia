@@ -43,7 +43,11 @@ html,body{overflow-x:hidden}
 .sunplanner-share__desc{margin:0 auto;max-width:640px;color:#475569;font-size:1rem}
 .sunplanner-share__desc a{color:inherit;text-decoration:underline}
 
+.sunplanner{position:relative;--sunplanner-sticky-top:0px}
+body.admin-bar .sunplanner{--sunplanner-sticky-top:32px}
+@media(max-width:782px){body.admin-bar .sunplanner{--sunplanner-sticky-top:46px}}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;margin:.6rem 0}
+.sunplanner>.row{position:sticky;top:var(--sunplanner-sticky-top);z-index:40;background:rgba(255,255,255,.95);backdrop-filter:saturate(180%) blur(12px);padding:clamp(.6rem,2.6vw,.95rem);border-radius:16px;box-shadow:0 18px 32px rgba(15,23,42,.12)}
 .rowd{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0;gap:.35rem;flex-wrap:wrap}
 .rowd strong{flex:0 0 auto}
 
