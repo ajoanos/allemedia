@@ -1,5 +1,5 @@
 @charset "UTF-8";
-:root{--accent:#e94244;--ring-bg:#e5e7eb;}
+:root{--accent:#e94244;--ring-bg:#e5e7eb;--sp-sticky-offset:0px;}
 *{box-sizing:border-box}
 html,body{overflow-x:hidden}
 .sunplanner-wrap{width:100%}
@@ -50,6 +50,15 @@ body.admin-bar .sunplanner{--sunplanner-sticky-top:32px}
 .sunplanner__controls #sp-toast{margin:0}
 .sunplanner__controls .row{margin:0}
 .sunplanner__controls .toolbar{margin:0}
+
+#sp-date-sticky-wrapper{position:relative}
+#sp-date-sticky-bar{position:sticky;top:var(--sp-sticky-offset);z-index:1001;background:#fff;backdrop-filter:saturate(180%) blur(6px);-webkit-backdrop-filter:saturate(180%) blur(6px);border-bottom:1px solid rgba(0,0,0,.06);padding:10px 12px}
+#sp-date-sticky-bar.sp-is-stuck{box-shadow:0 6px 12px rgba(0,0,0,.08)}
+#sp-date-sticky-sentinel{position:absolute;top:0;left:0;height:1px;width:1px;pointer-events:none}
+#sp-date-control{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+#sp-date-control .sp-date-label{font-size:.9rem;font-weight:600;color:#1f2937;text-transform:uppercase;letter-spacing:.05em}
+#sp-date-control .input{max-width:170px}
+@media(max-width:640px){#sp-date-sticky-bar{padding:8px 10px}}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;margin:.6rem 0}
 .rowd{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0;gap:.35rem;flex-wrap:wrap}
 .rowd strong{flex:0 0 auto}

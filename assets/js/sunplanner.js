@@ -384,14 +384,22 @@
 
   root.innerHTML =
   '<div class="sunplanner">'+
-    '<div class="sunplanner__controls">'+
+    '<section class="sunplanner__controls" data-sp="intro">'+
       '<div id="sp-toast" class="banner" style="display:none"></div>'+
       '<div class="row">'+
       '<input id="sp-place" class="input" placeholder="Dodaj punkt: start / przystanek / cel">'+
       '<button id="sp-add" class="btn" type="button">Dodaj</button>'+
       '<button id="sp-geo" class="btn secondary" type="button">Skąd jadę?</button>'+
-      '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
-      '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
+      '</div>'+
+      '<div id="sp-date-sticky-wrapper">'+
+        '<div id="sp-date-sticky-bar" role="region" aria-label="Wybrana data">'+
+          '<div id="sp-date-control">'+
+            '<label for="sp-date" class="sp-date-label">Data</label>'+
+            '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
+            '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
+          '</div>'+
+        '</div>'+
+        '<div id="sp-date-sticky-sentinel" aria-hidden="true"></div>'+
       '</div>'+
       '<div class="toolbar">'+
       '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
@@ -401,7 +409,7 @@
         '<span class="c3"><i></i>Opcja</span>'+
       '</div>'+
       '</div>'+
-    '</div>'+
+    '</section>'+
     '<div id="planner-map" aria-label="Mapa"></div>'+
     '<div class="card route-card">'+
       '<h3>Punkty trasy – dodaj je w kolejności przejazdu</h3>'+
@@ -651,7 +659,110 @@
       '<div class="muted" id="sp-link" style="margin-top:.25rem"></div>'+
       '<div class="muted" id="sp-short-status"></div>'+
     '</div>'+
+  '</div>'+
   '</div>';
+
+  (function initStickyDate(){
+    var bar=document.getElementById('sp-date-sticky-bar');
+    var wrapper=document.getElementById('sp-date-sticky-wrapper');
+    if(!bar || !wrapper){ return; }
+
+    if(window.getComputedStyle){
+      [wrapper, wrapper.parentElement].forEach(function(el){
+        if(!el){ return; }
+        var styles=window.getComputedStyle(el);
+        if(!styles){ return; }
+        var shouldReset=['overflow','overflowY','overflowX'].some(function(prop){
+          var value=styles[prop];
+          return value==='hidden' || value==='clip';
+        });
+        if(shouldReset){
+          el.style.overflow='visible';
+        }
+      });
+    }
+
+    function getAdminBarHeight(){
+      var ab=document.getElementById('wpadminbar');
+      return ab ? ab.offsetHeight || 0 : 0;
+    }
+
+    function getSiteHeaderHeight(){
+      var hdr=document.querySelector('header.site-header, .site-header, header.header, #masthead');
+      if(!hdr){ return 0; }
+      var styles=window.getComputedStyle ? window.getComputedStyle(hdr) : null;
+      if(styles && styles.position && styles.position.indexOf('fixed')===-1 && styles.position.indexOf('sticky')===-1){
+        return 0;
+      }
+      return hdr.offsetHeight || 0;
+    }
+
+    function getCookieBannerHeight(){
+      var cb=document.querySelector('.cookie-banner, .cky-consent-container, .cookie-notice');
+      if(!cb){ return 0; }
+      var styles=window.getComputedStyle ? window.getComputedStyle(cb) : null;
+      if(!styles){ return 0; }
+      var pos=styles.position || '';
+      if(pos!=='fixed' && pos!=='sticky'){ return 0; }
+      return cb.offsetHeight || 0;
+    }
+
+    function computeOffset(){
+      return getAdminBarHeight() + getSiteHeaderHeight() + getCookieBannerHeight();
+    }
+
+    var sentinel=document.getElementById('sp-date-sticky-sentinel');
+    var useObserver=false;
+
+    function updateStuckState(offset){
+      if(!sentinel){ return; }
+      var topOffset=typeof offset==='number' ? offset : computeOffset();
+      var rect=sentinel.getBoundingClientRect();
+      if(rect.top < topOffset){
+        bar.classList.add('sp-is-stuck');
+      } else {
+        bar.classList.remove('sp-is-stuck');
+      }
+    }
+
+    var lastOffset=null;
+
+    function updateOffsetVar(){
+      var offset=computeOffset();
+      var changed=offset!==lastOffset;
+      if(changed){
+        lastOffset=offset;
+        document.documentElement.style.setProperty('--sp-sticky-offset', offset + 'px');
+      }
+      return { offset: offset, changed: changed };
+    }
+
+    function refreshSticky(force){
+      var metrics=updateOffsetVar();
+      if(force || !useObserver || metrics.changed){
+        updateStuckState(metrics.offset);
+      }
+    }
+
+    if(typeof IntersectionObserver==='function' && sentinel){
+      useObserver=true;
+      var io=new IntersectionObserver(function(){
+        refreshSticky(true);
+      }, { threshold:[0] });
+      io.observe(sentinel);
+    }
+
+    if(typeof ResizeObserver==='function'){
+      var ro=new ResizeObserver(function(){ refreshSticky(false); });
+      ro.observe(document.documentElement);
+    }
+
+    window.addEventListener('scroll', function(){ refreshSticky(false); }, { passive:true });
+    window.addEventListener('resize', function(){ refreshSticky(false); });
+    window.addEventListener('load', function(){ refreshSticky(true); });
+
+    refreshSticky(true);
+  })();
 
   // MIGRACJA: opis kontaktów
   (function injectContactSubtitle(){
