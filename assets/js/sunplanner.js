@@ -386,20 +386,15 @@
   '<div class="sunplanner">'+
     '<section class="sunplanner__controls" data-sp="intro">'+
       '<div id="sp-toast" class="banner" style="display:none"></div>'+
-      '<div class="row">'+
+      '<div class="row row--planner-primary">'+
       '<input id="sp-place" class="input" placeholder="Dodaj punkt: start / przystanek / cel">'+
       '<button id="sp-add" class="btn" type="button">Dodaj</button>'+
       '<button id="sp-geo" class="btn secondary" type="button">Skąd jadę?</button>'+
+      '<div id="sp-date-control" class="sp-date-inline" role="group" aria-label="Wybrana data">'+
+        '<label for="sp-date" class="sp-date-label">Data</label>'+
+        '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
+        '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
       '</div>'+
-      '<div id="sp-date-sticky-wrapper">'+
-        '<div id="sp-date-sticky-bar" role="region" aria-label="Wybrana data">'+
-          '<div id="sp-date-control">'+
-            '<label for="sp-date" class="sp-date-label">Data</label>'+
-            '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
-            '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
-          '</div>'+
-        '</div>'+
-        '<div id="sp-date-sticky-sentinel" aria-hidden="true"></div>'+
       '</div>'+
       '<div class="toolbar">'+
       '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
@@ -661,108 +656,6 @@
     '</div>'+
   '</div>'+
   '</div>';
-
-  (function initStickyDate(){
-    var bar=document.getElementById('sp-date-sticky-bar');
-    var wrapper=document.getElementById('sp-date-sticky-wrapper');
-    if(!bar || !wrapper){ return; }
-
-    if(window.getComputedStyle){
-      [wrapper, wrapper.parentElement].forEach(function(el){
-        if(!el){ return; }
-        var styles=window.getComputedStyle(el);
-        if(!styles){ return; }
-        var shouldReset=['overflow','overflowY','overflowX'].some(function(prop){
-          var value=styles[prop];
-          return value==='hidden' || value==='clip';
-        });
-        if(shouldReset){
-          el.style.overflow='visible';
-        }
-      });
-    }
-
-    function getAdminBarHeight(){
-      var ab=document.getElementById('wpadminbar');
-      return ab ? ab.offsetHeight || 0 : 0;
-    }
-
-    function getSiteHeaderHeight(){
-      var hdr=document.querySelector('header.site-header, .site-header, header.header, #masthead');
-      if(!hdr){ return 0; }
-      var styles=window.getComputedStyle ? window.getComputedStyle(hdr) : null;
-      if(styles && styles.position && styles.position.indexOf('fixed')===-1 && styles.position.indexOf('sticky')===-1){
-        return 0;
-      }
-      return hdr.offsetHeight || 0;
-    }
-
-    function getCookieBannerHeight(){
-      var cb=document.querySelector('.cookie-banner, .cky-consent-container, .cookie-notice');
-      if(!cb){ return 0; }
-      var styles=window.getComputedStyle ? window.getComputedStyle(cb) : null;
-      if(!styles){ return 0; }
-      var pos=styles.position || '';
-      if(pos!=='fixed' && pos!=='sticky'){ return 0; }
-      return cb.offsetHeight || 0;
-    }
-
-    function computeOffset(){
-      return getAdminBarHeight() + getSiteHeaderHeight() + getCookieBannerHeight();
-    }
-
-    var sentinel=document.getElementById('sp-date-sticky-sentinel');
-    var useObserver=false;
-
-    function updateStuckState(offset){
-      if(!sentinel){ return; }
-      var topOffset=typeof offset==='number' ? offset : computeOffset();
-      var rect=sentinel.getBoundingClientRect();
-      if(rect.top < topOffset){
-        bar.classList.add('sp-is-stuck');
-      } else {
-        bar.classList.remove('sp-is-stuck');
-      }
-    }
-
-    var lastOffset=null;
-
-    function updateOffsetVar(){
-      var offset=computeOffset();
-      var changed=offset!==lastOffset;
-      if(changed){
-        lastOffset=offset;
-        document.documentElement.style.setProperty('--sp-sticky-offset', offset + 'px');
-      }
-      return { offset: offset, changed: changed };
-    }
-
-    function refreshSticky(force){
-      var metrics=updateOffsetVar();
-      if(force || !useObserver || metrics.changed){
-        updateStuckState(metrics.offset);
-      }
-    }
-
-    if(typeof IntersectionObserver==='function' && sentinel){
-      useObserver=true;
-      var io=new IntersectionObserver(function(){
-        refreshSticky(true);
-      }, { threshold:[0] });
-      io.observe(sentinel);
-    }
-
-    if(typeof ResizeObserver==='function'){
-      var ro=new ResizeObserver(function(){ refreshSticky(false); });
-      ro.observe(document.documentElement);
-    }
-
-    window.addEventListener('scroll', function(){ refreshSticky(false); }, { passive:true });
-    window.addEventListener('resize', function(){ refreshSticky(false); });
-    window.addEventListener('load', function(){ refreshSticky(true); });
-
-    refreshSticky(true);
-  })();
 
   // MIGRACJA: opis kontaktów
   (function injectContactSubtitle(){
@@ -2473,16 +2366,54 @@
   function forecastLimitMessage(){
     return 'Prognoza dostępna maksymalnie '+FORECAST_HORIZON_DAYS+' dni do przodu.';
   }
-  var today=new Date(), max=new Date(today); max.setDate(max.getDate()+FORECAST_HORIZON_DAYS);
+  function toDateInputValue(date){
+    if(!(date instanceof Date) || isNaN(date)) return '';
+    var offset = typeof date.getTimezoneOffset === 'function' ? date.getTimezoneOffset() : 0;
+    var local = new Date(date.getTime() - offset * 60000);
+    return local.toISOString().split('T')[0];
+  }
+  var today=new Date();
+  var forecastMaxDate=new Date(today);
+  forecastMaxDate.setDate(forecastMaxDate.getDate()+FORECAST_HORIZON_DAYS);
   var dEl = $('#sp-date');
-  dEl.min=today.toISOString().split('T')[0]; dEl.max=max.toISOString().split('T')[0];
-  dEl.value = dEl.value || today.toISOString().split('T')[0];
+
+  function syncDateInputBounds(){
+    if(!dEl) return;
+    var minDate=new Date(today.getTime());
+    var maxDate=new Date(forecastMaxDate.getTime());
+    var currentIso = (typeof dEl.value === 'string') ? dEl.value : '';
+    var currentDate = dateFromInput(currentIso);
+    if(currentDate instanceof Date && !isNaN(currentDate)){
+      var backward=new Date(currentDate.getTime());
+      backward.setDate(backward.getDate()-FORECAST_HORIZON_DAYS);
+      if(backward<minDate){ minDate=backward; }
+      var forward=new Date(currentDate.getTime());
+      forward.setDate(forward.getDate()+FORECAST_HORIZON_DAYS);
+      if(forward>maxDate){ maxDate=forward; }
+    }
+    var minIso=toDateInputValue(minDate);
+    var maxIso=toDateInputValue(maxDate);
+    if(currentIso){
+      if(currentIso<minIso){ minIso=currentIso; }
+      if(currentIso>maxIso){ maxIso=currentIso; }
+    }
+    dEl.min=minIso;
+    dEl.max=maxIso;
+  }
+
+  if(dEl){
+    if(!dEl.value){
+      dEl.value = toDateInputValue(today);
+    }
+    syncDateInputBounds();
+  }
 
   // === HOURLY: on date change ===
   var _spDateInput = document.getElementById('sp-date');
   if(_spDateInput){
     _spDateInput.addEventListener('change', function(){
       var d = _spDateInput.value || null;
+      syncDateInputBounds();
       if(!d) return;
       var hasLat = (typeof currentCoords.lat === 'number' && isFinite(currentCoords.lat));
       var hasLon = (typeof currentCoords.lon === 'number' && isFinite(currentCoords.lon));
@@ -2533,7 +2464,10 @@
   }
   function unpackState(obj){
     if(!obj) return;
-    if(obj.date) dEl.value=obj.date;
+    if(obj.date){
+      dEl.value=obj.date;
+      syncDateInputBounds();
+    }
     if(typeof obj.sr !== 'undefined') setHourDurationState('rise', obj.sr, { skipLink:true, skipWeather:true });
     if(typeof obj.ss !== 'undefined') setHourDurationState('set', obj.ss, { skipLink:true, skipWeather:true });
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
@@ -4831,8 +4765,9 @@
     var placeInput=$('#sp-place');
     if(placeInput){ placeInput.value=''; }
 
-    var todayStr=today.toISOString().split('T')[0];
+    var todayStr=toDateInputValue(today);
     dEl.value = todayStr;
+    syncDateInputBounds();
 
     clearSlotFormErrors();
     if(slotForm.role){ slotForm.role.value='couple'; }
