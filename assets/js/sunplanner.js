@@ -384,27 +384,22 @@
 
   root.innerHTML =
   '<div class="sunplanner">'+
-    '<section class="sunplanner__controls" data-sp="intro">'+
-      '<div id="sp-toast" class="banner" style="display:none"></div>'+
-      '<div class="row row--planner-primary">'+
+    '<div id="sp-toast" class="banner" style="display:none"></div>'+
+    '<div class="row">'+
       '<input id="sp-place" class="input" placeholder="Dodaj punkt: start / przystanek / cel">'+
       '<button id="sp-add" class="btn" type="button">Dodaj</button>'+
       '<button id="sp-geo" class="btn secondary" type="button">Skąd jadę?</button>'+
-      '<div id="sp-date-control" class="sp-date-inline" role="group" aria-label="Wybrana data">'+
-        '<label for="sp-date" class="sp-date-label">Data</label>'+
-        '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
-        '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
-      '</div>'+
-      '</div>'+
-      '<div class="toolbar">'+
+      '<input id="sp-date" class="input" type="date" style="max-width:170px">'+
+      '<button id="sp-clear" class="btn secondary" type="button">Wyczyść</button>'+
+    '</div>'+
+    '<div class="toolbar">'+
       '<label class="switch"><input id="sp-radar" type="checkbox"><span class="switch-pill" aria-hidden="true"></span><span class="switch-label">Radar opadów</span></label>'+
       '<div class="legend">'+
         '<span class="c1"><i></i>Najlepsza</span>'+
         '<span class="c2"><i></i>Alternatywa</span>'+
         '<span class="c3"><i></i>Opcja</span>'+
       '</div>'+
-      '</div>'+
-    '</section>'+
+    '</div>'+
     '<div id="planner-map" aria-label="Mapa"></div>'+
     '<div class="card route-card">'+
       '<h3>Punkty trasy – dodaj je w kolejności przejazdu</h3>'+
@@ -654,7 +649,6 @@
       '<div class="muted" id="sp-link" style="margin-top:.25rem"></div>'+
       '<div class="muted" id="sp-short-status"></div>'+
     '</div>'+
-  '</div>'+
   '</div>';
 
   // MIGRACJA: opis kontaktów
@@ -2366,54 +2360,16 @@
   function forecastLimitMessage(){
     return 'Prognoza dostępna maksymalnie '+FORECAST_HORIZON_DAYS+' dni do przodu.';
   }
-  function toDateInputValue(date){
-    if(!(date instanceof Date) || isNaN(date)) return '';
-    var offset = typeof date.getTimezoneOffset === 'function' ? date.getTimezoneOffset() : 0;
-    var local = new Date(date.getTime() - offset * 60000);
-    return local.toISOString().split('T')[0];
-  }
-  var today=new Date();
-  var forecastMaxDate=new Date(today);
-  forecastMaxDate.setDate(forecastMaxDate.getDate()+FORECAST_HORIZON_DAYS);
+  var today=new Date(), max=new Date(today); max.setDate(max.getDate()+FORECAST_HORIZON_DAYS);
   var dEl = $('#sp-date');
-
-  function syncDateInputBounds(){
-    if(!dEl) return;
-    var minDate=new Date(today.getTime());
-    var maxDate=new Date(forecastMaxDate.getTime());
-    var currentIso = (typeof dEl.value === 'string') ? dEl.value : '';
-    var currentDate = dateFromInput(currentIso);
-    if(currentDate instanceof Date && !isNaN(currentDate)){
-      var backward=new Date(currentDate.getTime());
-      backward.setDate(backward.getDate()-FORECAST_HORIZON_DAYS);
-      if(backward<minDate){ minDate=backward; }
-      var forward=new Date(currentDate.getTime());
-      forward.setDate(forward.getDate()+FORECAST_HORIZON_DAYS);
-      if(forward>maxDate){ maxDate=forward; }
-    }
-    var minIso=toDateInputValue(minDate);
-    var maxIso=toDateInputValue(maxDate);
-    if(currentIso){
-      if(currentIso<minIso){ minIso=currentIso; }
-      if(currentIso>maxIso){ maxIso=currentIso; }
-    }
-    dEl.min=minIso;
-    dEl.max=maxIso;
-  }
-
-  if(dEl){
-    if(!dEl.value){
-      dEl.value = toDateInputValue(today);
-    }
-    syncDateInputBounds();
-  }
+  dEl.min=today.toISOString().split('T')[0]; dEl.max=max.toISOString().split('T')[0];
+  dEl.value = dEl.value || today.toISOString().split('T')[0];
 
   // === HOURLY: on date change ===
   var _spDateInput = document.getElementById('sp-date');
   if(_spDateInput){
     _spDateInput.addEventListener('change', function(){
       var d = _spDateInput.value || null;
-      syncDateInputBounds();
       if(!d) return;
       var hasLat = (typeof currentCoords.lat === 'number' && isFinite(currentCoords.lat));
       var hasLon = (typeof currentCoords.lon === 'number' && isFinite(currentCoords.lon));
@@ -2464,10 +2420,7 @@
   }
   function unpackState(obj){
     if(!obj) return;
-    if(obj.date){
-      dEl.value=obj.date;
-      syncDateInputBounds();
-    }
+    if(obj.date) dEl.value=obj.date;
     if(typeof obj.sr !== 'undefined') setHourDurationState('rise', obj.sr, { skipLink:true, skipWeather:true });
     if(typeof obj.ss !== 'undefined') setHourDurationState('set', obj.ss, { skipLink:true, skipWeather:true });
     if(typeof obj.rad !== 'undefined'){ pendingRadar = !!obj.rad; }
@@ -4765,9 +4718,8 @@
     var placeInput=$('#sp-place');
     if(placeInput){ placeInput.value=''; }
 
-    var todayStr=toDateInputValue(today);
+    var todayStr=today.toISOString().split('T')[0];
     dEl.value = todayStr;
-    syncDateInputBounds();
 
     clearSlotFormErrors();
     if(slotForm.role){ slotForm.role.value='couple'; }
