@@ -435,15 +435,88 @@ if (!function_exists('sunplanner_get_intro_block')) {
             return;
           }
 
+          const toDisplayString = function(value) {
+            if (typeof value === 'string') {
+              return value.trim();
+            }
+            if (value && typeof value === 'object') {
+              if (typeof value.label === 'string' && value.label.trim() !== '') {
+                return value.label.trim();
+              }
+              if (typeof value.formatted === 'string' && value.formatted.trim() !== '') {
+                return value.formatted.trim();
+              }
+              if (typeof value.text === 'string' && value.text.trim() !== '') {
+                return value.text.trim();
+              }
+            }
+            return '';
+          };
+
           const applyState = function(state) {
             if (!state || typeof state !== 'object') {
               return;
             }
-            if (state.date && typeof state.date === 'string' && state.date.trim() !== '' && dateLabel) {
-              dateLabel.textContent = state.date;
+
+            if (dateLabel) {
+              const label = toDisplayString(state.date) || (state.calendar && toDisplayString(state.calendar));
+              if (label) {
+                dateLabel.textContent = label;
+              }
             }
-            if (state.location && typeof state.location === 'string' && state.location.trim() !== '' && locLabel) {
-              locLabel.textContent = state.location;
+
+            if (locLabel) {
+              let locationLabel = toDisplayString(state.location);
+              if (!locationLabel && Array.isArray(state.locations)) {
+                locationLabel = toDisplayString(state.locations[0]);
+              }
+              if (!locationLabel && Array.isArray(state.points)) {
+                locationLabel = toDisplayString(state.points[0]);
+              }
+              if (!locationLabel && Array.isArray(state.pts)) {
+                const firstPoint = state.pts[0];
+                locationLabel = toDisplayString(firstPoint && (firstPoint.label || firstPoint.name || firstPoint));
+              }
+              if (locationLabel) {
+                locLabel.textContent = locationLabel;
+              }
+            }
+          };
+
+          const decodeShareParam = function(encoded) {
+            if (typeof encoded !== 'string' || encoded.trim() === '') {
+              return null;
+            }
+            const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+            try {
+              const json = atob(normalized);
+              return JSON.parse(json);
+            } catch (err) {
+              return null;
+            }
+          };
+
+          const fromQueryString = function() {
+            try {
+              const params = new URLSearchParams(window.location.search || '');
+              const shareParam = params.get('sp');
+              if (!shareParam) {
+                return;
+              }
+              const decoded = decodeShareParam(shareParam);
+              if (!decoded || typeof decoded !== 'object') {
+                return;
+              }
+              const state = {
+                date: decoded.date,
+                pts: decoded.pts,
+              };
+              if (decoded.location) {
+                state.location = decoded.location;
+              }
+              applyState(state);
+            } catch (error) {
+              // Fail silently – pasek pozostaje z tekstem domyślnym.
             }
           };
 
@@ -453,6 +526,8 @@ if (!function_exists('sunplanner_get_intro_block')) {
           window.addEventListener('sunplanner:update', function(event) {
             applyState(event.detail || {});
           });
+
+          fromQueryString();
 
           const observer = new IntersectionObserver(function(entries){
             const entry = entries[0];
